@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/backend-java/caries-analysis/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/caries-boot/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/caries-common/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/caries-dashboard/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/caries-followup/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/caries-framework/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/caries-image/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/caries-integration/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/caries-patient/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/caries-report/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/caries-system/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend-java/src/main/resources" charset="UTF-8" />
+  </component>
+</project>

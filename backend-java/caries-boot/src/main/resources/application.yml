@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: caries-guard-backend
+  profiles:
+    active: local
+  jackson:
+    time-zone: UTC
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

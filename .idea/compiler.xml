@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="caries-followup" />
+        <module name="caries-framework" />
+        <module name="caries-report" />
+        <module name="caries-system" />
+        <module name="caries-common" />
+        <module name="caries-integration" />
+        <module name="caries-boot" />
+        <module name="caries-patient" />
+        <module name="caries-dashboard" />
+        <module name="caries-image" />
+        <module name="caries-analysis" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="caries-analysis" options="-parameters" />
+      <module name="caries-boot" options="-parameters" />
+      <module name="caries-common" options="-parameters" />
+      <module name="caries-dashboard" options="-parameters" />
+      <module name="caries-followup" options="-parameters" />
+      <module name="caries-framework" options="-parameters" />
+      <module name="caries-image" options="-parameters" />
+      <module name="caries-integration" options="-parameters" />
+      <module name="caries-patient" options="-parameters" />
+      <module name="caries-report" options="-parameters" />
+      <module name="caries-system" options="-parameters" />
+    </option>
+  </component>
+</project>
