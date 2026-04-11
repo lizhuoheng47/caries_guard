@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${CARIES_DB_URL:jdbc:mysql://127.0.0.1:3306/caries_guard?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
-    username: ${CARIES_DB_USERNAME:root}
-    password: ${CARIES_DB_PASSWORD:root}
+    url: jdbc:mysql://127.0.0.1:3306/cg?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:

@@ -3,6 +3,7 @@ package com.cariesguard.system.controller;
 import com.cariesguard.common.api.ApiResponse;
 import com.cariesguard.common.util.TraceIdUtils;
 import com.cariesguard.system.app.AuthAppService;
+import com.cariesguard.system.app.SystemOperationLog;
 import com.cariesguard.system.interfaces.command.LoginCommand;
 import com.cariesguard.system.interfaces.vo.CurrentUserVO;
 import com.cariesguard.system.interfaces.vo.LoginTokenVO;
@@ -25,11 +26,13 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @SystemOperationLog(moduleCode = "SYSTEM", operationTypeCode = "LOGIN", operationName = "User login")
     public ApiResponse<LoginTokenVO> login(@Valid @RequestBody LoginCommand command, HttpServletRequest request) {
         return ApiResponse.success(authAppService.login(command, request), TraceIdUtils.currentTraceId());
     }
 
     @GetMapping("/me")
+    @SystemOperationLog(moduleCode = "SYSTEM", operationTypeCode = "QUERY", operationName = "Current user profile")
     public ApiResponse<CurrentUserVO> currentUser() {
         return ApiResponse.success(authAppService.currentUser(), TraceIdUtils.currentTraceId());
     }

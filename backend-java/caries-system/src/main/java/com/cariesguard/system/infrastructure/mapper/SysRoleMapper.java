@@ -1,12 +1,14 @@
 package com.cariesguard.system.infrastructure.mapper;
 
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.cariesguard.system.infrastructure.dataobject.SysRoleDO;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 @Mapper
-public interface SysRoleMapper {
+public interface SysRoleMapper extends BaseMapper<SysRoleDO> {
 
     @Select("""
             SELECT sr.role_code

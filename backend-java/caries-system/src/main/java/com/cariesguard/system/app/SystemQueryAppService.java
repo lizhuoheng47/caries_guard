@@ -17,27 +17,32 @@ import org.springframework.stereotype.Service;
 @Service
 public class SystemQueryAppService {
 
+    private static final String MODULE_CODE = "SYSTEM";
+
     private final SystemDictionaryRepository systemDictionaryRepository;
     private final SystemConfigRepository systemConfigRepository;
+    private final SystemDataScopeService systemDataScopeService;
     private final MaskingService maskingService;
 
     public SystemQueryAppService(SystemDictionaryRepository systemDictionaryRepository,
                                  SystemConfigRepository systemConfigRepository,
+                                 SystemDataScopeService systemDataScopeService,
                                  MaskingService maskingService) {
         this.systemDictionaryRepository = systemDictionaryRepository;
         this.systemConfigRepository = systemConfigRepository;
+        this.systemDataScopeService = systemDataScopeService;
         this.maskingService = maskingService;
     }
 
     public List<DictTypeVO> listDictTypes() {
-        Long orgId = SecurityContextUtils.currentDataScope().orgId();
+        Long orgId = systemDataScopeService.currentScope(MODULE_CODE).orgId();
         return systemDictionaryRepository.findActiveTypesByOrgId(orgId).stream()
                 .map(this::toDictTypeVO)
                 .toList();
     }
 
     public List<DictItemVO> listDictItems(String dictType) {
-        Long orgId = SecurityContextUtils.currentDataScope().orgId();
+        Long orgId = systemDataScopeService.currentScope(MODULE_CODE).orgId();
         return systemDictionaryRepository.findActiveItemsByType(dictType, orgId).stream()
                 .map(this::toDictItemVO)
                 .toList();

@@ -1,12 +1,14 @@
 package com.cariesguard.system.infrastructure.mapper;
 
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.cariesguard.system.infrastructure.dataobject.SysMenuDO;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 @Mapper
-public interface SysMenuMapper {
+public interface SysMenuMapper extends BaseMapper<SysMenuDO> {
 
     @Select("""
             SELECT DISTINCT sm.permission_code

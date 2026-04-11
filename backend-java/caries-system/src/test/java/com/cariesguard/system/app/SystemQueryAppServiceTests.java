@@ -29,6 +29,9 @@ class SystemQueryAppServiceTests {
     @Mock
     private SystemConfigRepository systemConfigRepository;
 
+    @Mock
+    private SystemDataScopeService systemDataScopeService;
+
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
@@ -39,6 +42,7 @@ class SystemQueryAppServiceTests {
         SystemQueryAppService appService = new SystemQueryAppService(
                 systemDictionaryRepository,
                 systemConfigRepository,
+                systemDataScopeService,
                 new DefaultMaskingService());
         AuthenticatedUser principal = new AuthenticatedUser(
                 200001L,

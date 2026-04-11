@@ -3,6 +3,7 @@ package com.cariesguard.system.controller;
 import com.cariesguard.common.api.ApiResponse;
 import com.cariesguard.common.util.TraceIdUtils;
 import com.cariesguard.system.app.SystemQueryAppService;
+import com.cariesguard.system.app.SystemOperationLog;
 import com.cariesguard.system.interfaces.vo.DictItemVO;
 import com.cariesguard.system.interfaces.vo.DictTypeVO;
 import com.cariesguard.system.interfaces.vo.SystemConfigVO;
@@ -23,16 +24,19 @@ public class SystemMetadataController {
     }
 
     @GetMapping("/dicts")
+    @SystemOperationLog(moduleCode = "SYSTEM", operationTypeCode = "QUERY", operationName = "List dict types")
     public ApiResponse<List<DictTypeVO>> listDictTypes() {
         return ApiResponse.success(systemQueryAppService.listDictTypes(), TraceIdUtils.currentTraceId());
     }
 
     @GetMapping("/dicts/{dictType}")
+    @SystemOperationLog(moduleCode = "SYSTEM", operationTypeCode = "QUERY", operationName = "List dict items")
     public ApiResponse<List<DictItemVO>> listDictItems(@PathVariable String dictType) {
         return ApiResponse.success(systemQueryAppService.listDictItems(dictType), TraceIdUtils.currentTraceId());
     }
 
     @GetMapping("/configs/{configKey}")
+    @SystemOperationLog(moduleCode = "SYSTEM", operationTypeCode = "QUERY", operationName = "Get system config")
     public ApiResponse<SystemConfigVO> getConfig(@PathVariable String configKey) {
         return ApiResponse.success(systemQueryAppService.getConfig(configKey), TraceIdUtils.currentTraceId());
     }
