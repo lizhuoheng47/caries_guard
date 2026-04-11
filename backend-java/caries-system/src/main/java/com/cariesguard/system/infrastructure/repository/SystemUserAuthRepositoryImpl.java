@@ -6,6 +6,7 @@ import com.cariesguard.system.domain.repository.SystemUserAuthRepository;
 import com.cariesguard.system.infrastructure.dataobject.SysUserDO;
 import com.cariesguard.system.infrastructure.mapper.SysRoleMapper;
 import com.cariesguard.system.infrastructure.mapper.SysUserMapper;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -39,6 +40,14 @@ public class SystemUserAuthRepositoryImpl implements SystemUserAuthRepository {
         return Optional.of(toModel(user));
     }
 
+    @Override
+    public void markLoginSuccess(Long userId, LocalDateTime loginTime) {
+        SysUserDO update = new SysUserDO();
+        update.setId(userId);
+        update.setLastLoginAt(loginTime);
+        sysUserMapper.updateById(update);
+    }
+
     private SystemUserAuthModel toModel(SysUserDO user) {
         List<String> roleCodes = sysRoleMapper.selectRoleCodesByUserId(user.getId());
         return new SystemUserAuthModel(
@@ -46,7 +55,7 @@ public class SystemUserAuthRepositoryImpl implements SystemUserAuthRepository {
                 user.getOrgId(),
                 user.getUsername(),
                 user.getPasswordHash(),
-                user.getRealNameMasked(),
+                user.getNickName() != null ? user.getNickName() : user.getRealNameMasked(),
                 user.getUserTypeCode(),
                 user.getStatus(),
                 roleCodes);

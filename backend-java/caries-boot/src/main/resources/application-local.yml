@@ -35,3 +35,6 @@ caries:
     jwt:
       secret: ${CARIES_JWT_SECRET:change-me-to-a-strong-secret-key-with-at-least-32-bytes}
       access-token-expire-seconds: ${CARIES_JWT_EXPIRE_SECONDS:7200}
+    sensitive:
+      crypto-secret: ${CARIES_CRYPTO_SECRET:change-me-to-a-strong-sensitive-crypto-secret}
+      hash-secret: ${CARIES_HASH_SECRET:change-me-to-a-strong-sensitive-hash-secret}

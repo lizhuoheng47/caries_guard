@@ -1,6 +1,7 @@
 package com.cariesguard.system.infrastructure.dataobject;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import java.time.LocalDateTime;
 
 @TableName("sys_user")
 public class SysUserDO {
@@ -10,9 +11,11 @@ public class SysUserDO {
     private String username;
     private String passwordHash;
     private String realNameMasked;
+    private String nickName;
     private String userTypeCode;
     private Long orgId;
     private String status;
+    private LocalDateTime lastLoginAt;
     private Long deletedFlag;
 
     public Long getId() {
@@ -63,6 +66,14 @@ public class SysUserDO {
         this.userTypeCode = userTypeCode;
     }
 
+    public String getNickName() {
+        return nickName;
+    }
+
+    public void setNickName(String nickName) {
+        this.nickName = nickName;
+    }
+
     public Long getOrgId() {
         return orgId;
     }
@@ -77,6 +88,14 @@ public class SysUserDO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public LocalDateTime getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(LocalDateTime lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
     }
 
     public Long getDeletedFlag() {

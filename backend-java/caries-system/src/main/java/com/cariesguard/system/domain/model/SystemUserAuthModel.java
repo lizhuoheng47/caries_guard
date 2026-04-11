@@ -7,7 +7,7 @@ public record SystemUserAuthModel(
         Long orgId,
         String username,
         String passwordHash,
-        String displayName,
+        String nickName,
         String userTypeCode,
         String status,
         List<String> roleCodes) {

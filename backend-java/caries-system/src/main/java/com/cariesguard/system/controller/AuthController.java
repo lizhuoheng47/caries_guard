@@ -7,6 +7,7 @@ import com.cariesguard.system.interfaces.command.LoginCommand;
 import com.cariesguard.system.interfaces.vo.CurrentUserVO;
 import com.cariesguard.system.interfaces.vo.LoginTokenVO;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,8 +25,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ApiResponse<LoginTokenVO> login(@Valid @RequestBody LoginCommand command) {
-        return ApiResponse.success(authAppService.login(command), TraceIdUtils.currentTraceId());
+    public ApiResponse<LoginTokenVO> login(@Valid @RequestBody LoginCommand command, HttpServletRequest request) {
+        return ApiResponse.success(authAppService.login(command, request), TraceIdUtils.currentTraceId());
     }
 
     @GetMapping("/me")

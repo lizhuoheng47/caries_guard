@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class SystemPingController {
 
     @GetMapping("/ping")
-    public ApiResponse<Map<String, String>> ping() {
-        return ApiResponse.success(Map.of("status", "ok"), TraceIdUtils.currentTraceId());
+    public ApiResponse<Map<String, Object>> ping() {
+        return ApiResponse.success(
+                Map.of("pong", true, "app", "caries-guard-backend"),
+                TraceIdUtils.currentTraceId());
     }
 }

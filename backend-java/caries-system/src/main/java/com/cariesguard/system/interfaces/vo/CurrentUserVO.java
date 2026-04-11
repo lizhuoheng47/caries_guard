@@ -4,9 +4,10 @@ import java.util.List;
 
 public record CurrentUserVO(
         Long userId,
-        Long orgId,
         String username,
-        String displayName,
+        String nickName,
         String userTypeCode,
-        List<String> roleCodes) {
+        Long orgId,
+        List<String> roles,
+        List<String> permissions) {
 }

@@ -52,6 +52,15 @@ public class AuthenticatedUser implements UserDetails {
         return roleCodes;
     }
 
+    public boolean hasAnyRole(String... roles) {
+        for (String role : roles) {
+            if (roleCodes.contains(role)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return authorities;
