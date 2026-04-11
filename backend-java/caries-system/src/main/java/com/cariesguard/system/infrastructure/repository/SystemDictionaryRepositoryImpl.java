@@ -15,6 +15,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class SystemDictionaryRepositoryImpl implements SystemDictionaryRepository {
 
+    private static final long GLOBAL_ORG_ID = 0L;
+
     private final SysDictTypeMapper sysDictTypeMapper;
     private final SysDictItemMapper sysDictItemMapper;
 
@@ -24,37 +26,47 @@ public class SystemDictionaryRepositoryImpl implements SystemDictionaryRepositor
     }
 
     @Override
-    public List<DictTypeModel> findActiveTypesByOrgId(Long orgId) {
+    public List<DictTypeModel> findVisibleActiveTypes(Long orgId) {
         return sysDictTypeMapper.selectList(Wrappers.<SysDictTypeDO>lambdaQuery()
-                        .eq(SysDictTypeDO::getOrgId, orgId)
+                        .in(SysDictTypeDO::getOrgId, visibleOrgIds(orgId))
                         .eq(SysDictTypeDO::getStatus, "ACTIVE")
                         .eq(SysDictTypeDO::getDeletedFlag, 0L)
-                        .orderByAsc(SysDictTypeDO::getSortOrder))
+                        .orderByAsc(SysDictTypeDO::getSortOrder)
+                        .orderByAsc(SysDictTypeDO::getId))
                 .stream()
                 .map(this::toDictTypeModel)
                 .toList();
     }
 
     @Override
-    public List<DictItemModel> findActiveItemsByType(String dictType, Long orgId) {
+    public List<DictItemModel> findVisibleActiveItems(String dictType, Long orgId) {
         SysDictTypeDO type = sysDictTypeMapper.selectOne(Wrappers.<SysDictTypeDO>lambdaQuery()
                 .eq(SysDictTypeDO::getDictType, dictType)
-                .eq(SysDictTypeDO::getOrgId, orgId)
+                .in(SysDictTypeDO::getOrgId, visibleOrgIds(orgId))
                 .eq(SysDictTypeDO::getStatus, "ACTIVE")
                 .eq(SysDictTypeDO::getDeletedFlag, 0L)
+                .orderByDesc(SysDictTypeDO::getOrgId)
                 .last("LIMIT 1"));
         if (type == null) {
             return Collections.emptyList();
         }
         return sysDictItemMapper.selectList(Wrappers.<SysDictItemDO>lambdaQuery()
                         .eq(SysDictItemDO::getDictTypeId, type.getId())
-                        .eq(SysDictItemDO::getOrgId, orgId)
+                        .in(SysDictItemDO::getOrgId, visibleOrgIds(orgId))
                         .eq(SysDictItemDO::getStatus, "ACTIVE")
                         .eq(SysDictItemDO::getDeletedFlag, 0L)
-                        .orderByAsc(SysDictItemDO::getItemSort))
+                        .orderByAsc(SysDictItemDO::getItemSort)
+                        .orderByAsc(SysDictItemDO::getId))
                 .stream()
                 .map(this::toDictItemModel)
                 .toList();
+    }
+
+    private List<Long> visibleOrgIds(Long orgId) {
+        if (orgId == null || orgId == GLOBAL_ORG_ID) {
+            return List.of(GLOBAL_ORG_ID);
+        }
+        return List.of(GLOBAL_ORG_ID, orgId);
     }
 
     private DictTypeModel toDictTypeModel(SysDictTypeDO item) {

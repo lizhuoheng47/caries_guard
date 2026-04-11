@@ -15,7 +15,6 @@ spring:
     password: ${CARIES_RABBIT_PASSWORD:guest}
   flyway:
     enabled: true
-    baseline-on-migrate: true
     locations: classpath:db/migration
   mvc:
     problemdetails:

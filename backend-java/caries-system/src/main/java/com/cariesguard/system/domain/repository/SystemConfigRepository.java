@@ -5,5 +5,5 @@ import java.util.Optional;
 
 public interface SystemConfigRepository {
 
-    Optional<SystemConfigModel> findActiveByKey(String configKey, Long orgId);
+    Optional<SystemConfigModel> findActiveByKey(String configKey);
 }

@@ -7,6 +7,7 @@ public record SystemManagedUserModel(
         Long orgId,
         String userNo,
         String username,
+        String passwordHash,
         String status,
         List<Long> roleIds) {
 }

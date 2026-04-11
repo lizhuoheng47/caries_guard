@@ -18,12 +18,12 @@ public class SystemConfigRepositoryImpl implements SystemConfigRepository {
     }
 
     @Override
-    public Optional<SystemConfigModel> findActiveByKey(String configKey, Long orgId) {
+    public Optional<SystemConfigModel> findActiveByKey(String configKey) {
         SysConfigDO config = sysConfigMapper.selectOne(Wrappers.<SysConfigDO>lambdaQuery()
                 .eq(SysConfigDO::getConfigKey, configKey)
-                .eq(SysConfigDO::getOrgId, orgId)
                 .eq(SysConfigDO::getStatus, "ACTIVE")
                 .eq(SysConfigDO::getDeletedFlag, 0L)
+                .orderByDesc(SysConfigDO::getOrgId)
                 .last("LIMIT 1"));
         return Optional.ofNullable(config).map(this::toModel);
     }

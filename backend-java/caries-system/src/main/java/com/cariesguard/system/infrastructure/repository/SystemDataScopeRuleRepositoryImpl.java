@@ -28,14 +28,25 @@ public class SystemDataScopeRuleRepositoryImpl implements SystemDataScopeRuleRep
 
     @Override
     public SystemDataScopeRuleModel resolveByUserIdAndModule(Long userId, String moduleCode) {
-        DataScopeType scopeType = sysDataPermissionRuleMapper.selectRoleDataScopesByUserId(userId).stream()
-                .map(this::toScopeType)
-                .max(Comparator.comparingInt(this::priority))
-                .orElse(DataScopeType.SELF);
+        DataScopeType scopeType = resolveModuleScopeType(userId, moduleCode);
         Set<Long> customDeptIds = scopeType == DataScopeType.CUSTOM
                 ? parseDeptIds(sysDataPermissionRuleMapper.selectCustomDeptIdsJsonByUserIdAndModule(userId, moduleCode))
                 : Set.of();
         return new SystemDataScopeRuleModel(scopeType, customDeptIds);
+    }
+
+    private DataScopeType resolveModuleScopeType(Long userId, String moduleCode) {
+        List<String> moduleScopeTypes = sysDataPermissionRuleMapper.selectModuleScopeTypesByUserIdAndModule(userId, moduleCode);
+        if (!moduleScopeTypes.isEmpty()) {
+            return moduleScopeTypes.stream()
+                    .map(this::toScopeType)
+                    .max(Comparator.comparingInt(this::priority))
+                    .orElse(DataScopeType.SELF);
+        }
+        return sysDataPermissionRuleMapper.selectRoleDataScopesByUserId(userId).stream()
+                .map(this::toScopeType)
+                .max(Comparator.comparingInt(this::priority))
+                .orElse(DataScopeType.SELF);
     }
 
     private DataScopeType toScopeType(String rawValue) {
@@ -68,7 +79,7 @@ public class SystemDataScopeRuleRepositoryImpl implements SystemDataScopeRuleRep
             try {
                 deptIds.addAll(objectMapper.readValue(json, new TypeReference<List<Long>>() { }));
             } catch (Exception ignored) {
-                // Ignore malformed custom data scope payloads and fall back to an empty custom set.
+                // Ignore malformed payloads and keep the scope empty.
             }
         }
         return Set.copyOf(deptIds);

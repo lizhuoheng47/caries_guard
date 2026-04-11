@@ -7,7 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cariesguard.framework.security.jwt.JwtTokenProvider;
-import com.cariesguard.framework.security.principal.AuthenticatedUser;
+import com.cariesguard.system.SystemAuthenticatedUserFactory;
 import com.cariesguard.system.domain.model.SystemUserAuthModel;
 import com.cariesguard.system.domain.repository.SystemPermissionRepository;
 import com.cariesguard.system.domain.repository.SystemUserAuthRepository;
@@ -75,7 +75,7 @@ class AuthAppServiceTests {
         command.setPassword("123456");
         when(systemUserAuthRepository.findByUsername("admin")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("123456", "hash")).thenReturn(true);
-        when(jwtTokenProvider.createAccessToken(any(AuthenticatedUser.class))).thenReturn("jwt-token");
+        when(jwtTokenProvider.createAccessToken(any())).thenReturn("jwt-token");
         when(jwtTokenProvider.getAccessTokenExpireSeconds()).thenReturn(7200L);
 
         LoginTokenVO result = authAppService.login(command, httpServletRequest);
@@ -104,12 +104,11 @@ class AuthAppServiceTests {
                 "ADMIN",
                 "ACTIVE",
                 List.of("SYS_ADMIN"));
-        AuthenticatedUser principal = authAppService.toAuthenticatedUser(user);
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(new UsernamePasswordAuthenticationToken(
-                principal,
+                SystemAuthenticatedUserFactory.fromModel(user),
                 null,
-                principal.getAuthorities()));
+                SystemAuthenticatedUserFactory.fromModel(user).getAuthorities()));
         SecurityContextHolder.setContext(context);
         when(systemUserAuthRepository.findByUserId(100001L)).thenReturn(Optional.of(user));
         when(systemPermissionRepository.findPermissionCodesByUserId(100001L))

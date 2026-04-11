@@ -5,13 +5,14 @@ import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
 import com.cariesguard.framework.security.jwt.JwtTokenProvider;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
+import com.cariesguard.system.SystemAuthenticatedUserFactory;
 import com.cariesguard.system.domain.model.SystemUserAuthModel;
 import com.cariesguard.system.domain.repository.SystemPermissionRepository;
 import com.cariesguard.system.domain.repository.SystemUserAuthRepository;
 import com.cariesguard.system.interfaces.command.LoginCommand;
 import com.cariesguard.system.interfaces.vo.CurrentUserVO;
-import com.cariesguard.system.interfaces.vo.LoginUserVO;
 import com.cariesguard.system.interfaces.vo.LoginTokenVO;
+import com.cariesguard.system.interfaces.vo.LoginUserVO;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -55,12 +56,11 @@ public class AuthAppService {
             throw new BusinessException(CommonErrorCode.INVALID_CREDENTIALS);
         }
 
-        AuthenticatedUser authenticatedUser = toAuthenticatedUser(user);
-        String token = jwtTokenProvider.createAccessToken(authenticatedUser);
+        AuthenticatedUser principal = SystemAuthenticatedUserFactory.fromModel(user);
         systemUserAuthRepository.markLoginSuccess(user.userId(), LocalDateTime.now());
         loginAuditService.recordSuccess(user, request);
         return new LoginTokenVO(
-                token,
+                jwtTokenProvider.createAccessToken(principal),
                 jwtTokenProvider.getAccessTokenExpireSeconds(),
                 new LoginUserVO(
                         user.userId(),
@@ -71,8 +71,8 @@ public class AuthAppService {
     }
 
     public CurrentUserVO currentUser() {
-        AuthenticatedUser currentUser = SecurityContextUtils.currentUser();
-        SystemUserAuthModel user = systemUserAuthRepository.findByUserId(currentUser.getUserId())
+        AuthenticatedUser principal = SecurityContextUtils.currentUser();
+        SystemUserAuthModel user = systemUserAuthRepository.findByUserId(principal.getUserId())
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.AUTHENTICATION_REQUIRED));
         List<String> permissions = systemPermissionRepository.findPermissionCodesByUserId(user.userId());
         return new CurrentUserVO(
@@ -83,16 +83,5 @@ public class AuthAppService {
                 user.orgId(),
                 user.roleCodes(),
                 permissions);
-    }
-
-    public AuthenticatedUser toAuthenticatedUser(SystemUserAuthModel user) {
-        return new AuthenticatedUser(
-                user.userId(),
-                user.orgId(),
-                user.username(),
-                user.passwordHash(),
-                user.nickName(),
-                "ACTIVE".equals(user.status()),
-                user.roleCodes());
     }
 }

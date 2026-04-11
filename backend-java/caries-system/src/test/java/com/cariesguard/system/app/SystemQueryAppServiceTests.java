@@ -55,7 +55,7 @@ class SystemQueryAppServiceTests {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
         SecurityContextHolder.setContext(context);
-        when(systemConfigRepository.findActiveByKey("oss.secret", 100001L))
+        when(systemConfigRepository.findActiveByKey("oss.secret"))
                 .thenReturn(Optional.of(new SystemConfigModel(
                         "oss.secret",
                         "Object Storage Secret",

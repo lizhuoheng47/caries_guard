@@ -36,22 +36,21 @@ public class SystemQueryAppService {
 
     public List<DictTypeVO> listDictTypes() {
         Long orgId = systemDataScopeService.currentScope(MODULE_CODE).orgId();
-        return systemDictionaryRepository.findActiveTypesByOrgId(orgId).stream()
+        return systemDictionaryRepository.findVisibleActiveTypes(orgId).stream()
                 .map(this::toDictTypeVO)
                 .toList();
     }
 
     public List<DictItemVO> listDictItems(String dictType) {
         Long orgId = systemDataScopeService.currentScope(MODULE_CODE).orgId();
-        return systemDictionaryRepository.findActiveItemsByType(dictType, orgId).stream()
+        return systemDictionaryRepository.findVisibleActiveItems(dictType, orgId).stream()
                 .map(this::toDictItemVO)
                 .toList();
     }
 
     public SystemConfigVO getConfig(String configKey) {
         AuthenticatedUser currentUser = SecurityContextUtils.currentUser();
-        SystemConfigModel config = systemConfigRepository.findActiveByKey(configKey, currentUser.getOrgId())
-                .orElse(null);
+        SystemConfigModel config = systemConfigRepository.findActiveByKey(configKey).orElse(null);
         if (config == null) {
             return null;
         }

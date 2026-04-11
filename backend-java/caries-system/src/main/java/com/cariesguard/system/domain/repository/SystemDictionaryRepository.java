@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface SystemDictionaryRepository {
 
-    List<DictTypeModel> findActiveTypesByOrgId(Long orgId);
+    List<DictTypeModel> findVisibleActiveTypes(Long orgId);
 
-    List<DictItemModel> findActiveItemsByType(String dictType, Long orgId);
+    List<DictItemModel> findVisibleActiveItems(String dictType, Long orgId);
 }
