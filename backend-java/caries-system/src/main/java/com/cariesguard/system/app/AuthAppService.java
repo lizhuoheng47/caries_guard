@@ -11,6 +11,7 @@ import com.cariesguard.system.domain.repository.SystemPermissionRepository;
 import com.cariesguard.system.domain.repository.SystemUserAuthRepository;
 import com.cariesguard.system.interfaces.command.LoginCommand;
 import com.cariesguard.system.interfaces.vo.CurrentUserVO;
+import com.cariesguard.system.interfaces.vo.CurrentUserPermissionsVO;
 import com.cariesguard.system.interfaces.vo.LoginTokenVO;
 import com.cariesguard.system.interfaces.vo.LoginUserVO;
 import jakarta.servlet.http.HttpServletRequest;
@@ -71,9 +72,7 @@ public class AuthAppService {
     }
 
     public CurrentUserVO currentUser() {
-        AuthenticatedUser principal = SecurityContextUtils.currentUser();
-        SystemUserAuthModel user = systemUserAuthRepository.findByUserId(principal.getUserId())
-                .orElseThrow(() -> new BusinessException(CommonErrorCode.AUTHENTICATION_REQUIRED));
+        SystemUserAuthModel user = loadCurrentUser();
         List<String> permissions = systemPermissionRepository.findPermissionCodesByUserId(user.userId());
         return new CurrentUserVO(
                 user.userId(),
@@ -83,5 +82,19 @@ public class AuthAppService {
                 user.orgId(),
                 user.roleCodes(),
                 permissions);
+    }
+
+    public CurrentUserPermissionsVO currentPermissions() {
+        SystemUserAuthModel user = loadCurrentUser();
+        return new CurrentUserPermissionsVO(
+                user.userId(),
+                user.roleCodes(),
+                systemPermissionRepository.findPermissionCodesByUserId(user.userId()));
+    }
+
+    private SystemUserAuthModel loadCurrentUser() {
+        AuthenticatedUser principal = SecurityContextUtils.currentUser();
+        return systemUserAuthRepository.findByUserId(principal.getUserId())
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.AUTHENTICATION_REQUIRED));
     }
 }

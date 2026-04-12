@@ -18,4 +18,9 @@ public class SystemPermissionRepositoryImpl implements SystemPermissionRepositor
     public List<String> findPermissionCodesByUserId(Long userId) {
         return sysMenuMapper.selectPermissionCodesByUserId(userId);
     }
+
+    @Override
+    public boolean hasPermissionCode(Long userId, String permissionCode) {
+        return sysMenuMapper.countPermissionCodeByUserId(userId, permissionCode) > 0;
+    }
 }

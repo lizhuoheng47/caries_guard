@@ -13,6 +13,7 @@ import com.cariesguard.system.domain.repository.SystemPermissionRepository;
 import com.cariesguard.system.domain.repository.SystemUserAuthRepository;
 import com.cariesguard.system.interfaces.command.LoginCommand;
 import com.cariesguard.system.interfaces.vo.CurrentUserVO;
+import com.cariesguard.system.interfaces.vo.CurrentUserPermissionsVO;
 import com.cariesguard.system.interfaces.vo.LoginTokenVO;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -119,5 +120,39 @@ class AuthAppServiceTests {
         assertThat(result.roles()).containsExactly("SYS_ADMIN");
         assertThat(result.permissions()).containsExactly("system:user:list", "patient:create");
         assertThat(result.nickName()).isEqualTo("Admin");
+    }
+
+    @Test
+    void currentPermissionsShouldReturnRoleAndPermissionSet() {
+        AuthAppService authAppService = new AuthAppService(
+                systemUserAuthRepository,
+                systemPermissionRepository,
+                loginAuditService,
+                passwordEncoder,
+                jwtTokenProvider);
+        SystemUserAuthModel user = new SystemUserAuthModel(
+                100001L,
+                100001L,
+                "admin",
+                "hash",
+                "Admin",
+                "ADMIN",
+                "ACTIVE",
+                List.of("SYS_ADMIN"));
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(new UsernamePasswordAuthenticationToken(
+                SystemAuthenticatedUserFactory.fromModel(user),
+                null,
+                SystemAuthenticatedUserFactory.fromModel(user).getAuthorities()));
+        SecurityContextHolder.setContext(context);
+        when(systemUserAuthRepository.findByUserId(100001L)).thenReturn(Optional.of(user));
+        when(systemPermissionRepository.findPermissionCodesByUserId(100001L))
+                .thenReturn(List.of("system:user:list", "system:role:list"));
+
+        CurrentUserPermissionsVO result = authAppService.currentPermissions();
+
+        assertThat(result.userId()).isEqualTo(100001L);
+        assertThat(result.roles()).containsExactly("SYS_ADMIN");
+        assertThat(result.permissions()).containsExactly("system:user:list", "system:role:list");
     }
 }

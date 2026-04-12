@@ -2,10 +2,14 @@ package com.cariesguard.system.domain.repository;
 
 import com.cariesguard.framework.security.datascope.DataScopeContext;
 import com.cariesguard.system.domain.model.PageQueryResult;
+import com.cariesguard.system.domain.model.SystemMenuDetailModel;
 import com.cariesguard.system.domain.model.SystemMenuSummaryModel;
+import com.cariesguard.system.domain.model.SystemRoleDetailModel;
 import com.cariesguard.system.domain.model.SystemRoleSummaryModel;
+import com.cariesguard.system.domain.model.SystemUserDetailModel;
 import com.cariesguard.system.domain.model.SystemUserSummaryModel;
 import java.util.List;
+import java.util.Optional;
 
 public interface SystemAdminQueryRepository {
 
@@ -21,4 +25,10 @@ public interface SystemAdminQueryRepository {
     List<SystemRoleSummaryModel> listRoles(DataScopeContext dataScopeContext, String status);
 
     List<SystemMenuSummaryModel> listMenus(DataScopeContext dataScopeContext, String status);
+
+    Optional<SystemUserDetailModel> findUserDetail(DataScopeContext dataScopeContext, Long userId);
+
+    Optional<SystemRoleDetailModel> findRoleDetail(DataScopeContext dataScopeContext, Long roleId);
+
+    Optional<SystemMenuDetailModel> findMenuDetail(DataScopeContext dataScopeContext, Long menuId);
 }

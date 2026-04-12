@@ -6,6 +6,7 @@ import com.cariesguard.system.app.AuthAppService;
 import com.cariesguard.system.app.SystemOperationLog;
 import com.cariesguard.system.interfaces.command.LoginCommand;
 import com.cariesguard.system.interfaces.vo.CurrentUserVO;
+import com.cariesguard.system.interfaces.vo.CurrentUserPermissionsVO;
 import com.cariesguard.system.interfaces.vo.LoginTokenVO;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,5 +36,11 @@ public class AuthController {
     @SystemOperationLog(moduleCode = "SYSTEM", operationTypeCode = "QUERY", operationName = "Current user profile")
     public ApiResponse<CurrentUserVO> currentUser() {
         return ApiResponse.success(authAppService.currentUser(), TraceIdUtils.currentTraceId());
+    }
+
+    @GetMapping("/permissions")
+    @SystemOperationLog(moduleCode = "SYSTEM", operationTypeCode = "QUERY", operationName = "Current user permissions")
+    public ApiResponse<CurrentUserPermissionsVO> currentPermissions() {
+        return ApiResponse.success(authAppService.currentPermissions(), TraceIdUtils.currentTraceId());
     }
 }

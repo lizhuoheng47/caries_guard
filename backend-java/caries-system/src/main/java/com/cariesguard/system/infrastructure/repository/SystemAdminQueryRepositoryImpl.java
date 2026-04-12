@@ -4,9 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.cariesguard.framework.security.datascope.DataScopeContext;
 import com.cariesguard.framework.security.datascope.DataScopeType;
+import com.cariesguard.system.domain.model.SystemMenuDetailModel;
 import com.cariesguard.system.domain.model.PageQueryResult;
+import com.cariesguard.system.domain.model.SystemRoleDetailModel;
 import com.cariesguard.system.domain.model.SystemMenuSummaryModel;
 import com.cariesguard.system.domain.model.SystemRoleSummaryModel;
+import com.cariesguard.system.domain.model.SystemUserDetailModel;
 import com.cariesguard.system.domain.model.SystemUserSummaryModel;
 import com.cariesguard.system.domain.repository.SystemAdminQueryRepository;
 import com.cariesguard.system.infrastructure.dataobject.SysMenuDO;
@@ -14,8 +17,11 @@ import com.cariesguard.system.infrastructure.dataobject.SysRoleDO;
 import com.cariesguard.system.infrastructure.dataobject.SysUserDO;
 import com.cariesguard.system.infrastructure.mapper.SysMenuMapper;
 import com.cariesguard.system.infrastructure.mapper.SysRoleMapper;
+import com.cariesguard.system.infrastructure.mapper.SysRoleMenuMapper;
 import com.cariesguard.system.infrastructure.mapper.SysUserMapper;
+import com.cariesguard.system.infrastructure.mapper.SysUserRoleMapper;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
@@ -25,13 +31,19 @@ public class SystemAdminQueryRepositoryImpl implements SystemAdminQueryRepositor
     private final SysUserMapper sysUserMapper;
     private final SysRoleMapper sysRoleMapper;
     private final SysMenuMapper sysMenuMapper;
+    private final SysUserRoleMapper sysUserRoleMapper;
+    private final SysRoleMenuMapper sysRoleMenuMapper;
 
     public SystemAdminQueryRepositoryImpl(SysUserMapper sysUserMapper,
                                           SysRoleMapper sysRoleMapper,
-                                          SysMenuMapper sysMenuMapper) {
+                                          SysMenuMapper sysMenuMapper,
+                                          SysUserRoleMapper sysUserRoleMapper,
+                                          SysRoleMenuMapper sysRoleMenuMapper) {
         this.sysUserMapper = sysUserMapper;
         this.sysRoleMapper = sysRoleMapper;
         this.sysMenuMapper = sysMenuMapper;
+        this.sysUserRoleMapper = sysUserRoleMapper;
+        this.sysRoleMenuMapper = sysRoleMenuMapper;
     }
 
     @Override
@@ -90,6 +102,92 @@ public class SystemAdminQueryRepositoryImpl implements SystemAdminQueryRepositor
         return sysMenuMapper.selectList(query).stream()
                 .map(this::toMenuSummary)
                 .toList();
+    }
+
+    @Override
+    public Optional<SystemUserDetailModel> findUserDetail(DataScopeContext dataScopeContext, Long userId) {
+        LambdaQueryWrapper<SysUserDO> query = Wrappers.<SysUserDO>lambdaQuery()
+                .eq(SysUserDO::getId, userId)
+                .eq(SysUserDO::getDeletedFlag, 0L)
+                .last("LIMIT 1");
+        applyOrgFilter(query, dataScopeContext, SysUserDO::getOrgId);
+        SysUserDO user = sysUserMapper.selectOne(query);
+        if (user == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new SystemUserDetailModel(
+                user.getId(),
+                user.getDeptId(),
+                user.getUserNo(),
+                user.getUsername(),
+                user.getNickName(),
+                user.getRealNameMasked(),
+                user.getPhoneMasked(),
+                user.getEmailMasked(),
+                user.getAvatarUrl(),
+                user.getUserTypeCode(),
+                user.getGenderCode(),
+                user.getCertificateTypeCode(),
+                user.getCertificateNoMasked(),
+                user.getOrgId(),
+                user.getStatus(),
+                user.getRemark(),
+                user.getLastLoginAt(),
+                user.getPwdUpdatedAt(),
+                sysUserRoleMapper.selectRoleIdsByUserId(userId),
+                sysRoleMapper.selectRoleCodesByUserId(userId)));
+    }
+
+    @Override
+    public Optional<SystemRoleDetailModel> findRoleDetail(DataScopeContext dataScopeContext, Long roleId) {
+        LambdaQueryWrapper<SysRoleDO> query = Wrappers.<SysRoleDO>lambdaQuery()
+                .eq(SysRoleDO::getId, roleId)
+                .eq(SysRoleDO::getDeletedFlag, 0L)
+                .last("LIMIT 1");
+        applyOrgFilter(query, dataScopeContext, SysRoleDO::getOrgId);
+        SysRoleDO role = sysRoleMapper.selectOne(query);
+        if (role == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new SystemRoleDetailModel(
+                role.getId(),
+                role.getRoleCode(),
+                role.getRoleName(),
+                role.getRoleSort() == null ? 0 : role.getRoleSort(),
+                role.getDataScopeCode(),
+                "1".equals(role.getIsBuiltin()),
+                role.getOrgId(),
+                role.getStatus(),
+                role.getRemark(),
+                sysRoleMenuMapper.selectMenuIdsByRoleId(roleId)));
+    }
+
+    @Override
+    public Optional<SystemMenuDetailModel> findMenuDetail(DataScopeContext dataScopeContext, Long menuId) {
+        LambdaQueryWrapper<SysMenuDO> query = Wrappers.<SysMenuDO>lambdaQuery()
+                .eq(SysMenuDO::getId, menuId)
+                .eq(SysMenuDO::getDeletedFlag, 0L)
+                .last("LIMIT 1");
+        applyOrgFilter(query, dataScopeContext, SysMenuDO::getOrgId);
+        SysMenuDO menu = sysMenuMapper.selectOne(query);
+        if (menu == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new SystemMenuDetailModel(
+                menu.getId(),
+                menu.getParentId(),
+                menu.getMenuName(),
+                menu.getMenuTypeCode(),
+                menu.getRoutePath(),
+                menu.getComponentPath(),
+                menu.getPermissionCode(),
+                menu.getIcon(),
+                menu.getOrderNum() == null ? 0 : menu.getOrderNum(),
+                "1".equals(menu.getVisibleFlag()),
+                "1".equals(menu.getCacheFlag()),
+                menu.getOrgId(),
+                menu.getStatus(),
+                menu.getRemark()));
     }
 
     private void applyUserFilters(LambdaQueryWrapper<SysUserDO> query,

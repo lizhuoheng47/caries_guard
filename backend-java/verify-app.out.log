@@ -1,0 +1,53 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::               (v3.2.12)
+
+2026-04-12T15:21:25.820+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] c.c.boot.CariesBootApplication           : Starting CariesBootApplication v0.1.0-SNAPSHOT using Java 17.0.12 with PID 30760 (E:\caries_guard\backend-java\caries-boot\target\caries-boot-0.1.0-SNAPSHOT.jar started by Monologue in E:\caries_guard\backend-java)
+2026-04-12T15:21:25.865+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] c.c.boot.CariesBootApplication           : The following 1 profile is active: "local"
+2026-04-12T15:21:32.783+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-04-12T15:21:32.792+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-04-12T15:21:32.864+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 28 ms. Found 0 Redis repository interfaces.
+2026-04-12T15:21:38.476+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 18080 (http)
+2026-04-12T15:21:38.698+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-04-12T15:21:38.701+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.33]
+2026-04-12T15:21:39.488+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-04-12T15:21:39.493+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 13366 ms
+ _ _   |_  _ _|_. ___ _ |    _ 
+| | |\/|_)(_| | |_\  |_)||_|_\ 
+     /               |         
+                        3.5.7 
+2026-04-12T15:21:45.015+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-04-12T15:21:48.894+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@1f85904a
+2026-04-12T15:21:48.909+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-04-12T15:21:50.324+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.c.internal.license.VersionPrinter    : Flyway Community Edition 9.22.3 by Redgate
+2026-04-12T15:21:50.324+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.c.internal.license.VersionPrinter    : See release notes here: https://rd.gt/416ObMi
+2026-04-12T15:21:50.326+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.c.internal.license.VersionPrinter    : 
+2026-04-12T15:21:50.481+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://127.0.0.1:3306/cg_verify (MySQL 8.4)
+2026-04-12T15:21:50.537+08:00  WARN [] 30760 --- [caries-guard-backend] [           main] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: MySQL 8.4 is newer than this version of Flyway and support has not been tested. The latest supported version of MySQL is 8.0.
+2026-04-12T15:21:50.768+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `cg_verify`.`flyway_schema_history` does not exist yet
+2026-04-12T15:21:50.832+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 10 migrations (execution time 00:00.187s)
+2026-04-12T15:21:50.911+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `cg_verify`.`flyway_schema_history` ...
+2026-04-12T15:21:51.109+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `cg_verify`: << Empty Schema >>
+2026-04-12T15:21:51.194+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `cg_verify` to version "001 - 01 sys management schema"
+2026-04-12T15:21:51.634+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `cg_verify` to version "002 - 02 init sys dict"
+2026-04-12T15:21:51.691+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `cg_verify` to version "003 - 03 medical business schema"
+2026-04-12T15:21:52.025+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `cg_verify` to version "004 - 04 image report followup"
+2026-04-12T15:21:52.356+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `cg_verify` to version "005 - 05 init dev admin"
+2026-04-12T15:21:52.417+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `cg_verify` to version "006 - 06 align v1 schema baseline"
+2026-04-12T15:21:52.658+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `cg_verify` to version "007 - 07 add med image quality check"
+2026-04-12T15:21:52.722+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `cg_verify` to version "008 - 08 strengthen image constraints"
+2026-04-12T15:21:52.843+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `cg_verify` to version "009 - 09 add missing indexes"
+2026-04-12T15:21:52.904+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `cg_verify` to version "010 - 10 fix dev admin password"
+2026-04-12T15:21:52.961+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 10 migrations to schema `cg_verify`, now at version v010 (execution time 00:01.303s)
+2026-04-12T15:22:11.695+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoint(s) beneath base path '/actuator'
+2026-04-12T15:22:12.206+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@7fae6f43, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@55f54852, org.springframework.security.web.context.SecurityContextHolderFilter@57fb6900, org.springframework.security.web.header.HeaderWriterFilter@1ac30be4, org.springframework.web.filter.CorsFilter@4bca2a09, org.springframework.security.web.authentication.logout.LogoutFilter@3b2114ce, com.cariesguard.framework.security.jwt.JwtAuthenticationFilter@4c78e00c, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@7a0df38e, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@6f8035d6, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@5af8ef61, org.springframework.security.web.session.SessionManagementFilter@62fa4a88, org.springframework.security.web.access.ExceptionTranslationFilter@423791, org.springframework.security.web.access.intercept.AuthorizationFilter@c7aac7c]
+2026-04-12T15:22:21.520+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 18080 (http) with context path ''
+2026-04-12T15:22:21.587+08:00  INFO [] 30760 --- [caries-guard-backend] [           main] c.c.boot.CariesBootApplication           : Started CariesBootApplication in 57.809 seconds (process running for 60.273)
+2026-04-12T15:22:26.012+08:00  INFO [] 30760 --- [caries-guard-backend] [io-18080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-04-12T15:22:26.015+08:00  INFO [] 30760 --- [caries-guard-backend] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-04-12T15:22:26.019+08:00  INFO [] 30760 --- [caries-guard-backend] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 4 ms
