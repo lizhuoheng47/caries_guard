@@ -13,7 +13,7 @@ public interface AnalysisCommandRepository {
 
     Optional<AnalysisPatientModel> findPatient(Long patientId);
 
-    List<AnalysisImageModel> listImages(Long caseId, List<Long> imageIds);
+    List<AnalysisImageModel> listCaseImages(Long caseId);
 
-    void createTask(AnalysisTaskCreateModel model);
+    Optional<AnalysisImageModel> findImage(Long imageId);
 }

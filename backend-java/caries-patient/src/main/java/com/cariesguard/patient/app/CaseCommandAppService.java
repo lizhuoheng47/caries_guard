@@ -18,6 +18,7 @@ import com.cariesguard.patient.interfaces.vo.CaseStatusTransitionVO;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
@@ -87,6 +88,25 @@ public class CaseCommandAppService {
     @Transactional
     public CaseStatusTransitionVO transitionStatus(Long caseId, CaseStatusTransitionCommand command) {
         AuthenticatedUser operator = SecurityContextUtils.currentUser();
+        return transitionStatus(caseId, command, operator);
+    }
+
+    @Transactional
+    public CaseStatusTransitionVO transitionStatusAsSystem(Long caseId, Long orgId, CaseStatusTransitionCommand command) {
+        AuthenticatedUser operator = new AuthenticatedUser(
+                0L,
+                orgId,
+                "internal-system",
+                "",
+                "Internal System",
+                true,
+                List.of("SYS_ADMIN"));
+        return transitionStatus(caseId, command, operator);
+    }
+
+    private CaseStatusTransitionVO transitionStatus(Long caseId,
+                                                    CaseStatusTransitionCommand command,
+                                                    AuthenticatedUser operator) {
         CaseManagedModel managedCase = visitCaseCommandRepository.findManagedCase(caseId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Case does not exist"));
         ensureOrgAccess(operator, managedCase.orgId());

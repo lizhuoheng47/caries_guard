@@ -4,9 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cariesguard.analysis.domain.model.AnalysisCaseModel;
 import com.cariesguard.analysis.domain.model.AnalysisImageModel;
 import com.cariesguard.analysis.domain.model.AnalysisPatientModel;
-import com.cariesguard.analysis.domain.model.AnalysisTaskCreateModel;
 import com.cariesguard.analysis.domain.repository.AnalysisCommandRepository;
-import com.cariesguard.analysis.infrastructure.dataobject.AnaTaskRecordDO;
 import com.cariesguard.analysis.infrastructure.dataobject.AnalysisAttachmentDO;
 import com.cariesguard.analysis.infrastructure.dataobject.AnalysisCaseDO;
 import com.cariesguard.analysis.infrastructure.dataobject.AnalysisImageFileDO;
@@ -15,7 +13,6 @@ import com.cariesguard.analysis.infrastructure.mapper.AnalysisAttachmentMapper;
 import com.cariesguard.analysis.infrastructure.mapper.AnalysisCaseMapper;
 import com.cariesguard.analysis.infrastructure.mapper.AnalysisImageFileMapper;
 import com.cariesguard.analysis.infrastructure.mapper.AnalysisPatientMapper;
-import com.cariesguard.analysis.infrastructure.mapper.AnalysisTaskRecordMapper;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -27,18 +24,15 @@ public class AnalysisCommandRepositoryImpl implements AnalysisCommandRepository 
     private final AnalysisPatientMapper analysisPatientMapper;
     private final AnalysisImageFileMapper analysisImageFileMapper;
     private final AnalysisAttachmentMapper analysisAttachmentMapper;
-    private final AnalysisTaskRecordMapper analysisTaskRecordMapper;
 
     public AnalysisCommandRepositoryImpl(AnalysisCaseMapper analysisCaseMapper,
                                          AnalysisPatientMapper analysisPatientMapper,
                                          AnalysisImageFileMapper analysisImageFileMapper,
-                                         AnalysisAttachmentMapper analysisAttachmentMapper,
-                                         AnalysisTaskRecordMapper analysisTaskRecordMapper) {
+                                         AnalysisAttachmentMapper analysisAttachmentMapper) {
         this.analysisCaseMapper = analysisCaseMapper;
         this.analysisPatientMapper = analysisPatientMapper;
         this.analysisImageFileMapper = analysisImageFileMapper;
         this.analysisAttachmentMapper = analysisAttachmentMapper;
-        this.analysisTaskRecordMapper = analysisTaskRecordMapper;
     }
 
     @Override
@@ -70,33 +64,27 @@ public class AnalysisCommandRepositoryImpl implements AnalysisCommandRepository 
     }
 
     @Override
-    public List<AnalysisImageModel> listImages(Long caseId, List<Long> imageIds) {
+    public List<AnalysisImageModel> listCaseImages(Long caseId) {
         return analysisImageFileMapper.selectList(new LambdaQueryWrapper<AnalysisImageFileDO>()
                         .eq(AnalysisImageFileDO::getCaseId, caseId)
-                        .in(AnalysisImageFileDO::getId, imageIds)
                         .eq(AnalysisImageFileDO::getDeletedFlag, 0L)
-                        .eq(AnalysisImageFileDO::getStatus, "ACTIVE"))
+                        .eq(AnalysisImageFileDO::getStatus, "ACTIVE")
+                        .orderByDesc(AnalysisImageFileDO::getIsPrimary)
+                        .orderByAsc(AnalysisImageFileDO::getImageIndexNo)
+                        .orderByAsc(AnalysisImageFileDO::getId))
                 .stream()
                 .map(this::toImageModel)
                 .toList();
     }
 
     @Override
-    public void createTask(AnalysisTaskCreateModel model) {
-        AnaTaskRecordDO entity = new AnaTaskRecordDO();
-        entity.setId(model.taskId());
-        entity.setTaskNo(model.taskNo());
-        entity.setCaseId(model.caseId());
-        entity.setPatientId(model.patientId());
-        entity.setModelVersion(model.modelVersion());
-        entity.setTaskTypeCode(model.taskTypeCode());
-        entity.setTaskStatusCode(model.taskStatusCode());
-        entity.setRequestPayloadJson(model.requestPayloadJson());
-        entity.setOrgId(model.orgId());
-        entity.setStatus(model.status());
-        entity.setDeletedFlag(0L);
-        entity.setCreatedBy(model.operatorUserId());
-        analysisTaskRecordMapper.insert(entity);
+    public Optional<AnalysisImageModel> findImage(Long imageId) {
+        AnalysisImageFileDO image = analysisImageFileMapper.selectOne(new LambdaQueryWrapper<AnalysisImageFileDO>()
+                .eq(AnalysisImageFileDO::getId, imageId)
+                .eq(AnalysisImageFileDO::getDeletedFlag, 0L)
+                .eq(AnalysisImageFileDO::getStatus, "ACTIVE")
+                .last("LIMIT 1"));
+        return image == null ? Optional.empty() : Optional.of(toImageModel(image));
     }
 
     private AnalysisImageModel toImageModel(AnalysisImageFileDO image) {
@@ -107,6 +95,7 @@ public class AnalysisCommandRepositoryImpl implements AnalysisCommandRepository 
                 .last("LIMIT 1"));
         return new AnalysisImageModel(
                 image.getId(),
+                image.getCaseId(),
                 image.getAttachmentId(),
                 image.getImageTypeCode(),
                 image.getQualityStatusCode(),

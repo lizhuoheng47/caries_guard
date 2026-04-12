@@ -46,3 +46,5 @@ caries:
       access-url-expire-seconds: ${CARIES_IMAGE_ACCESS_EXPIRE_SECONDS:900}
   analysis:
     default-model-version: ${CARIES_ANALYSIS_MODEL_VERSION:caries-v1}
+    callback-secret: ${CARIES_ANALYSIS_CALLBACK_SECRET:change-me-to-a-strong-analysis-callback-secret}
+    callback-allowed-clock-skew-seconds: ${CARIES_ANALYSIS_CALLBACK_SKEW_SECONDS:300}

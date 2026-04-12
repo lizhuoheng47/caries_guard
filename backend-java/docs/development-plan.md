@@ -141,6 +141,14 @@ Completed. Detailed completion note is tracked in `docs/09_image_模块开发检
 
 Connect medical images with AI processing workflow.
 
+### Current Status
+
+Core workflow implemented. Task create/query, callback idempotency, result write-back,
+correction feedback, and case status synchronization are online in code.
+MQ consumer-side finalization remains for later phase.
+Module-positioning alignment fixes (callback validation normalization, event publish timing,
+state-machine precondition tightening, summary aggregate fallback) are completed.
+
 ### Scope
 
 - AI task creation

@@ -1,9 +1,11 @@
 package com.cariesguard.analysis.interfaces.command;
 
-import jakarta.validation.constraints.NotEmpty;
-import java.util.List;
+import jakarta.validation.constraints.NotNull;
 
 public record CreateAnalysisTaskCommand(
-        @NotEmpty List<Long> imageIds,
-        String taskTypeCode) {
+        @NotNull Long caseId,
+        Long patientId,
+        Boolean forceRetryFlag,
+        String taskTypeCode,
+        String remark) {
 }

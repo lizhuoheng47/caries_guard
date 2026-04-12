@@ -157,6 +157,7 @@ public class VisitCaseCommandRepositoryImpl implements VisitCaseCommandRepositor
     public boolean hasActiveImage(Long caseId) {
         return medImageFileMapper.selectCount(new LambdaQueryWrapper<MedImageFileDO>()
                 .eq(MedImageFileDO::getCaseId, caseId)
+                .eq(MedImageFileDO::getQualityStatusCode, "PASS")
                 .eq(MedImageFileDO::getDeletedFlag, 0L)
                 .eq(MedImageFileDO::getStatus, "ACTIVE")) > 0;
     }

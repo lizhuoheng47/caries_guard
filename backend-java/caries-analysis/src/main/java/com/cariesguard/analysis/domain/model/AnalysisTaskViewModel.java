@@ -14,5 +14,6 @@ public record AnalysisTaskViewModel(
         LocalDateTime createdAt,
         LocalDateTime startedAt,
         LocalDateTime completedAt,
-        Long orgId) {
+        Long orgId,
+        Long retryFromTaskId) {
 }

@@ -11,5 +11,6 @@ public record AnalysisTaskCreateModel(
         String requestPayloadJson,
         Long orgId,
         String status,
-        Long operatorUserId) {
+        Long operatorUserId,
+        Long retryFromTaskId) {
 }

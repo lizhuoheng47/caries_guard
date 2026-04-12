@@ -40,6 +40,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/login",
                                 "/api/v1/system/ping",
                                 "/api/v1/files/*/content",
+                                "/api/v1/internal/ai/callbacks/**",
                                 "/actuator/health",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",

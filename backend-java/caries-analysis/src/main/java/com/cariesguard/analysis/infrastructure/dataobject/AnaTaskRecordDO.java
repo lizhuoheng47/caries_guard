@@ -21,6 +21,7 @@ public class AnaTaskRecordDO {
     private LocalDateTime completedAt;
     private String errorMessage;
     private Long orgId;
+    private Long retryFromTaskId;
     private String status;
     private Long deletedFlag;
     private Long createdBy;
@@ -51,6 +52,8 @@ public class AnaTaskRecordDO {
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
     public Long getOrgId() { return orgId; }
     public void setOrgId(Long orgId) { this.orgId = orgId; }
+    public Long getRetryFromTaskId() { return retryFromTaskId; }
+    public void setRetryFromTaskId(Long retryFromTaskId) { this.retryFromTaskId = retryFromTaskId; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Long getDeletedFlag() { return deletedFlag; }

@@ -10,6 +10,8 @@ public class AnalysisImageFileDO {
     private Long attachmentId;
     private String imageTypeCode;
     private String qualityStatusCode;
+    private String isPrimary;
+    private Integer imageIndexNo;
     private String status;
     private Long deletedFlag;
 
@@ -23,6 +25,10 @@ public class AnalysisImageFileDO {
     public void setImageTypeCode(String imageTypeCode) { this.imageTypeCode = imageTypeCode; }
     public String getQualityStatusCode() { return qualityStatusCode; }
     public void setQualityStatusCode(String qualityStatusCode) { this.qualityStatusCode = qualityStatusCode; }
+    public String getIsPrimary() { return isPrimary; }
+    public void setIsPrimary(String isPrimary) { this.isPrimary = isPrimary; }
+    public Integer getImageIndexNo() { return imageIndexNo; }
+    public void setImageIndexNo(Integer imageIndexNo) { this.imageIndexNo = imageIndexNo; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Long getDeletedFlag() { return deletedFlag; }
