@@ -108,6 +108,10 @@ Build the first medical business chain.
 
 Complete image and file persistence workflow.
 
+### Current Status
+
+Completed. Detailed completion note is tracked in `docs/09_image_模块开发检查与完成情况.md`.
+
 ### Scope
 
 - attachment persistence

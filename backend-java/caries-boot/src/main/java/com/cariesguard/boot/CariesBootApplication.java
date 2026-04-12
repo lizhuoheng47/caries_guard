@@ -8,7 +8,9 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 @SpringBootApplication(scanBasePackages = "com.cariesguard")
 @MapperScan(basePackages = {
         "com.cariesguard.system.infrastructure.mapper",
-        "com.cariesguard.patient.infrastructure.mapper"
+        "com.cariesguard.patient.infrastructure.mapper",
+        "com.cariesguard.image.infrastructure.mapper",
+        "com.cariesguard.analysis.infrastructure.mapper"
 })
 @ConfigurationPropertiesScan("com.cariesguard")
 public class CariesBootApplication {

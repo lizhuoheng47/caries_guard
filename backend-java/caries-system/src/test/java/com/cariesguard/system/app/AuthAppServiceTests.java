@@ -6,8 +6,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cariesguard.framework.security.principal.AuthenticatedUser;
 import com.cariesguard.framework.security.jwt.JwtTokenProvider;
-import com.cariesguard.system.SystemAuthenticatedUserFactory;
 import com.cariesguard.system.domain.model.SystemUserAuthModel;
 import com.cariesguard.system.domain.repository.SystemPermissionRepository;
 import com.cariesguard.system.domain.repository.SystemUserAuthRepository;
@@ -105,11 +105,19 @@ class AuthAppServiceTests {
                 "ADMIN",
                 "ACTIVE",
                 List.of("SYS_ADMIN"));
+        AuthenticatedUser principal = new AuthenticatedUser(
+                user.userId(),
+                user.orgId(),
+                user.username(),
+                user.passwordHash(),
+                user.nickName(),
+                "ACTIVE".equals(user.status()),
+                user.roleCodes());
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(new UsernamePasswordAuthenticationToken(
-                SystemAuthenticatedUserFactory.fromModel(user),
+                principal,
                 null,
-                SystemAuthenticatedUserFactory.fromModel(user).getAuthorities()));
+                principal.getAuthorities()));
         SecurityContextHolder.setContext(context);
         when(systemUserAuthRepository.findByUserId(100001L)).thenReturn(Optional.of(user));
         when(systemPermissionRepository.findPermissionCodesByUserId(100001L))
@@ -139,11 +147,19 @@ class AuthAppServiceTests {
                 "ADMIN",
                 "ACTIVE",
                 List.of("SYS_ADMIN"));
+        AuthenticatedUser principal = new AuthenticatedUser(
+                user.userId(),
+                user.orgId(),
+                user.username(),
+                user.passwordHash(),
+                user.nickName(),
+                "ACTIVE".equals(user.status()),
+                user.roleCodes());
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(new UsernamePasswordAuthenticationToken(
-                SystemAuthenticatedUserFactory.fromModel(user),
+                principal,
                 null,
-                SystemAuthenticatedUserFactory.fromModel(user).getAuthorities()));
+                principal.getAuthorities()));
         SecurityContextHolder.setContext(context);
         when(systemUserAuthRepository.findByUserId(100001L)).thenReturn(Optional.of(user));
         when(systemPermissionRepository.findPermissionCodesByUserId(100001L))

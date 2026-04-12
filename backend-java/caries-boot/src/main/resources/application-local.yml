@@ -37,3 +37,12 @@ caries:
     sensitive:
       crypto-secret: ${CARIES_CRYPTO_SECRET:change-me-to-a-strong-sensitive-crypto-secret}
       hash-secret: ${CARIES_HASH_SECRET:change-me-to-a-strong-sensitive-hash-secret}
+  image:
+    storage:
+      local-root: ${CARIES_IMAGE_STORAGE_ROOT:${user.dir}/var/image-storage}
+      bucket-name: ${CARIES_IMAGE_BUCKET:caries-image}
+      provider-code: ${CARIES_IMAGE_STORAGE_PROVIDER:MINIO}
+      access-url-secret: ${CARIES_IMAGE_ACCESS_SECRET:change-me-to-a-strong-image-access-secret}
+      access-url-expire-seconds: ${CARIES_IMAGE_ACCESS_EXPIRE_SECONDS:900}
+  analysis:
+    default-model-version: ${CARIES_ANALYSIS_MODEL_VERSION:caries-v1}

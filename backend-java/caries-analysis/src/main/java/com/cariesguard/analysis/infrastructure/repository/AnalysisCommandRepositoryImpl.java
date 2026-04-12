@@ -1,0 +1,116 @@
+package com.cariesguard.analysis.infrastructure.repository;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cariesguard.analysis.domain.model.AnalysisCaseModel;
+import com.cariesguard.analysis.domain.model.AnalysisImageModel;
+import com.cariesguard.analysis.domain.model.AnalysisPatientModel;
+import com.cariesguard.analysis.domain.model.AnalysisTaskCreateModel;
+import com.cariesguard.analysis.domain.repository.AnalysisCommandRepository;
+import com.cariesguard.analysis.infrastructure.dataobject.AnaTaskRecordDO;
+import com.cariesguard.analysis.infrastructure.dataobject.AnalysisAttachmentDO;
+import com.cariesguard.analysis.infrastructure.dataobject.AnalysisCaseDO;
+import com.cariesguard.analysis.infrastructure.dataobject.AnalysisImageFileDO;
+import com.cariesguard.analysis.infrastructure.dataobject.AnalysisPatientDO;
+import com.cariesguard.analysis.infrastructure.mapper.AnalysisAttachmentMapper;
+import com.cariesguard.analysis.infrastructure.mapper.AnalysisCaseMapper;
+import com.cariesguard.analysis.infrastructure.mapper.AnalysisImageFileMapper;
+import com.cariesguard.analysis.infrastructure.mapper.AnalysisPatientMapper;
+import com.cariesguard.analysis.infrastructure.mapper.AnalysisTaskRecordMapper;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class AnalysisCommandRepositoryImpl implements AnalysisCommandRepository {
+
+    private final AnalysisCaseMapper analysisCaseMapper;
+    private final AnalysisPatientMapper analysisPatientMapper;
+    private final AnalysisImageFileMapper analysisImageFileMapper;
+    private final AnalysisAttachmentMapper analysisAttachmentMapper;
+    private final AnalysisTaskRecordMapper analysisTaskRecordMapper;
+
+    public AnalysisCommandRepositoryImpl(AnalysisCaseMapper analysisCaseMapper,
+                                         AnalysisPatientMapper analysisPatientMapper,
+                                         AnalysisImageFileMapper analysisImageFileMapper,
+                                         AnalysisAttachmentMapper analysisAttachmentMapper,
+                                         AnalysisTaskRecordMapper analysisTaskRecordMapper) {
+        this.analysisCaseMapper = analysisCaseMapper;
+        this.analysisPatientMapper = analysisPatientMapper;
+        this.analysisImageFileMapper = analysisImageFileMapper;
+        this.analysisAttachmentMapper = analysisAttachmentMapper;
+        this.analysisTaskRecordMapper = analysisTaskRecordMapper;
+    }
+
+    @Override
+    public Optional<AnalysisCaseModel> findCase(Long caseId) {
+        AnalysisCaseDO entity = analysisCaseMapper.selectOne(new LambdaQueryWrapper<AnalysisCaseDO>()
+                .eq(AnalysisCaseDO::getId, caseId)
+                .eq(AnalysisCaseDO::getDeletedFlag, 0L)
+                .eq(AnalysisCaseDO::getStatus, "ACTIVE")
+                .last("LIMIT 1"));
+        return entity == null ? Optional.empty() : Optional.of(new AnalysisCaseModel(
+                entity.getId(),
+                entity.getCaseNo(),
+                entity.getPatientId(),
+                entity.getOrgId(),
+                entity.getCaseStatusCode()));
+    }
+
+    @Override
+    public Optional<AnalysisPatientModel> findPatient(Long patientId) {
+        AnalysisPatientDO entity = analysisPatientMapper.selectOne(new LambdaQueryWrapper<AnalysisPatientDO>()
+                .eq(AnalysisPatientDO::getId, patientId)
+                .eq(AnalysisPatientDO::getDeletedFlag, 0L)
+                .eq(AnalysisPatientDO::getStatus, "ACTIVE")
+                .last("LIMIT 1"));
+        return entity == null ? Optional.empty() : Optional.of(new AnalysisPatientModel(
+                entity.getId(),
+                entity.getAge(),
+                entity.getGenderCode()));
+    }
+
+    @Override
+    public List<AnalysisImageModel> listImages(Long caseId, List<Long> imageIds) {
+        return analysisImageFileMapper.selectList(new LambdaQueryWrapper<AnalysisImageFileDO>()
+                        .eq(AnalysisImageFileDO::getCaseId, caseId)
+                        .in(AnalysisImageFileDO::getId, imageIds)
+                        .eq(AnalysisImageFileDO::getDeletedFlag, 0L)
+                        .eq(AnalysisImageFileDO::getStatus, "ACTIVE"))
+                .stream()
+                .map(this::toImageModel)
+                .toList();
+    }
+
+    @Override
+    public void createTask(AnalysisTaskCreateModel model) {
+        AnaTaskRecordDO entity = new AnaTaskRecordDO();
+        entity.setId(model.taskId());
+        entity.setTaskNo(model.taskNo());
+        entity.setCaseId(model.caseId());
+        entity.setPatientId(model.patientId());
+        entity.setModelVersion(model.modelVersion());
+        entity.setTaskTypeCode(model.taskTypeCode());
+        entity.setTaskStatusCode(model.taskStatusCode());
+        entity.setRequestPayloadJson(model.requestPayloadJson());
+        entity.setOrgId(model.orgId());
+        entity.setStatus(model.status());
+        entity.setDeletedFlag(0L);
+        entity.setCreatedBy(model.operatorUserId());
+        analysisTaskRecordMapper.insert(entity);
+    }
+
+    private AnalysisImageModel toImageModel(AnalysisImageFileDO image) {
+        AnalysisAttachmentDO attachment = analysisAttachmentMapper.selectOne(new LambdaQueryWrapper<AnalysisAttachmentDO>()
+                .eq(AnalysisAttachmentDO::getId, image.getAttachmentId())
+                .eq(AnalysisAttachmentDO::getDeletedFlag, 0L)
+                .eq(AnalysisAttachmentDO::getStatus, "ACTIVE")
+                .last("LIMIT 1"));
+        return new AnalysisImageModel(
+                image.getId(),
+                image.getAttachmentId(),
+                image.getImageTypeCode(),
+                image.getQualityStatusCode(),
+                attachment == null ? null : attachment.getBucketName(),
+                attachment == null ? null : attachment.getObjectKey());
+    }
+}
