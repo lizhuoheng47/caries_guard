@@ -1,12 +1,14 @@
 package com.cariesguard.system.infrastructure.mapper;
 
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.cariesguard.system.infrastructure.dataobject.SysDataPermissionRuleDO;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 @Mapper
-public interface SysDataPermissionRuleMapper {
+public interface SysDataPermissionRuleMapper extends BaseMapper<SysDataPermissionRuleDO> {
 
     @Select("""
             SELECT DISTINCT sdp.scope_type_code

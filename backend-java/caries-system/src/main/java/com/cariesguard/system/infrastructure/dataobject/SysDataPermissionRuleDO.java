@@ -5,21 +5,17 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
-@TableName("sys_menu")
-public class SysMenuDO {
+@TableName("sys_data_permission_rule")
+public class SysDataPermissionRuleDO {
 
     @TableId(type = IdType.INPUT)
     private Long id;
-    private Long parentId;
-    private String menuName;
-    private String menuTypeCode;
-    private String routePath;
-    private String componentPath;
-    private String permissionCode;
-    private String icon;
-    private String visibleFlag;
-    private String cacheFlag;
-    private Integer orderNum;
+    private Long roleId;
+    private String moduleCode;
+    private String scopeTypeCode;
+    private String deptIdsJson;
+    private String selfOnlyFlag;
+    private String columnMaskPolicyJson;
     private Long orgId;
     private String status;
     private String remark;
@@ -37,84 +33,52 @@ public class SysMenuDO {
         this.id = id;
     }
 
-    public Long getParentId() {
-        return parentId;
+    public Long getRoleId() {
+        return roleId;
     }
 
-    public void setParentId(Long parentId) {
-        this.parentId = parentId;
+    public void setRoleId(Long roleId) {
+        this.roleId = roleId;
     }
 
-    public String getMenuName() {
-        return menuName;
+    public String getModuleCode() {
+        return moduleCode;
     }
 
-    public void setMenuName(String menuName) {
-        this.menuName = menuName;
+    public void setModuleCode(String moduleCode) {
+        this.moduleCode = moduleCode;
     }
 
-    public String getMenuTypeCode() {
-        return menuTypeCode;
+    public String getScopeTypeCode() {
+        return scopeTypeCode;
     }
 
-    public void setMenuTypeCode(String menuTypeCode) {
-        this.menuTypeCode = menuTypeCode;
+    public void setScopeTypeCode(String scopeTypeCode) {
+        this.scopeTypeCode = scopeTypeCode;
     }
 
-    public String getRoutePath() {
-        return routePath;
+    public String getDeptIdsJson() {
+        return deptIdsJson;
     }
 
-    public void setRoutePath(String routePath) {
-        this.routePath = routePath;
+    public void setDeptIdsJson(String deptIdsJson) {
+        this.deptIdsJson = deptIdsJson;
     }
 
-    public String getComponentPath() {
-        return componentPath;
+    public String getSelfOnlyFlag() {
+        return selfOnlyFlag;
     }
 
-    public void setComponentPath(String componentPath) {
-        this.componentPath = componentPath;
+    public void setSelfOnlyFlag(String selfOnlyFlag) {
+        this.selfOnlyFlag = selfOnlyFlag;
     }
 
-    public String getPermissionCode() {
-        return permissionCode;
+    public String getColumnMaskPolicyJson() {
+        return columnMaskPolicyJson;
     }
 
-    public void setPermissionCode(String permissionCode) {
-        this.permissionCode = permissionCode;
-    }
-
-    public String getIcon() {
-        return icon;
-    }
-
-    public void setIcon(String icon) {
-        this.icon = icon;
-    }
-
-    public String getVisibleFlag() {
-        return visibleFlag;
-    }
-
-    public void setVisibleFlag(String visibleFlag) {
-        this.visibleFlag = visibleFlag;
-    }
-
-    public String getCacheFlag() {
-        return cacheFlag;
-    }
-
-    public void setCacheFlag(String cacheFlag) {
-        this.cacheFlag = cacheFlag;
-    }
-
-    public Integer getOrderNum() {
-        return orderNum;
-    }
-
-    public void setOrderNum(Integer orderNum) {
-        this.orderNum = orderNum;
+    public void setColumnMaskPolicyJson(String columnMaskPolicyJson) {
+        this.columnMaskPolicyJson = columnMaskPolicyJson;
     }
 
     public Long getOrgId() {

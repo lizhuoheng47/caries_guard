@@ -1,41 +1,36 @@
-package com.cariesguard.system.infrastructure.dataobject;
+package com.cariesguard.system.interfaces.command;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import java.time.LocalDateTime;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
-@TableName("sys_menu")
-public class SysMenuDO {
+public class CreateSystemMenuCommand {
 
-    @TableId(type = IdType.INPUT)
-    private Long id;
     private Long parentId;
+
+    @NotBlank
     private String menuName;
+
+    @NotBlank
     private String menuTypeCode;
+
     private String routePath;
+
     private String componentPath;
+
     private String permissionCode;
+
     private String icon;
+
     private String visibleFlag;
+
     private String cacheFlag;
+
+    @NotNull
     private Integer orderNum;
-    private Long orgId;
+
     private String status;
+
     private String remark;
-    private Long createdBy;
-    private LocalDateTime createdAt;
-    private Long updatedBy;
-    private LocalDateTime updatedAt;
-    private Long deletedFlag;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Long getParentId() {
         return parentId;
@@ -117,14 +112,6 @@ public class SysMenuDO {
         this.orderNum = orderNum;
     }
 
-    public Long getOrgId() {
-        return orgId;
-    }
-
-    public void setOrgId(Long orgId) {
-        this.orgId = orgId;
-    }
-
     public String getStatus() {
         return status;
     }
@@ -139,45 +126,5 @@ public class SysMenuDO {
 
     public void setRemark(String remark) {
         this.remark = remark;
-    }
-
-    public Long getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(Long createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Long getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(Long updatedBy) {
-        this.updatedBy = updatedBy;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public Long getDeletedFlag() {
-        return deletedFlag;
-    }
-
-    public void setDeletedFlag(Long deletedFlag) {
-        this.deletedFlag = deletedFlag;
     }
 }
