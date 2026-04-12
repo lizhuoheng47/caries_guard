@@ -10,7 +10,8 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
         "com.cariesguard.system.infrastructure.mapper",
         "com.cariesguard.patient.infrastructure.mapper",
         "com.cariesguard.image.infrastructure.mapper",
-        "com.cariesguard.analysis.infrastructure.mapper"
+        "com.cariesguard.analysis.infrastructure.mapper",
+        "com.cariesguard.report.infrastructure.mapper"
 })
 @ConfigurationPropertiesScan("com.cariesguard")
 public class CariesBootApplication {

@@ -1,0 +1,155 @@
+package com.cariesguard.report.infrastructure.repository;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cariesguard.report.domain.model.ReportAnalysisSummaryModel;
+import com.cariesguard.report.domain.model.ReportCaseModel;
+import com.cariesguard.report.domain.model.ReportCorrectionModel;
+import com.cariesguard.report.domain.model.ReportImageModel;
+import com.cariesguard.report.domain.model.ReportRiskAssessmentModel;
+import com.cariesguard.report.domain.repository.ReportSourceQueryRepository;
+import com.cariesguard.report.infrastructure.dataobject.ReportAttachmentDO;
+import com.cariesguard.report.infrastructure.dataobject.ReportCaseDO;
+import com.cariesguard.report.infrastructure.dataobject.ReportCorrectionFeedbackDO;
+import com.cariesguard.report.infrastructure.dataobject.ReportImageFileDO;
+import com.cariesguard.report.infrastructure.dataobject.ReportResultSummaryDO;
+import com.cariesguard.report.infrastructure.dataobject.ReportRiskAssessmentDO;
+import com.cariesguard.report.infrastructure.mapper.ReportAttachmentMapper;
+import com.cariesguard.report.infrastructure.mapper.ReportCaseMapper;
+import com.cariesguard.report.infrastructure.mapper.ReportCorrectionFeedbackMapper;
+import com.cariesguard.report.infrastructure.mapper.ReportImageFileMapper;
+import com.cariesguard.report.infrastructure.mapper.ReportResultSummaryMapper;
+import com.cariesguard.report.infrastructure.mapper.ReportRiskAssessmentMapper;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class ReportSourceQueryRepositoryImpl implements ReportSourceQueryRepository {
+
+    private final ReportCaseMapper reportCaseMapper;
+    private final ReportImageFileMapper reportImageFileMapper;
+    private final ReportAttachmentMapper reportAttachmentMapper;
+    private final ReportResultSummaryMapper reportResultSummaryMapper;
+    private final ReportRiskAssessmentMapper reportRiskAssessmentMapper;
+    private final ReportCorrectionFeedbackMapper reportCorrectionFeedbackMapper;
+
+    public ReportSourceQueryRepositoryImpl(ReportCaseMapper reportCaseMapper,
+                                           ReportImageFileMapper reportImageFileMapper,
+                                           ReportAttachmentMapper reportAttachmentMapper,
+                                           ReportResultSummaryMapper reportResultSummaryMapper,
+                                           ReportRiskAssessmentMapper reportRiskAssessmentMapper,
+                                           ReportCorrectionFeedbackMapper reportCorrectionFeedbackMapper) {
+        this.reportCaseMapper = reportCaseMapper;
+        this.reportImageFileMapper = reportImageFileMapper;
+        this.reportAttachmentMapper = reportAttachmentMapper;
+        this.reportResultSummaryMapper = reportResultSummaryMapper;
+        this.reportRiskAssessmentMapper = reportRiskAssessmentMapper;
+        this.reportCorrectionFeedbackMapper = reportCorrectionFeedbackMapper;
+    }
+
+    @Override
+    public Optional<ReportCaseModel> findCase(Long caseId) {
+        ReportCaseDO entity = reportCaseMapper.selectOne(new LambdaQueryWrapper<ReportCaseDO>()
+                .eq(ReportCaseDO::getId, caseId)
+                .eq(ReportCaseDO::getDeletedFlag, 0L)
+                .eq(ReportCaseDO::getStatus, "ACTIVE")
+                .last("LIMIT 1"));
+        return entity == null ? Optional.empty() : Optional.of(new ReportCaseModel(
+                entity.getId(),
+                entity.getCaseNo(),
+                entity.getPatientId(),
+                entity.getCaseStatusCode(),
+                entity.getOrgId()));
+    }
+
+    @Override
+    public List<ReportImageModel> listCaseImages(Long caseId) {
+        return reportImageFileMapper.selectList(new LambdaQueryWrapper<ReportImageFileDO>()
+                        .eq(ReportImageFileDO::getCaseId, caseId)
+                        .eq(ReportImageFileDO::getDeletedFlag, 0L)
+                        .eq(ReportImageFileDO::getStatus, "ACTIVE")
+                        .orderByDesc(ReportImageFileDO::getIsPrimary)
+                        .orderByAsc(ReportImageFileDO::getId))
+                .stream()
+                .map(this::toImageModel)
+                .toList();
+    }
+
+    @Override
+    public Optional<ReportAnalysisSummaryModel> findLatestSummary(Long caseId) {
+        ReportResultSummaryDO entity = reportResultSummaryMapper.selectOne(new LambdaQueryWrapper<ReportResultSummaryDO>()
+                .eq(ReportResultSummaryDO::getCaseId, caseId)
+                .eq(ReportResultSummaryDO::getDeletedFlag, 0L)
+                .eq(ReportResultSummaryDO::getStatus, "ACTIVE")
+                .orderByDesc(ReportResultSummaryDO::getId)
+                .last("LIMIT 1"));
+        return entity == null ? Optional.empty() : Optional.of(new ReportAnalysisSummaryModel(
+                entity.getId(),
+                entity.getRawResultJson(),
+                entity.getOverallHighestSeverity(),
+                entity.getUncertaintyScore(),
+                entity.getReviewSuggestedFlag()));
+    }
+
+    @Override
+    public Optional<ReportRiskAssessmentModel> findLatestRiskAssessment(Long caseId) {
+        ReportRiskAssessmentDO entity = reportRiskAssessmentMapper.selectOne(new LambdaQueryWrapper<ReportRiskAssessmentDO>()
+                .eq(ReportRiskAssessmentDO::getCaseId, caseId)
+                .eq(ReportRiskAssessmentDO::getDeletedFlag, 0L)
+                .eq(ReportRiskAssessmentDO::getStatus, "ACTIVE")
+                .orderByDesc(ReportRiskAssessmentDO::getAssessedAt)
+                .orderByDesc(ReportRiskAssessmentDO::getId)
+                .last("LIMIT 1"));
+        return entity == null ? Optional.empty() : Optional.of(new ReportRiskAssessmentModel(
+                entity.getId(),
+                entity.getOverallRiskLevelCode(),
+                entity.getAssessmentReportJson(),
+                entity.getRecommendedCycleDays(),
+                entity.getAssessedAt()));
+    }
+
+    @Override
+    public Optional<ReportCorrectionModel> findLatestCorrection(Long caseId) {
+        ReportCorrectionFeedbackDO entity = reportCorrectionFeedbackMapper.selectOne(new LambdaQueryWrapper<ReportCorrectionFeedbackDO>()
+                .eq(ReportCorrectionFeedbackDO::getCaseId, caseId)
+                .eq(ReportCorrectionFeedbackDO::getDeletedFlag, 0L)
+                .eq(ReportCorrectionFeedbackDO::getStatus, "ACTIVE")
+                .orderByDesc(ReportCorrectionFeedbackDO::getCreatedAt)
+                .orderByDesc(ReportCorrectionFeedbackDO::getId)
+                .last("LIMIT 1"));
+        return entity == null ? Optional.empty() : Optional.of(new ReportCorrectionModel(
+                entity.getId(),
+                entity.getFeedbackTypeCode(),
+                entity.getCorrectedTruthJson(),
+                entity.getCreatedAt()));
+    }
+
+    private ReportImageModel toImageModel(ReportImageFileDO entity) {
+        ReportAttachmentDO attachment = reportAttachmentMapper.selectOne(new LambdaQueryWrapper<ReportAttachmentDO>()
+                .eq(ReportAttachmentDO::getId, entity.getAttachmentId())
+                .eq(ReportAttachmentDO::getDeletedFlag, 0L)
+                .eq(ReportAttachmentDO::getStatus, "ACTIVE")
+                .last("LIMIT 1"));
+        if (attachment == null) {
+            return new ReportImageModel(
+                    entity.getId(),
+                    entity.getAttachmentId(),
+                    entity.getImageTypeCode(),
+                    entity.getQualityStatusCode(),
+                    entity.getIsPrimary(),
+                    null,
+                    null,
+                    null);
+        }
+        return new ReportImageModel(
+                entity.getId(),
+                entity.getAttachmentId(),
+                entity.getImageTypeCode(),
+                entity.getQualityStatusCode(),
+                entity.getIsPrimary(),
+                attachment.getBucketName(),
+                attachment.getObjectKey(),
+                attachment.getOriginalName());
+    }
+}
+

@@ -148,6 +148,7 @@ correction feedback, and case status synchronization are online in code.
 MQ consumer-side finalization remains for later phase.
 Module-positioning alignment fixes (callback validation normalization, event publish timing,
 state-machine precondition tightening, summary aggregate fallback) are completed.
+Cross-module E2E test and Python real-signature compatibility test are completed in `caries-integration`.
 
 ### Scope
 
@@ -175,6 +176,16 @@ state-machine precondition tightening, summary aggregate fallback) are completed
 ### Goal
 
 Generate doctor and patient reports with version control.
+
+### Current Status
+
+Core chain implemented in `caries-report`:
+
+- report template management (`rpt_template`)
+- report generation with per-case per-type version increment (`rpt_record`)
+- PDF archive to attachment system (`med_attachment`)
+- report export audit logging (`rpt_export_log`)
+- case status transition through `CaseCommandAppService` only (no direct `med_case` update)
 
 ### Scope
 
