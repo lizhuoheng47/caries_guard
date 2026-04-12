@@ -13,5 +13,6 @@ public record CaseDetailModel(
         Long orgId,
         List<CaseImageModel> images,
         List<CaseDiagnosisModel> diagnoses,
+        List<CaseToothRecordModel> toothRecords,
         String latestAiSummaryRaw) {
 }

@@ -10,6 +10,7 @@ import com.cariesguard.patient.domain.model.CaseDetailModel;
 import com.cariesguard.patient.domain.model.CaseDiagnosisModel;
 import com.cariesguard.patient.domain.model.CaseImageModel;
 import com.cariesguard.patient.domain.model.CaseSummaryModel;
+import com.cariesguard.patient.domain.model.CaseToothRecordModel;
 import com.cariesguard.patient.domain.model.PageQueryResult;
 import com.cariesguard.patient.domain.repository.CaseQueryRepository;
 import com.cariesguard.patient.interfaces.vo.CaseDetailVO;
@@ -51,13 +52,15 @@ class CaseQueryAppServiceTests {
                 "0",
                 2001L,
                 List.of(new CaseImageModel(7001L, "PANORAMIC", "PENDING", "1")),
-                List.of(new CaseDiagnosisModel("caries", "MEDIUM", "1")),
+                List.of(new CaseDiagnosisModel("CARIES", "caries", "AI", "desc", "advice", "MEDIUM", "1")),
+                List.of(new CaseToothRecordModel(7001L, "16", "O", "CARIES", "MEDIUM", "finding", "suggestion", 1)),
                 "{\"score\":80}")));
 
         CaseDetailVO result = appService.getCase(6001L);
 
         assertThat(result.images()).hasSize(1);
         assertThat(result.diagnoses()).hasSize(1);
+        assertThat(result.toothRecords()).hasSize(1);
         assertThat(result.latestAiSummary().get("score").asInt()).isEqualTo(80);
     }
 
@@ -74,6 +77,7 @@ class CaseQueryAppServiceTests {
                 "0",
                 "0",
                 9999L,
+                List.of(),
                 List.of(),
                 List.of(),
                 null)));

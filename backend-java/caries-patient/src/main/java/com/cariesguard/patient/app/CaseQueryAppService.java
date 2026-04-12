@@ -7,6 +7,7 @@ import com.cariesguard.framework.security.principal.AuthenticatedUser;
 import com.cariesguard.patient.domain.model.CaseDetailModel;
 import com.cariesguard.patient.domain.model.CaseDiagnosisModel;
 import com.cariesguard.patient.domain.model.CaseImageModel;
+import com.cariesguard.patient.domain.model.CaseToothRecordModel;
 import com.cariesguard.patient.domain.model.CaseSummaryModel;
 import com.cariesguard.patient.domain.model.PageQueryResult;
 import com.cariesguard.patient.domain.repository.CaseQueryRepository;
@@ -14,6 +15,7 @@ import com.cariesguard.patient.interfaces.vo.CaseDetailVO;
 import com.cariesguard.patient.interfaces.vo.CaseDiagnosisVO;
 import com.cariesguard.patient.interfaces.vo.CaseImageVO;
 import com.cariesguard.patient.interfaces.vo.CaseListItemVO;
+import com.cariesguard.patient.interfaces.vo.CaseToothRecordVO;
 import com.cariesguard.patient.interfaces.vo.PageResultVO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,6 +49,7 @@ public class CaseQueryAppService {
                 caseDetail.followupRequiredFlag(),
                 caseDetail.images().stream().map(this::toImageVO).toList(),
                 caseDetail.diagnoses().stream().map(this::toDiagnosisVO).toList(),
+                caseDetail.toothRecords().stream().map(this::toToothRecordVO).toList(),
                 readSummary(caseDetail.latestAiSummaryRaw()));
     }
 
@@ -55,7 +58,26 @@ public class CaseQueryAppService {
     }
 
     private CaseDiagnosisVO toDiagnosisVO(CaseDiagnosisModel model) {
-        return new CaseDiagnosisVO(model.diagnosisName(), model.severityCode(), model.finalFlag());
+        return new CaseDiagnosisVO(
+                model.diagnosisTypeCode(),
+                model.diagnosisName(),
+                model.diagnosisBasis(),
+                model.diagnosisDesc(),
+                model.treatmentAdvice(),
+                model.severityCode(),
+                model.finalFlag());
+    }
+
+    private CaseToothRecordVO toToothRecordVO(CaseToothRecordModel model) {
+        return new CaseToothRecordVO(
+                model.sourceImageId(),
+                model.toothCode(),
+                model.toothSurfaceCode(),
+                model.issueTypeCode(),
+                model.severityCode(),
+                model.findingDesc(),
+                model.suggestion(),
+                model.sortOrder());
     }
 
     private JsonNode readSummary(String rawSummary) {

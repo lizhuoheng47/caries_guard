@@ -3,25 +3,33 @@ package com.cariesguard.patient.infrastructure.repository;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cariesguard.patient.domain.model.CaseCreateModel;
+import com.cariesguard.patient.domain.model.CaseDiagnosisCreateModel;
 import com.cariesguard.patient.domain.model.CaseManagedModel;
 import com.cariesguard.patient.domain.model.CaseStatusLogCreateModel;
 import com.cariesguard.patient.domain.model.CaseStatusUpdateModel;
+import com.cariesguard.patient.domain.model.CaseToothRecordCreateModel;
 import com.cariesguard.patient.domain.model.PatientOwnedModel;
 import com.cariesguard.patient.domain.model.VisitCreateModel;
 import com.cariesguard.patient.domain.model.VisitOwnedModel;
 import com.cariesguard.patient.domain.repository.VisitCaseCommandRepository;
 import com.cariesguard.patient.infrastructure.dataobject.AnaResultSummaryDO;
 import com.cariesguard.patient.infrastructure.dataobject.MedCaseDO;
+import com.cariesguard.patient.infrastructure.dataobject.MedCaseDiagnosisDO;
 import com.cariesguard.patient.infrastructure.dataobject.MedCaseStatusLogDO;
+import com.cariesguard.patient.infrastructure.dataobject.MedCaseToothRecordDO;
 import com.cariesguard.patient.infrastructure.dataobject.MedImageFileDO;
 import com.cariesguard.patient.infrastructure.dataobject.MedVisitDO;
 import com.cariesguard.patient.infrastructure.dataobject.PatPatientDO;
 import com.cariesguard.patient.infrastructure.mapper.AnaResultSummaryMapper;
 import com.cariesguard.patient.infrastructure.mapper.MedCaseMapper;
+import com.cariesguard.patient.infrastructure.mapper.MedCaseDiagnosisMapper;
 import com.cariesguard.patient.infrastructure.mapper.MedCaseStatusLogMapper;
+import com.cariesguard.patient.infrastructure.mapper.MedCaseToothRecordMapper;
 import com.cariesguard.patient.infrastructure.mapper.MedImageFileMapper;
 import com.cariesguard.patient.infrastructure.mapper.MedVisitMapper;
 import com.cariesguard.patient.infrastructure.mapper.PatPatientMapper;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
@@ -31,20 +39,26 @@ public class VisitCaseCommandRepositoryImpl implements VisitCaseCommandRepositor
     private final PatPatientMapper patPatientMapper;
     private final MedVisitMapper medVisitMapper;
     private final MedCaseMapper medCaseMapper;
+    private final MedCaseDiagnosisMapper medCaseDiagnosisMapper;
     private final MedCaseStatusLogMapper medCaseStatusLogMapper;
+    private final MedCaseToothRecordMapper medCaseToothRecordMapper;
     private final MedImageFileMapper medImageFileMapper;
     private final AnaResultSummaryMapper anaResultSummaryMapper;
 
     public VisitCaseCommandRepositoryImpl(PatPatientMapper patPatientMapper,
                                           MedVisitMapper medVisitMapper,
                                           MedCaseMapper medCaseMapper,
+                                          MedCaseDiagnosisMapper medCaseDiagnosisMapper,
                                           MedCaseStatusLogMapper medCaseStatusLogMapper,
+                                          MedCaseToothRecordMapper medCaseToothRecordMapper,
                                           MedImageFileMapper medImageFileMapper,
                                           AnaResultSummaryMapper anaResultSummaryMapper) {
         this.patPatientMapper = patPatientMapper;
         this.medVisitMapper = medVisitMapper;
         this.medCaseMapper = medCaseMapper;
+        this.medCaseDiagnosisMapper = medCaseDiagnosisMapper;
         this.medCaseStatusLogMapper = medCaseStatusLogMapper;
+        this.medCaseToothRecordMapper = medCaseToothRecordMapper;
         this.medImageFileMapper = medImageFileMapper;
         this.anaResultSummaryMapper = anaResultSummaryMapper;
     }
@@ -173,6 +187,41 @@ public class VisitCaseCommandRepositoryImpl implements VisitCaseCommandRepositor
         medCaseStatusLogMapper.insert(toStatusLogDO(model));
     }
 
+    @Override
+    public void replaceDiagnoses(Long caseId,
+                                 Long operatorUserId,
+                                 LocalDateTime diagnosisTime,
+                                 List<CaseDiagnosisCreateModel> diagnoses) {
+        medCaseDiagnosisMapper.update(null, new LambdaUpdateWrapper<MedCaseDiagnosisDO>()
+                .eq(MedCaseDiagnosisDO::getCaseId, caseId)
+                .eq(MedCaseDiagnosisDO::getDeletedFlag, 0L)
+                .setSql("deleted_flag = id")
+                .set(MedCaseDiagnosisDO::getUpdatedBy, operatorUserId));
+        for (CaseDiagnosisCreateModel diagnosis : diagnoses) {
+            medCaseDiagnosisMapper.insert(toDiagnosisDO(diagnosis));
+        }
+        medCaseMapper.update(null, new LambdaUpdateWrapper<MedCaseDO>()
+                .eq(MedCaseDO::getId, caseId)
+                .eq(MedCaseDO::getDeletedFlag, 0L)
+                .set(MedCaseDO::getUpdatedBy, operatorUserId)
+                .set(MedCaseDO::getFirstDiagnosisAt, diagnosisTime)
+                .setSql("version_no = version_no + 1"));
+    }
+
+    @Override
+    public void replaceToothRecords(Long caseId,
+                                    Long operatorUserId,
+                                    List<CaseToothRecordCreateModel> toothRecords) {
+        medCaseToothRecordMapper.update(null, new LambdaUpdateWrapper<MedCaseToothRecordDO>()
+                .eq(MedCaseToothRecordDO::getCaseId, caseId)
+                .eq(MedCaseToothRecordDO::getDeletedFlag, 0L)
+                .setSql("deleted_flag = id")
+                .set(MedCaseToothRecordDO::getUpdatedBy, operatorUserId));
+        for (CaseToothRecordCreateModel toothRecord : toothRecords) {
+            medCaseToothRecordMapper.insert(toToothRecordDO(toothRecord));
+        }
+    }
+
     private MedCaseStatusLogDO toStatusLogDO(CaseStatusLogCreateModel model) {
         MedCaseStatusLogDO entity = new MedCaseStatusLogDO();
         entity.setId(model.logId());
@@ -184,6 +233,52 @@ public class VisitCaseCommandRepositoryImpl implements VisitCaseCommandRepositor
         entity.setChangeReason(model.changeReason());
         entity.setChangedAt(model.changedAt());
         entity.setOrgId(model.orgId());
+        return entity;
+    }
+
+    private MedCaseDiagnosisDO toDiagnosisDO(CaseDiagnosisCreateModel model) {
+        MedCaseDiagnosisDO entity = new MedCaseDiagnosisDO();
+        entity.setId(model.diagnosisId());
+        entity.setCaseId(model.caseId());
+        entity.setDiagnosisTypeCode(model.diagnosisTypeCode());
+        entity.setDiagnosisName(model.diagnosisName());
+        entity.setSeverityCode(model.severityCode());
+        entity.setDiagnosisBasis(model.diagnosisBasis());
+        entity.setDiagnosisDesc(model.diagnosisDesc());
+        entity.setTreatmentAdvice(model.treatmentAdvice());
+        entity.setReviewDoctorId(model.reviewDoctorId());
+        entity.setReviewTime(model.reviewTime());
+        entity.setIsFinal(model.finalFlag());
+        entity.setOrgId(model.orgId());
+        entity.setVersionNo(1);
+        entity.setStatus(model.status());
+        entity.setDeletedFlag(0L);
+        entity.setRemark(model.remark());
+        entity.setCreatedBy(model.operatorUserId());
+        entity.setUpdatedBy(model.operatorUserId());
+        return entity;
+    }
+
+    private MedCaseToothRecordDO toToothRecordDO(CaseToothRecordCreateModel model) {
+        MedCaseToothRecordDO entity = new MedCaseToothRecordDO();
+        entity.setId(model.recordId());
+        entity.setCaseId(model.caseId());
+        entity.setSourceImageId(model.sourceImageId());
+        entity.setToothCode(model.toothCode());
+        entity.setToothSurfaceCode(model.toothSurfaceCode());
+        entity.setIssueTypeCode(model.issueTypeCode());
+        entity.setSeverityCode(model.severityCode());
+        entity.setFindingDesc(model.findingDesc());
+        entity.setSuggestion(model.suggestion());
+        entity.setSortOrder(model.sortOrder());
+        entity.setReviewedBy(model.reviewedBy());
+        entity.setReviewedAt(model.reviewedAt());
+        entity.setOrgId(model.orgId());
+        entity.setStatus(model.status());
+        entity.setDeletedFlag(0L);
+        entity.setRemark(model.remark());
+        entity.setCreatedBy(model.operatorUserId());
+        entity.setUpdatedBy(model.operatorUserId());
         return entity;
     }
 }

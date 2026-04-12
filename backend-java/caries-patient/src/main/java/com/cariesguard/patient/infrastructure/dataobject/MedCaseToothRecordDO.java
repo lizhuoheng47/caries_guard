@@ -5,23 +5,23 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
-@TableName("med_case_diagnosis")
-public class MedCaseDiagnosisDO {
+@TableName("med_case_tooth_record")
+public class MedCaseToothRecordDO {
 
     @TableId(type = IdType.INPUT)
     private Long id;
     private Long caseId;
-    private String diagnosisTypeCode;
-    private String diagnosisName;
+    private Long sourceImageId;
+    private String toothCode;
+    private String toothSurfaceCode;
+    private String issueTypeCode;
     private String severityCode;
-    private String diagnosisBasis;
-    private String diagnosisDesc;
-    private String treatmentAdvice;
-    private Long reviewDoctorId;
-    private LocalDateTime reviewTime;
-    private String isFinal;
+    private String findingDesc;
+    private String suggestion;
+    private Integer sortOrder;
+    private Long reviewedBy;
+    private LocalDateTime reviewedAt;
     private Long orgId;
-    private Integer versionNo;
     private String status;
     private Long deletedFlag;
     private String remark;
@@ -34,28 +34,28 @@ public class MedCaseDiagnosisDO {
     public void setId(Long id) { this.id = id; }
     public Long getCaseId() { return caseId; }
     public void setCaseId(Long caseId) { this.caseId = caseId; }
-    public String getDiagnosisTypeCode() { return diagnosisTypeCode; }
-    public void setDiagnosisTypeCode(String diagnosisTypeCode) { this.diagnosisTypeCode = diagnosisTypeCode; }
-    public String getDiagnosisName() { return diagnosisName; }
-    public void setDiagnosisName(String diagnosisName) { this.diagnosisName = diagnosisName; }
+    public Long getSourceImageId() { return sourceImageId; }
+    public void setSourceImageId(Long sourceImageId) { this.sourceImageId = sourceImageId; }
+    public String getToothCode() { return toothCode; }
+    public void setToothCode(String toothCode) { this.toothCode = toothCode; }
+    public String getToothSurfaceCode() { return toothSurfaceCode; }
+    public void setToothSurfaceCode(String toothSurfaceCode) { this.toothSurfaceCode = toothSurfaceCode; }
+    public String getIssueTypeCode() { return issueTypeCode; }
+    public void setIssueTypeCode(String issueTypeCode) { this.issueTypeCode = issueTypeCode; }
     public String getSeverityCode() { return severityCode; }
     public void setSeverityCode(String severityCode) { this.severityCode = severityCode; }
-    public String getDiagnosisBasis() { return diagnosisBasis; }
-    public void setDiagnosisBasis(String diagnosisBasis) { this.diagnosisBasis = diagnosisBasis; }
-    public String getDiagnosisDesc() { return diagnosisDesc; }
-    public void setDiagnosisDesc(String diagnosisDesc) { this.diagnosisDesc = diagnosisDesc; }
-    public String getTreatmentAdvice() { return treatmentAdvice; }
-    public void setTreatmentAdvice(String treatmentAdvice) { this.treatmentAdvice = treatmentAdvice; }
-    public Long getReviewDoctorId() { return reviewDoctorId; }
-    public void setReviewDoctorId(Long reviewDoctorId) { this.reviewDoctorId = reviewDoctorId; }
-    public LocalDateTime getReviewTime() { return reviewTime; }
-    public void setReviewTime(LocalDateTime reviewTime) { this.reviewTime = reviewTime; }
-    public String getIsFinal() { return isFinal; }
-    public void setIsFinal(String isFinal) { this.isFinal = isFinal; }
+    public String getFindingDesc() { return findingDesc; }
+    public void setFindingDesc(String findingDesc) { this.findingDesc = findingDesc; }
+    public String getSuggestion() { return suggestion; }
+    public void setSuggestion(String suggestion) { this.suggestion = suggestion; }
+    public Integer getSortOrder() { return sortOrder; }
+    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    public Long getReviewedBy() { return reviewedBy; }
+    public void setReviewedBy(Long reviewedBy) { this.reviewedBy = reviewedBy; }
+    public LocalDateTime getReviewedAt() { return reviewedAt; }
+    public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
     public Long getOrgId() { return orgId; }
     public void setOrgId(Long orgId) { this.orgId = orgId; }
-    public Integer getVersionNo() { return versionNo; }
-    public void setVersionNo(Integer versionNo) { this.versionNo = versionNo; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Long getDeletedFlag() { return deletedFlag; }

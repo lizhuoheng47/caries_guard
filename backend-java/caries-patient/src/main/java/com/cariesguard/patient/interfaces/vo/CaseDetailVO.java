@@ -13,5 +13,6 @@ public record CaseDetailVO(
         String followupRequiredFlag,
         List<CaseImageVO> images,
         List<CaseDiagnosisVO> diagnoses,
+        List<CaseToothRecordVO> toothRecords,
         JsonNode latestAiSummary) {
 }

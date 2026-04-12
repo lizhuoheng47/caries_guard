@@ -5,15 +5,18 @@ import com.cariesguard.patient.domain.model.CaseDetailModel;
 import com.cariesguard.patient.domain.model.CaseDiagnosisModel;
 import com.cariesguard.patient.domain.model.CaseImageModel;
 import com.cariesguard.patient.domain.model.CaseSummaryModel;
+import com.cariesguard.patient.domain.model.CaseToothRecordModel;
 import com.cariesguard.patient.domain.model.PageQueryResult;
 import com.cariesguard.patient.domain.repository.CaseQueryRepository;
 import com.cariesguard.patient.infrastructure.dataobject.AnaResultSummaryDO;
 import com.cariesguard.patient.infrastructure.dataobject.MedCaseDO;
 import com.cariesguard.patient.infrastructure.dataobject.MedCaseDiagnosisDO;
+import com.cariesguard.patient.infrastructure.dataobject.MedCaseToothRecordDO;
 import com.cariesguard.patient.infrastructure.dataobject.MedImageFileDO;
 import com.cariesguard.patient.infrastructure.mapper.AnaResultSummaryMapper;
 import com.cariesguard.patient.infrastructure.mapper.MedCaseDiagnosisMapper;
 import com.cariesguard.patient.infrastructure.mapper.MedCaseMapper;
+import com.cariesguard.patient.infrastructure.mapper.MedCaseToothRecordMapper;
 import com.cariesguard.patient.infrastructure.mapper.MedImageFileMapper;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -25,15 +28,18 @@ public class CaseQueryRepositoryImpl implements CaseQueryRepository {
     private final MedCaseMapper medCaseMapper;
     private final MedImageFileMapper medImageFileMapper;
     private final MedCaseDiagnosisMapper medCaseDiagnosisMapper;
+    private final MedCaseToothRecordMapper medCaseToothRecordMapper;
     private final AnaResultSummaryMapper anaResultSummaryMapper;
 
     public CaseQueryRepositoryImpl(MedCaseMapper medCaseMapper,
                                    MedImageFileMapper medImageFileMapper,
                                    MedCaseDiagnosisMapper medCaseDiagnosisMapper,
+                                   MedCaseToothRecordMapper medCaseToothRecordMapper,
                                    AnaResultSummaryMapper anaResultSummaryMapper) {
         this.medCaseMapper = medCaseMapper;
         this.medImageFileMapper = medImageFileMapper;
         this.medCaseDiagnosisMapper = medCaseDiagnosisMapper;
+        this.medCaseToothRecordMapper = medCaseToothRecordMapper;
         this.anaResultSummaryMapper = anaResultSummaryMapper;
     }
 
@@ -78,7 +84,31 @@ public class CaseQueryRepositoryImpl implements CaseQueryRepository {
                                 .orderByDesc(MedCaseDiagnosisDO::getIsFinal)
                                 .orderByAsc(MedCaseDiagnosisDO::getId))
                         .stream()
-                        .map(item -> new CaseDiagnosisModel(item.getDiagnosisName(), item.getSeverityCode(), item.getIsFinal()))
+                        .map(item -> new CaseDiagnosisModel(
+                                item.getDiagnosisTypeCode(),
+                                item.getDiagnosisName(),
+                                item.getDiagnosisBasis(),
+                                item.getDiagnosisDesc(),
+                                item.getTreatmentAdvice(),
+                                item.getSeverityCode(),
+                                item.getIsFinal()))
+                        .toList(),
+                medCaseToothRecordMapper.selectList(new LambdaQueryWrapper<MedCaseToothRecordDO>()
+                                .eq(MedCaseToothRecordDO::getCaseId, caseId)
+                                .eq(MedCaseToothRecordDO::getDeletedFlag, 0L)
+                                .eq(MedCaseToothRecordDO::getStatus, "ACTIVE")
+                                .orderByAsc(MedCaseToothRecordDO::getSortOrder)
+                                .orderByAsc(MedCaseToothRecordDO::getId))
+                        .stream()
+                        .map(item -> new CaseToothRecordModel(
+                                item.getSourceImageId(),
+                                item.getToothCode(),
+                                item.getToothSurfaceCode(),
+                                item.getIssueTypeCode(),
+                                item.getSeverityCode(),
+                                item.getFindingDesc(),
+                                item.getSuggestion(),
+                                item.getSortOrder()))
                         .toList(),
                 latestSummary == null ? null : latestSummary.getRawResultJson()));
     }
