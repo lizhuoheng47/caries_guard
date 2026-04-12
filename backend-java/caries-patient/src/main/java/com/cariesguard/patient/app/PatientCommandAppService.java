@@ -9,9 +9,12 @@ import com.cariesguard.framework.security.sensitive.ProtectedValue;
 import com.cariesguard.framework.security.sensitive.SensitiveDataFacade;
 import com.cariesguard.patient.domain.model.PatientCreateModel;
 import com.cariesguard.patient.domain.model.PatientGuardianCreateModel;
+import com.cariesguard.patient.domain.model.PatientManagedModel;
+import com.cariesguard.patient.domain.model.PatientUpdateModel;
 import com.cariesguard.patient.domain.repository.PatientCommandRepository;
 import com.cariesguard.patient.interfaces.command.CreatePatientCommand;
 import com.cariesguard.patient.interfaces.command.PatientGuardianCommand;
+import com.cariesguard.patient.interfaces.command.UpdatePatientCommand;
 import com.cariesguard.patient.interfaces.vo.PatientMutationVO;
 import java.time.LocalDate;
 import java.time.Period;
@@ -40,8 +43,8 @@ public class PatientCommandAppService {
         AuthenticatedUser operator = SecurityContextUtils.currentUser();
         ProtectedValue patientName = sensitiveDataFacade.protectName(command.patientName());
         ProtectedValue birthDate = protectBirthDate(command.birthDate());
-        ProtectedValue phone = sensitiveDataFacade.protectPhone(command.phone());
-        ProtectedValue idCard = sensitiveDataFacade.protectIdCard(command.idCardNo());
+        ProtectedValue phone = protectPhone(command.phone());
+        ProtectedValue idCard = protectIdCard(command.idCardNo());
         validateIdentityDuplicate(operator.getOrgId(), idCard.hash());
 
         long patientId = IdWorker.getId();
@@ -74,6 +77,49 @@ public class PatientCommandAppService {
         return new PatientMutationVO(model.patientId(), model.patientNo());
     }
 
+    @Transactional
+    public PatientMutationVO updatePatient(Long patientId, UpdatePatientCommand command) {
+        AuthenticatedUser operator = SecurityContextUtils.currentUser();
+        PatientManagedModel managedPatient = patientCommandRepository.findManagedPatient(patientId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Patient does not exist"));
+        ensureOrgAccess(operator, managedPatient.orgId());
+
+        ProtectedValue patientName = sensitiveDataFacade.protectName(command.patientName());
+        ProtectedValue birthDate = protectBirthDate(command.birthDate());
+        ProtectedValue phone = protectPhone(command.phone());
+        ProtectedValue idCard = protectIdCard(command.idCardNo());
+
+        if (StringUtils.hasText(idCard.hash()) && !idCard.hash().equals(managedPatient.idCardHash())) {
+            validateIdentityDuplicate(managedPatient.orgId(), idCard.hash());
+        }
+
+        PatientUpdateModel model = new PatientUpdateModel(
+                patientId,
+                patientName.encrypted(),
+                patientName.hash(),
+                patientName.masked(),
+                defaultGenderCode(command.genderCode()),
+                birthDate.encrypted(),
+                birthDate.hash(),
+                birthDate.masked(),
+                calculateAge(command.birthDate()),
+                phone.encrypted(),
+                phone.hash(),
+                phone.masked(),
+                idCard.encrypted(),
+                idCard.hash(),
+                idCard.masked(),
+                defaultSourceCode(command.sourceCode()),
+                command.firstVisitDate(),
+                defaultPrivacyLevel(command.privacyLevelCode()),
+                defaultStatus(command.status()),
+                command.remark(),
+                operator.getUserId(),
+                buildGuardians(patientId, operator, command.guardian()));
+        patientCommandRepository.updatePatient(model);
+        return new PatientMutationVO(patientId, managedPatient.patientNo());
+    }
+
     private void validateIdentityDuplicate(Long orgId, String idCardHash) {
         if (StringUtils.hasText(idCardHash) && patientCommandRepository.existsPatientByIdCardHash(orgId, idCardHash)) {
             throw new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Patient id card already exists");
@@ -84,6 +130,18 @@ public class PatientCommandAppService {
         return birthDate == null
                 ? new ProtectedValue(null, null, null)
                 : sensitiveDataFacade.protectBirthDate(birthDate.toString());
+    }
+
+    private ProtectedValue protectPhone(String phone) {
+        return StringUtils.hasText(phone)
+                ? sensitiveDataFacade.protectPhone(phone)
+                : new ProtectedValue(null, null, null);
+    }
+
+    private ProtectedValue protectIdCard(String idCardNo) {
+        return StringUtils.hasText(idCardNo)
+                ? sensitiveDataFacade.protectIdCard(idCardNo)
+                : new ProtectedValue(null, null, null);
     }
 
     private Integer calculateAge(LocalDate birthDate) {
@@ -121,6 +179,12 @@ public class PatientCommandAppService {
                 defaultStatus(guardian.status()),
                 guardian.remark(),
                 operator.getUserId()));
+    }
+
+    private void ensureOrgAccess(AuthenticatedUser operator, Long recordOrgId) {
+        if (!operator.hasAnyRole("ADMIN", "SYS_ADMIN") && !recordOrgId.equals(operator.getOrgId())) {
+            throw new BusinessException(CommonErrorCode.FORBIDDEN);
+        }
     }
 
     private String buildPatientNo(long patientId) {

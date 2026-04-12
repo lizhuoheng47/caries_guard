@@ -1,13 +1,17 @@
 package com.cariesguard.patient.infrastructure.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cariesguard.patient.domain.model.PatientCreateModel;
 import com.cariesguard.patient.domain.model.PatientGuardianCreateModel;
+import com.cariesguard.patient.domain.model.PatientManagedModel;
+import com.cariesguard.patient.domain.model.PatientUpdateModel;
 import com.cariesguard.patient.domain.repository.PatientCommandRepository;
 import com.cariesguard.patient.infrastructure.dataobject.PatGuardianDO;
 import com.cariesguard.patient.infrastructure.dataobject.PatPatientDO;
 import com.cariesguard.patient.infrastructure.mapper.PatGuardianMapper;
 import com.cariesguard.patient.infrastructure.mapper.PatPatientMapper;
+import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -25,6 +29,57 @@ public class PatientCommandRepositoryImpl implements PatientCommandRepository {
     @Override
     public void createPatient(PatientCreateModel model) {
         patPatientMapper.insert(toPatientDO(model));
+        for (PatientGuardianCreateModel guardian : model.guardians()) {
+            patGuardianMapper.insert(toGuardianDO(guardian));
+        }
+    }
+
+    @Override
+    public Optional<PatientManagedModel> findManagedPatient(Long patientId) {
+        PatPatientDO patient = patPatientMapper.selectOne(new LambdaQueryWrapper<PatPatientDO>()
+                .eq(PatPatientDO::getId, patientId)
+                .eq(PatPatientDO::getDeletedFlag, 0L)
+                .last("LIMIT 1"));
+        return patient == null
+                ? Optional.empty()
+                : Optional.of(new PatientManagedModel(
+                        patient.getId(),
+                        patient.getPatientNo(),
+                        patient.getIdCardHash(),
+                        patient.getOrgId()));
+    }
+
+    @Override
+    public void updatePatient(PatientUpdateModel model) {
+        patPatientMapper.update(null, new LambdaUpdateWrapper<PatPatientDO>()
+                .eq(PatPatientDO::getId, model.patientId())
+                .eq(PatPatientDO::getDeletedFlag, 0L)
+                .set(PatPatientDO::getPatientNameEnc, model.patientNameEnc())
+                .set(PatPatientDO::getPatientNameHash, model.patientNameHash())
+                .set(PatPatientDO::getPatientNameMasked, model.patientNameMasked())
+                .set(PatPatientDO::getGenderCode, model.genderCode())
+                .set(PatPatientDO::getBirthDateEnc, model.birthDateEnc())
+                .set(PatPatientDO::getBirthDateHash, model.birthDateHash())
+                .set(PatPatientDO::getBirthDateMasked, model.birthDateMasked())
+                .set(PatPatientDO::getAge, model.age())
+                .set(PatPatientDO::getPhoneEnc, model.phoneEnc())
+                .set(PatPatientDO::getPhoneHash, model.phoneHash())
+                .set(PatPatientDO::getPhoneMasked, model.phoneMasked())
+                .set(PatPatientDO::getIdCardEnc, model.idCardEnc())
+                .set(PatPatientDO::getIdCardHash, model.idCardHash())
+                .set(PatPatientDO::getIdCardMasked, model.idCardMasked())
+                .set(PatPatientDO::getSourceCode, model.sourceCode())
+                .set(PatPatientDO::getFirstVisitDate, model.firstVisitDate())
+                .set(PatPatientDO::getPrivacyLevelCode, model.privacyLevelCode())
+                .set(PatPatientDO::getStatus, model.status())
+                .set(PatPatientDO::getRemark, model.remark())
+                .set(PatPatientDO::getUpdatedBy, model.operatorUserId()));
+
+        patGuardianMapper.update(null, new LambdaUpdateWrapper<PatGuardianDO>()
+                .eq(PatGuardianDO::getPatientId, model.patientId())
+                .eq(PatGuardianDO::getDeletedFlag, 0L)
+                .setSql("deleted_flag = id")
+                .set(PatGuardianDO::getUpdatedBy, model.operatorUserId()));
         for (PatientGuardianCreateModel guardian : model.guardians()) {
             patGuardianMapper.insert(toGuardianDO(guardian));
         }

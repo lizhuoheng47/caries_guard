@@ -4,12 +4,16 @@ import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
+import com.cariesguard.patient.domain.model.PageQueryResult;
 import com.cariesguard.patient.domain.model.PatientDetailModel;
 import com.cariesguard.patient.domain.model.PatientGuardianModel;
 import com.cariesguard.patient.domain.model.PatientProfileSnapshotModel;
+import com.cariesguard.patient.domain.model.PatientSummaryModel;
 import com.cariesguard.patient.domain.repository.PatientQueryRepository;
 import com.cariesguard.patient.interfaces.vo.PatientDetailVO;
 import com.cariesguard.patient.interfaces.vo.PatientGuardianVO;
+import com.cariesguard.patient.interfaces.vo.PageResultVO;
+import com.cariesguard.patient.interfaces.vo.PatientListItemVO;
 import com.cariesguard.patient.interfaces.vo.PatientProfileVO;
 import org.springframework.stereotype.Service;
 
@@ -26,9 +30,7 @@ public class PatientQueryAppService {
         AuthenticatedUser operator = SecurityContextUtils.currentUser();
         PatientDetailModel patient = patientQueryRepository.findPatientDetail(patientId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Patient does not exist"));
-        if (!operator.hasAnyRole("ADMIN", "SYS_ADMIN") && !patient.orgId().equals(operator.getOrgId())) {
-            throw new BusinessException(CommonErrorCode.FORBIDDEN);
-        }
+        ensureOrgAccess(operator, patient.orgId());
         return new PatientDetailVO(
                 patient.patientId(),
                 patient.patientNo(),
@@ -38,6 +40,38 @@ public class PatientQueryAppService {
                 patient.sourceCode(),
                 patient.guardianList().stream().map(this::toGuardianVO).toList(),
                 toProfileVO(patient.currentProfile()));
+    }
+
+    public PageResultVO<PatientListItemVO> pagePatients(int pageNo,
+                                                        int pageSize,
+                                                        String keyword,
+                                                        String sourceCode,
+                                                        String status) {
+        PageQueryResult<PatientSummaryModel> result = patientQueryRepository.pagePatients(
+                currentOrgScope(),
+                pageNo,
+                pageSize,
+                keyword,
+                sourceCode,
+                status);
+        return new PageResultVO<>(
+                result.records().stream().map(this::toPatientListItemVO).toList(),
+                result.total(),
+                result.pageNo(),
+                result.pageSize());
+    }
+
+    private PatientListItemVO toPatientListItemVO(PatientSummaryModel patient) {
+        return new PatientListItemVO(
+                patient.patientId(),
+                patient.patientNo(),
+                patient.patientNameMasked(),
+                patient.genderCode(),
+                patient.age(),
+                patient.phoneMasked(),
+                patient.sourceCode(),
+                patient.firstVisitDate(),
+                patient.status());
     }
 
     private PatientGuardianVO toGuardianVO(PatientGuardianModel guardian) {
@@ -62,5 +96,16 @@ public class PatientQueryAppService {
                 profile.lastDentalCheckMonths(),
                 profile.oralHygieneLevelCode(),
                 profile.effectiveDate());
+    }
+
+    private Long currentOrgScope() {
+        AuthenticatedUser operator = SecurityContextUtils.currentUser();
+        return operator.hasAnyRole("ADMIN", "SYS_ADMIN") ? null : operator.getOrgId();
+    }
+
+    private void ensureOrgAccess(AuthenticatedUser operator, Long recordOrgId) {
+        if (!operator.hasAnyRole("ADMIN", "SYS_ADMIN") && !recordOrgId.equals(operator.getOrgId())) {
+            throw new BusinessException(CommonErrorCode.FORBIDDEN);
+        }
     }
 }

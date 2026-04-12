@@ -1,9 +1,11 @@
 package com.cariesguard.patient.infrastructure.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cariesguard.patient.domain.model.PageQueryResult;
 import com.cariesguard.patient.domain.model.PatientDetailModel;
 import com.cariesguard.patient.domain.model.PatientGuardianModel;
 import com.cariesguard.patient.domain.model.PatientProfileSnapshotModel;
+import com.cariesguard.patient.domain.model.PatientSummaryModel;
 import com.cariesguard.patient.domain.repository.PatientQueryRepository;
 import com.cariesguard.patient.infrastructure.dataobject.PatGuardianDO;
 import com.cariesguard.patient.infrastructure.dataobject.PatPatientDO;
@@ -13,6 +15,7 @@ import com.cariesguard.patient.infrastructure.mapper.PatPatientMapper;
 import com.cariesguard.patient.infrastructure.mapper.PatProfileMapper;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
 
 @Repository
 public class PatientQueryRepositoryImpl implements PatientQueryRepository {
@@ -69,6 +72,48 @@ public class PatientQueryRepositoryImpl implements PatientQueryRepository {
                         .orElse(null)));
     }
 
+    @Override
+    public PageQueryResult<PatientSummaryModel> pagePatients(Long orgId,
+                                                             int pageNo,
+                                                             int pageSize,
+                                                             String keyword,
+                                                             String sourceCode,
+                                                             String status) {
+        int safePageNo = Math.max(pageNo, 1);
+        int safePageSize = Math.min(Math.max(pageSize, 1), 100);
+        LambdaQueryWrapper<PatPatientDO> wrapper = new LambdaQueryWrapper<PatPatientDO>()
+                .eq(PatPatientDO::getDeletedFlag, 0L)
+                .eq(orgId != null, PatPatientDO::getOrgId, orgId)
+                .eq(StringUtils.hasText(sourceCode), PatPatientDO::getSourceCode, trim(sourceCode))
+                .eq(StringUtils.hasText(status), PatPatientDO::getStatus, trim(status))
+                .and(StringUtils.hasText(keyword), item -> item
+                        .like(PatPatientDO::getPatientNo, trim(keyword))
+                        .or()
+                        .like(PatPatientDO::getPatientNameMasked, trim(keyword))
+                        .or()
+                        .like(PatPatientDO::getPhoneMasked, trim(keyword))
+                        .or()
+                        .like(PatPatientDO::getIdCardMasked, trim(keyword)));
+        long total = patPatientMapper.selectCount(wrapper);
+        var records = patPatientMapper.selectList(wrapper
+                        .orderByDesc(PatPatientDO::getCreatedAt)
+                        .orderByDesc(PatPatientDO::getId)
+                        .last("LIMIT " + ((safePageNo - 1) * safePageSize) + "," + safePageSize))
+                .stream()
+                .map(item -> new PatientSummaryModel(
+                        item.getId(),
+                        item.getPatientNo(),
+                        item.getPatientNameMasked(),
+                        item.getGenderCode(),
+                        item.getAge(),
+                        item.getPhoneMasked(),
+                        item.getSourceCode(),
+                        item.getFirstVisitDate(),
+                        item.getStatus()))
+                .toList();
+        return new PageQueryResult<>(records, total, safePageNo, safePageSize);
+    }
+
     private PatientProfileSnapshotModel toProfileModel(PatProfileDO profile) {
         return new PatientProfileSnapshotModel(
                 profile.getBrushingFreqPerDay(),
@@ -80,5 +125,9 @@ public class PatientQueryRepositoryImpl implements PatientQueryRepository {
                 profile.getLastDentalCheckMonths(),
                 profile.getOralHygieneLevelCode(),
                 profile.getEffectiveDate());
+    }
+
+    private String trim(String value) {
+        return value == null ? null : value.trim();
     }
 }
