@@ -240,6 +240,34 @@ Expose management and demo-facing aggregation capabilities.
 
 Close the release loop with test coverage and deployment baseline.
 
+### Current Status
+
+`caries-integration` has added stage-1 analysis->report E2E design-first tests:
+
+- `AnalysisToReportE2ETest`
+- `AnalysisCallbackIdempotencyE2ETest`
+- `ReportExportAuditIntegrationTest`
+
+The current stage validates cross-module orchestration and state/audit invariants with in-memory adapters.
+Stage-2 is now completed in `caries-boot` with real Spring integration tests:
+
+- `com.cariesguard.boot.e2e.AnalysisToReportE2ETest`
+- `com.cariesguard.boot.e2e.AnalysisCallbackIdempotencyE2ETest`
+- `com.cariesguard.boot.e2e.ReportExportAuditIntegrationTest`
+
+Execution baseline:
+
+- `@SpringBootTest + MockMvc(addFilters = false)`
+- real MySQL schema via Flyway migrations
+- HTTP entry on real controller + service + repository chain
+- object storage mocked at bean level to avoid external file dependency
+
+Test profile:
+
+- `application-e2e.yml`
+- isolated database: `cg_e2e` (`createDatabaseIfNotExist=true`)
+- avoids polluting production-like `cg` and bypasses local Flyway checksum drift
+
 ### Scope
 
 - unit tests

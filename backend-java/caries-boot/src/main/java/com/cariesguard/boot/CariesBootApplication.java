@@ -4,6 +4,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.context.annotation.FullyQualifiedAnnotationBeanNameGenerator;
 
 @SpringBootApplication(scanBasePackages = "com.cariesguard")
 @MapperScan(basePackages = {
@@ -12,7 +13,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
         "com.cariesguard.image.infrastructure.mapper",
         "com.cariesguard.analysis.infrastructure.mapper",
         "com.cariesguard.report.infrastructure.mapper"
-})
+}, nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class)
 @ConfigurationPropertiesScan("com.cariesguard")
 public class CariesBootApplication {
 
