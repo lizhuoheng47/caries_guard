@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
 import com.cariesguard.image.domain.model.StoredObject;
 import com.cariesguard.image.domain.service.ObjectStorageService;
+import com.cariesguard.followup.app.FollowupTriggerService;
 import com.cariesguard.patient.app.CaseCommandAppService;
 import com.cariesguard.report.domain.model.ReportAnalysisSummaryModel;
 import com.cariesguard.report.domain.model.ReportAttachmentModel;
@@ -59,6 +60,8 @@ class ReportAppServiceTests {
     private ObjectStorageService objectStorageService;
     @Mock
     private CaseCommandAppService caseCommandAppService;
+    @Mock
+    private FollowupTriggerService followupTriggerService;
 
     @AfterEach
     void tearDown() {
@@ -123,7 +126,8 @@ class ReportAppServiceTests {
                 reportRenderService,
                 reportPdfService,
                 objectStorageService,
-                caseCommandAppService);
+                caseCommandAppService,
+                followupTriggerService);
     }
 
     private void setCurrentUser(AuthenticatedUser user) {

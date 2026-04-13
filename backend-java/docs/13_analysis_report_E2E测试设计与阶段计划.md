@@ -91,3 +91,24 @@ Stage-2 已在 `caries-boot` 完成真实集成联测，覆盖 controller -> app
 验证命令：
 
 - `mvn -pl caries-boot -am "-Dtest=AnalysisToReportE2ETest,AnalysisCallbackIdempotencyE2ETest,ReportExportAuditIntegrationTest" "-Dsurefire.failIfNoSpecifiedTests=false" test`
+
+## 7. 下一步开发建议（2026-04-13）
+
+analysis -> report 的 E2E 已完成，下一步不切真实 MQ，直接进入 `P6 followup`。
+
+1. 实现 followup 主链路：`fup_plan`、`fup_task`、`fup_record` 的应用服务与 API。
+2. 建立报告/风险结果触发随访的规则入口（高风险、医生复核建议）。
+3. 新增 `analysis -> report -> followup` 跨模块 E2E 用例，形成更完整答辩证据链。
+
+## 8. P6 接入后的口径更新（2026-04-13）
+
+`ReportAppService` 已接入 `FollowupTriggerService`。因此在“高风险 + 建议复核”的报告生成路径中：
+
+1. 病例会先发生 `REVIEW_PENDING -> REPORT_READY`（`DOCTOR_CONFIRMED`）。
+2. 随后触发 `REPORT_READY -> FOLLOWUP_REQUIRED`（`FOLLOWUP_TRIGGERED`）。
+3. 旧的 analysis->report 用例若使用高风险回调，最终病例状态将不再停留在 `REPORT_READY`，而是 `FOLLOWUP_REQUIRED`。
+
+后续测试分层原则：
+
+- analysis/report 基础链路：可用低风险输入维持终态 `REPORT_READY`。
+- analysis->report->followup 主链路：使用高风险输入，断言 followup 计划/任务/状态日志/通知留痕。

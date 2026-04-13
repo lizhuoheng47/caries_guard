@@ -12,7 +12,8 @@ import org.springframework.context.annotation.FullyQualifiedAnnotationBeanNameGe
         "com.cariesguard.patient.infrastructure.mapper",
         "com.cariesguard.image.infrastructure.mapper",
         "com.cariesguard.analysis.infrastructure.mapper",
-        "com.cariesguard.report.infrastructure.mapper"
+        "com.cariesguard.report.infrastructure.mapper",
+        "com.cariesguard.followup.infrastructure.mapper"
 }, nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class)
 @ConfigurationPropertiesScan("com.cariesguard")
 public class CariesBootApplication {

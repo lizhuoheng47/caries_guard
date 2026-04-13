@@ -32,7 +32,7 @@ class AnalysisToReportE2ETest extends AnalysisReportE2EBaseTest {
                 """, fixture.caseId())).isEqualTo(1);
 
         long reportId = generateDoctorReport(fixture, "doctor confirmed");
-        assertThat(queryString("SELECT case_status_code FROM med_case WHERE id = ?", fixture.caseId())).isEqualTo("REPORT_READY");
+        assertThat(queryString("SELECT case_status_code FROM med_case WHERE id = ?", fixture.caseId())).isEqualTo("FOLLOWUP_REQUIRED");
         assertThat(count("""
                 SELECT COUNT(1)
                 FROM med_case_status_log
@@ -40,6 +40,14 @@ class AnalysisToReportE2ETest extends AnalysisReportE2EBaseTest {
                   AND from_status_code = 'REVIEW_PENDING'
                   AND to_status_code = 'REPORT_READY'
                   AND change_reason_code = 'DOCTOR_CONFIRMED'
+                """, fixture.caseId())).isEqualTo(1);
+        assertThat(count("""
+                SELECT COUNT(1)
+                FROM med_case_status_log
+                WHERE case_id = ?
+                  AND from_status_code = 'REPORT_READY'
+                  AND to_status_code = 'FOLLOWUP_REQUIRED'
+                  AND change_reason_code = 'FOLLOWUP_TRIGGERED'
                 """, fixture.caseId())).isEqualTo(1);
         var reportRow = queryRow("""
                 SELECT report_type_code, version_no, report_status_code, attachment_id

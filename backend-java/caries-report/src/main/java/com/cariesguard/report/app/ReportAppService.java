@@ -28,6 +28,7 @@ import com.cariesguard.report.infrastructure.service.ReportRenderService;
 import com.cariesguard.report.infrastructure.service.ReportTemplateResolver;
 import com.cariesguard.report.interfaces.command.ExportReportCommand;
 import com.cariesguard.report.interfaces.command.GenerateReportCommand;
+import com.cariesguard.followup.app.FollowupTriggerService;
 import com.cariesguard.report.interfaces.vo.ReportExportResultVO;
 import com.cariesguard.report.interfaces.vo.ReportGenerateResultVO;
 import java.io.ByteArrayInputStream;
@@ -53,6 +54,7 @@ public class ReportAppService {
     private final ReportPdfService reportPdfService;
     private final ObjectStorageService objectStorageService;
     private final CaseCommandAppService caseCommandAppService;
+    private final FollowupTriggerService followupTriggerService;
 
     public ReportAppService(ReportSourceQueryRepository reportSourceQueryRepository,
                             ReportRecordRepository reportRecordRepository,
@@ -62,7 +64,8 @@ public class ReportAppService {
                             ReportRenderService reportRenderService,
                             ReportPdfService reportPdfService,
                             ObjectStorageService objectStorageService,
-                            CaseCommandAppService caseCommandAppService) {
+                            CaseCommandAppService caseCommandAppService,
+                            FollowupTriggerService followupTriggerService) {
         this.reportSourceQueryRepository = reportSourceQueryRepository;
         this.reportRecordRepository = reportRecordRepository;
         this.reportExportLogRepository = reportExportLogRepository;
@@ -72,6 +75,7 @@ public class ReportAppService {
         this.reportPdfService = reportPdfService;
         this.objectStorageService = objectStorageService;
         this.caseCommandAppService = caseCommandAppService;
+        this.followupTriggerService = followupTriggerService;
     }
 
     @Transactional
@@ -158,6 +162,7 @@ public class ReportAppService {
                     generatedAt,
                     operator.getUserId());
             transitionCaseToReportReady(medicalCase.caseId(), medicalCase.caseStatusCode());
+            triggerFollowupIfNeeded(reportId, medicalCase, renderData, riskAssessment.orElse(null), operator.getUserId());
             return new ReportGenerateResultVO(
                     reportId,
                     reportNo,
@@ -217,6 +222,25 @@ public class ReportAppService {
         } catch (IOException ignored) {
             // Keep the original exception.
         }
+    }
+
+    private void triggerFollowupIfNeeded(Long reportId,
+                                         ReportCaseModel medicalCase,
+                                         ReportRenderDataModel renderData,
+                                         ReportRiskAssessmentModel riskAssessment,
+                                         Long operatorUserId) {
+        String riskLevelCode = riskAssessment != null ? riskAssessment.overallRiskLevelCode() : null;
+        String reviewSuggestedFlag = renderData.reviewSuggestedFlag();
+        Integer recommendedCycleDays = riskAssessment != null ? riskAssessment.recommendedCycleDays() : null;
+        followupTriggerService.triggerFromReport(
+                medicalCase.caseId(),
+                medicalCase.patientId(),
+                medicalCase.orgId(),
+                reportId,
+                riskLevelCode,
+                reviewSuggestedFlag,
+                recommendedCycleDays,
+                operatorUserId);
     }
 
     private void transitionCaseToReportReady(Long caseId, String currentCaseStatusCode) {

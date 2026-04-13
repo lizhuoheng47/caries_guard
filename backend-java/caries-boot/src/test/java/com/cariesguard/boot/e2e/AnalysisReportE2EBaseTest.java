@@ -420,6 +420,10 @@ abstract class AnalysisReportE2EBaseTest {
             jdbcTemplate.update("DELETE FROM rpt_export_log WHERE report_id IN (SELECT id FROM rpt_record WHERE case_id = ?)", fixture.caseId());
             jdbcTemplate.update("DELETE FROM med_attachment WHERE biz_module_code = 'REPORT' AND biz_id IN (SELECT id FROM rpt_record WHERE case_id = ?)", fixture.caseId());
             jdbcTemplate.update("DELETE FROM rpt_record WHERE case_id = ?", fixture.caseId());
+            jdbcTemplate.update("DELETE FROM msg_notify_record WHERE biz_module_code = 'FOLLOWUP' AND biz_id IN (SELECT id FROM fup_task WHERE case_id = ?)", fixture.caseId());
+            jdbcTemplate.update("DELETE FROM fup_record WHERE case_id = ?", fixture.caseId());
+            jdbcTemplate.update("DELETE FROM fup_task WHERE case_id = ?", fixture.caseId());
+            jdbcTemplate.update("DELETE FROM fup_plan WHERE case_id = ?", fixture.caseId());
             jdbcTemplate.update("DELETE FROM ana_visual_asset WHERE case_id = ?", fixture.caseId());
             jdbcTemplate.update("DELETE FROM ana_result_summary WHERE case_id = ?", fixture.caseId());
             jdbcTemplate.update("DELETE FROM med_risk_assessment_record WHERE case_id = ?", fixture.caseId());

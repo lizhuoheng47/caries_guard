@@ -42,6 +42,18 @@ import com.cariesguard.patient.domain.model.PatientOwnedModel;
 import com.cariesguard.patient.domain.model.VisitCreateModel;
 import com.cariesguard.patient.domain.model.VisitOwnedModel;
 import com.cariesguard.patient.domain.repository.VisitCaseCommandRepository;
+import com.cariesguard.followup.app.FollowupTriggerService;
+import com.cariesguard.followup.domain.model.FollowupCaseModel;
+import com.cariesguard.followup.domain.model.FupPlanCreateModel;
+import com.cariesguard.followup.domain.model.FupPlanModel;
+import com.cariesguard.followup.domain.model.FupTaskCreateModel;
+import com.cariesguard.followup.domain.model.FupTaskModel;
+import com.cariesguard.followup.domain.model.MsgNotifyCreateModel;
+import com.cariesguard.followup.domain.repository.FollowupCaseRepository;
+import com.cariesguard.followup.domain.repository.FupPlanRepository;
+import com.cariesguard.followup.domain.repository.FupTaskRepository;
+import com.cariesguard.followup.domain.repository.MsgNotifyRepository;
+import com.cariesguard.followup.domain.service.FollowupDomainService;
 import com.cariesguard.report.app.ReportAppService;
 import com.cariesguard.report.domain.model.ReportAnalysisSummaryModel;
 import com.cariesguard.report.domain.model.ReportAttachmentCreateModel;
@@ -99,6 +111,10 @@ public final class AnalysisReportE2EFixture {
     public final InMemoryReportExportLogRepository reportExportLogRepository;
     public final RecordingAnalysisTaskEventPublisher eventPublisher;
     public final AnalysisProperties analysisProperties;
+    public final InMemoryFupPlanRepository fupPlanRepository;
+    public final InMemoryFupTaskRepository fupTaskRepository;
+    public final InMemoryMsgNotifyRepository msgNotifyRepository;
+    public final FollowupTriggerService followupTriggerService;
 
     private AnalysisReportE2EFixture(SharedState state,
                                      AnalysisTaskAppService analysisTaskAppService,
@@ -111,7 +127,11 @@ public final class AnalysisReportE2EFixture {
                                      InMemoryReportRecordRepository reportRecordRepository,
                                      InMemoryReportExportLogRepository reportExportLogRepository,
                                      RecordingAnalysisTaskEventPublisher eventPublisher,
-                                     AnalysisProperties analysisProperties) {
+                                     AnalysisProperties analysisProperties,
+                                     InMemoryFupPlanRepository fupPlanRepository,
+                                     InMemoryFupTaskRepository fupTaskRepository,
+                                     InMemoryMsgNotifyRepository msgNotifyRepository,
+                                     FollowupTriggerService followupTriggerService) {
         this.state = state;
         this.analysisTaskAppService = analysisTaskAppService;
         this.analysisCallbackAppService = analysisCallbackAppService;
@@ -124,6 +144,10 @@ public final class AnalysisReportE2EFixture {
         this.reportExportLogRepository = reportExportLogRepository;
         this.eventPublisher = eventPublisher;
         this.analysisProperties = analysisProperties;
+        this.fupPlanRepository = fupPlanRepository;
+        this.fupTaskRepository = fupTaskRepository;
+        this.msgNotifyRepository = msgNotifyRepository;
+        this.followupTriggerService = followupTriggerService;
     }
 
     public static AnalysisReportE2EFixture createDefault() {
@@ -195,6 +219,18 @@ public final class AnalysisReportE2EFixture {
                 eventPublisher,
                 caseCommandAppService,
                 objectMapper);
+        InMemoryFupPlanRepository fupPlanRepository = new InMemoryFupPlanRepository();
+        InMemoryFupTaskRepository fupTaskRepository = new InMemoryFupTaskRepository();
+        InMemoryMsgNotifyRepository msgNotifyRepository = new InMemoryMsgNotifyRepository();
+        InMemoryFollowupCaseRepository followupCaseRepository = new InMemoryFollowupCaseRepository(shared);
+
+        FollowupTriggerService followupTriggerService = new FollowupTriggerService(
+                fupPlanRepository,
+                fupTaskRepository,
+                msgNotifyRepository,
+                new FollowupDomainService(),
+                caseCommandAppService);
+
         ReportAppService reportAppService = new ReportAppService(
                 reportSourceQueryRepository,
                 reportRecordRepository,
@@ -204,7 +240,8 @@ public final class AnalysisReportE2EFixture {
                 new ReportRenderService(),
                 new ReportPdfService(),
                 objectStorageService,
-                caseCommandAppService);
+                caseCommandAppService,
+                followupTriggerService);
 
         return new AnalysisReportE2EFixture(
                 shared,
@@ -218,7 +255,11 @@ public final class AnalysisReportE2EFixture {
                 reportRecordRepository,
                 reportExportLogRepository,
                 eventPublisher,
-                analysisProperties);
+                analysisProperties,
+                fupPlanRepository,
+                fupTaskRepository,
+                msgNotifyRepository,
+                followupTriggerService);
     }
 
     public void setCurrentUser(AuthenticatedUser user) {
@@ -811,6 +852,149 @@ public final class AnalysisReportE2EFixture {
 
         public List<ReportExportLogModel> logs() {
             return logs;
+        }
+    }
+
+    public static final class InMemoryFupPlanRepository implements FupPlanRepository {
+        private final Map<Long, FupPlanModel> byId = new HashMap<>();
+
+        @Override
+        public void create(FupPlanCreateModel model) {
+            byId.put(model.planId(), new FupPlanModel(
+                    model.planId(), model.planNo(), model.caseId(), model.patientId(),
+                    model.planTypeCode(), model.planStatusCode(), model.nextFollowupDate(),
+                    model.intervalDays(), model.ownerUserId(), model.triggerSourceCode(),
+                    model.triggerRefId(), model.orgId(), model.remark(), java.time.LocalDateTime.now()));
+        }
+
+        @Override
+        public Optional<FupPlanModel> findById(Long planId) {
+            return Optional.ofNullable(byId.get(planId));
+        }
+
+        @Override
+        public List<FupPlanModel> listByCaseId(Long caseId) {
+            return byId.values().stream()
+                    .filter(p -> Objects.equals(p.caseId(), caseId))
+                    .toList();
+        }
+
+        @Override
+        public boolean existsActivePlan(Long caseId, String triggerSourceCode, Long triggerRefId) {
+            return byId.values().stream()
+                    .anyMatch(p -> Objects.equals(p.caseId(), caseId)
+                            && Objects.equals(p.triggerSourceCode(), triggerSourceCode)
+                            && Objects.equals(p.triggerRefId(), triggerRefId)
+                            && List.of("PLANNED", "ACTIVE").contains(p.planStatusCode()));
+        }
+
+        @Override
+        public void updateStatus(Long planId, String planStatusCode, Long operatorUserId) {
+            FupPlanModel current = byId.get(planId);
+            if (current != null) {
+                byId.put(planId, new FupPlanModel(
+                        current.planId(), current.planNo(), current.caseId(), current.patientId(),
+                        current.planTypeCode(), planStatusCode, current.nextFollowupDate(),
+                        current.intervalDays(), current.ownerUserId(), current.triggerSourceCode(),
+                        current.triggerRefId(), current.orgId(), current.remark(), current.createdAt()));
+            }
+        }
+
+        public List<FupPlanModel> all() {
+            return List.copyOf(byId.values());
+        }
+    }
+
+    public static final class InMemoryFupTaskRepository implements FupTaskRepository {
+        private final Map<Long, FupTaskModel> byId = new HashMap<>();
+
+        @Override
+        public void create(FupTaskCreateModel model) {
+            byId.put(model.taskId(), new FupTaskModel(
+                    model.taskId(), model.taskNo(), model.planId(), model.caseId(), model.patientId(),
+                    model.taskTypeCode(), model.taskStatusCode(), model.assignedToUserId(),
+                    model.dueDate(), null, null, model.orgId(), model.remark(), java.time.LocalDateTime.now()));
+        }
+
+        @Override
+        public Optional<FupTaskModel> findById(Long taskId) {
+            return Optional.ofNullable(byId.get(taskId));
+        }
+
+        @Override
+        public List<FupTaskModel> listByPlanId(Long planId) {
+            return byId.values().stream().filter(t -> Objects.equals(t.planId(), planId)).toList();
+        }
+
+        @Override
+        public List<FupTaskModel> listByCaseId(Long caseId) {
+            return byId.values().stream().filter(t -> Objects.equals(t.caseId(), caseId)).toList();
+        }
+
+        @Override
+        public void updateStatus(Long taskId, String taskStatusCode,
+                                 java.time.LocalDateTime completedAt, Long operatorUserId) {
+            FupTaskModel current = byId.get(taskId);
+            if (current != null) {
+                byId.put(taskId, new FupTaskModel(
+                        current.taskId(), current.taskNo(), current.planId(), current.caseId(),
+                        current.patientId(), current.taskTypeCode(), taskStatusCode,
+                        current.assignedToUserId(), current.dueDate(), current.startedAt(),
+                        completedAt, current.orgId(), current.remark(), current.createdAt()));
+            }
+        }
+
+        @Override
+        public void assignTask(Long taskId, Long assignedToUserId, Long operatorUserId) {
+            FupTaskModel current = byId.get(taskId);
+            if (current != null) {
+                byId.put(taskId, new FupTaskModel(
+                        current.taskId(), current.taskNo(), current.planId(), current.caseId(),
+                        current.patientId(), current.taskTypeCode(), current.taskStatusCode(),
+                        assignedToUserId, current.dueDate(), current.startedAt(),
+                        current.completedAt(), current.orgId(), current.remark(), current.createdAt()));
+            }
+        }
+
+        @Override
+        public boolean allTasksDoneOrCancelled(Long planId) {
+            return byId.values().stream()
+                    .filter(t -> Objects.equals(t.planId(), planId))
+                    .allMatch(t -> List.of("DONE", "CANCELLED").contains(t.taskStatusCode()));
+        }
+
+        public List<FupTaskModel> all() {
+            return List.copyOf(byId.values());
+        }
+    }
+
+    public static final class InMemoryMsgNotifyRepository implements MsgNotifyRepository {
+        private final List<MsgNotifyCreateModel> records = new ArrayList<>();
+
+        @Override
+        public void create(MsgNotifyCreateModel model) {
+            records.add(model);
+        }
+
+        public List<MsgNotifyCreateModel> all() {
+            return List.copyOf(records);
+        }
+    }
+
+    public static final class InMemoryFollowupCaseRepository implements FollowupCaseRepository {
+        private final SharedState shared;
+
+        public InMemoryFollowupCaseRepository(SharedState shared) {
+            this.shared = shared;
+        }
+
+        @Override
+        public Optional<FollowupCaseModel> findCase(Long caseId) {
+            if (!Objects.equals(shared.caseId, caseId)) {
+                return Optional.empty();
+            }
+            return Optional.of(new FollowupCaseModel(
+                    shared.caseId, shared.patientId, shared.caseStatusCode, shared.orgId));
         }
     }
 

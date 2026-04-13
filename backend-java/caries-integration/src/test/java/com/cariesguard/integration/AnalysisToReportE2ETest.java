@@ -63,10 +63,12 @@ class AnalysisToReportE2ETest {
         assertThat(report.reportStatusCode()).isEqualTo("FINAL");
         assertThat(fixture.reportRecordRepository.listByCaseId(fixture.state.caseId)).hasSize(1);
         assertThat(fixture.reportRecordRepository.findById(report.reportId())).get().matches(item -> item.attachmentId() != null);
-        assertThat(fixture.state.caseStatusCode).isEqualTo("REPORT_READY");
+        assertThat(fixture.state.caseStatusCode).isEqualTo("FOLLOWUP_REQUIRED");
 
         CaseStatusLogCreateModel reportTransition = findTransition(fixture.state.caseStatusLogs, "REVIEW_PENDING", "REPORT_READY");
         assertThat(reportTransition.changeReasonCode()).isEqualTo("DOCTOR_CONFIRMED");
+        CaseStatusLogCreateModel followupTransition = findTransition(fixture.state.caseStatusLogs, "REPORT_READY", "FOLLOWUP_REQUIRED");
+        assertThat(followupTransition.changeReasonCode()).isEqualTo("FOLLOWUP_TRIGGERED");
 
         ReportExportResultVO export = fixture.reportAppService.exportReport(report.reportId(), new ExportReportCommand(null, null));
         assertThat(export.exported()).isTrue();

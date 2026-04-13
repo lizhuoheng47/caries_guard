@@ -13,6 +13,19 @@ It is not a greenfield bootstrap plan. The project already has:
 
 So the next phase is baseline alignment plus incremental implementation.
 
+## Current Snapshot (2026-04-13)
+
+- `P3 image` core workflow completed.
+- `P4 analysis` core workflow completed (logging publisher mode, no real MQ yet).
+- `P5 report` core workflow completed.
+- analysis -> report Stage-2 real integration tests are completed in `caries-boot`.
+- `P6 followup` has entered implementation stage:
+  - followup app/repository/controller skeleton is in place
+  - report-triggered followup is wired (`ReportAppService -> FollowupTriggerService`)
+  - in-memory cross-module integration tests for trigger/idempotency/non-trigger are added
+  - remaining work is real DB E2E stabilization and boundary tests (audit/overdue)
+- `P7 dashboard` remains the next major gap after P6 stabilization.
+
 ## Phase P0: Baseline Alignment
 
 ### Goal
@@ -206,6 +219,21 @@ Core chain implemented in `caries-report`:
 
 Generate and track follow-up plans from risk or diagnosis outcome.
 
+### Current Status
+
+Partially implemented:
+
+- `fup_plan / fup_task / fup_record` domain + app + controller are present
+- trigger entry is centralized in `FollowupTriggerService`
+- report generation can auto-trigger followup for high-risk or review-suggested cases
+- idempotent trigger behavior is covered in `caries-integration`
+
+Remaining:
+
+- finish schema migration alignment for evolved followup fields
+- complete real DB E2E and edge tests (audit and overdue)
+- finalize docs after all P6 acceptance scenarios pass
+
 ### Scope
 
 - follow-up plan
@@ -320,3 +348,15 @@ Reason:
 - `system` is the access and isolation foundation
 - `patient + case + image + analysis + report` forms the MVP chain
 - `follow-up + dashboard` is enhancement, not bootstrap
+
+## Next Implementation Step
+
+Next development should complete `P6 followup` acceptance, then enter `P7 dashboard`.
+
+Execution order:
+
+1. Finalize followup migration + repository alignment against Flyway baseline.
+2. Stabilize cross-module E2E assertions for `analysis -> report -> followup`.
+3. Add missing boundary tests: followup audit and overdue handling.
+4. Update P6 docs with completed acceptance evidence.
+5. After P6 is stable, implement P7 dashboard aggregation APIs and ops metrics endpoints.
