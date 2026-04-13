@@ -39,6 +39,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 @SpringBootTest(classes = CariesBootApplication.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -382,12 +383,25 @@ abstract class AnalysisReportE2EBaseTest {
         return jdbcTemplate.queryForMap(sql, args);
     }
 
+    protected long nextId() {
+        return idSequence.incrementAndGet();
+    }
+
     protected boolean callbackIsIdempotent(JsonNode callbackResponse) {
         JsonNode data = callbackResponse.path("data");
         if (data.has("idempotent")) {
             return data.path("idempotent").asBoolean();
         }
         return data.path("duplicate").asBoolean();
+    }
+
+    protected JsonNode getJson(String url, TestFixture fixture) throws Exception {
+        authenticateAsSysAdmin(fixture.orgId());
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders.get(url)).andReturn();
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(body.path("code").asText()).isEqualTo("00000");
+        return body;
     }
 
     private JsonNode postJson(String url, Object requestBody, Map<String, String> headers, int expectedStatus) throws Exception {
