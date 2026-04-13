@@ -42,6 +42,7 @@ import com.cariesguard.patient.domain.model.PatientOwnedModel;
 import com.cariesguard.patient.domain.model.VisitCreateModel;
 import com.cariesguard.patient.domain.model.VisitOwnedModel;
 import com.cariesguard.patient.domain.repository.VisitCaseCommandRepository;
+import com.cariesguard.followup.app.FollowupTaskAppService;
 import com.cariesguard.followup.app.FollowupTriggerService;
 import com.cariesguard.followup.domain.model.FollowupCaseModel;
 import com.cariesguard.followup.domain.model.FupPlanCreateModel;
@@ -114,6 +115,7 @@ public final class AnalysisReportE2EFixture {
     public final InMemoryFupPlanRepository fupPlanRepository;
     public final InMemoryFupTaskRepository fupTaskRepository;
     public final InMemoryMsgNotifyRepository msgNotifyRepository;
+    public final FollowupTaskAppService followupTaskAppService;
     public final FollowupTriggerService followupTriggerService;
 
     private AnalysisReportE2EFixture(SharedState state,
@@ -131,6 +133,7 @@ public final class AnalysisReportE2EFixture {
                                      InMemoryFupPlanRepository fupPlanRepository,
                                      InMemoryFupTaskRepository fupTaskRepository,
                                      InMemoryMsgNotifyRepository msgNotifyRepository,
+                                     FollowupTaskAppService followupTaskAppService,
                                      FollowupTriggerService followupTriggerService) {
         this.state = state;
         this.analysisTaskAppService = analysisTaskAppService;
@@ -147,6 +150,7 @@ public final class AnalysisReportE2EFixture {
         this.fupPlanRepository = fupPlanRepository;
         this.fupTaskRepository = fupTaskRepository;
         this.msgNotifyRepository = msgNotifyRepository;
+        this.followupTaskAppService = followupTaskAppService;
         this.followupTriggerService = followupTriggerService;
     }
 
@@ -222,14 +226,19 @@ public final class AnalysisReportE2EFixture {
         InMemoryFupPlanRepository fupPlanRepository = new InMemoryFupPlanRepository();
         InMemoryFupTaskRepository fupTaskRepository = new InMemoryFupTaskRepository();
         InMemoryMsgNotifyRepository msgNotifyRepository = new InMemoryMsgNotifyRepository();
-        InMemoryFollowupCaseRepository followupCaseRepository = new InMemoryFollowupCaseRepository(shared);
+        FollowupDomainService followupDomainService = new FollowupDomainService();
 
         FollowupTriggerService followupTriggerService = new FollowupTriggerService(
                 fupPlanRepository,
                 fupTaskRepository,
                 msgNotifyRepository,
-                new FollowupDomainService(),
+                followupDomainService,
                 caseCommandAppService);
+        FollowupTaskAppService followupTaskAppService = new FollowupTaskAppService(
+                fupTaskRepository,
+                fupPlanRepository,
+                msgNotifyRepository,
+                followupDomainService);
 
         ReportAppService reportAppService = new ReportAppService(
                 reportSourceQueryRepository,
@@ -259,6 +268,7 @@ public final class AnalysisReportE2EFixture {
                 fupPlanRepository,
                 fupTaskRepository,
                 msgNotifyRepository,
+                followupTaskAppService,
                 followupTriggerService);
     }
 

@@ -112,3 +112,39 @@ analysis -> report 的 E2E 已完成，下一步不切真实 MQ，直接进入 `
 
 - analysis/report 基础链路：可用低风险输入维持终态 `REPORT_READY`。
 - analysis->report->followup 主链路：使用高风险输入，断言 followup 计划/任务/状态日志/通知留痕。
+
+## 9. 阶段执行结果回写（2026-04-13）
+
+### 9.1 新增并通过的 followup 边界测试（in-memory）
+
+- `FollowupAuditIntegrationTest`
+- `FollowupOverdueIntegrationTest`
+
+覆盖断言：
+
+1. 状态机链路含 `REVIEW_PENDING -> REPORT_READY -> FOLLOWUP_REQUIRED`。
+2. `fup_plan / fup_task` 已创建且触发来源可追溯。
+3. `msg_notify_record` 有随访提醒与逾期告警留痕。
+4. 终态任务不可再次变更为 `OVERDUE`。
+
+### 9.2 新增并通过的 boot 真库跨模块 E2E
+
+- `com.cariesguard.boot.e2e.AnalysisReportFollowupE2ETest`
+- `com.cariesguard.boot.e2e.FollowupTriggerIdempotencyE2ETest`
+- `com.cariesguard.boot.e2e.FollowupAuditIntegrationTest`
+- `com.cariesguard.boot.e2e.FollowupOverdueIntegrationTest`
+
+真实库断言：
+
+1. `fup_plan` 入库（含 `trigger_source_code` 与 `trigger_ref_id`）。
+2. `fup_task` 入库（`FOLLOW_CONTACT` / `TODO` / `due_date`）。
+3. `msg_notify_record` 入库（`FOLLOWUP` / `REMINDER` / `IN_APP`）。
+4. `fup_record` 入库后，关联 `fup_task` 进入 `DONE`，单任务 `fup_plan` 自动关闭。
+5. 任务逾期后新增 `msg_notify_record(ALERT)`。
+6. `med_case_status_log` 入库并可追溯 `DOCTOR_CONFIRMED` 与 `FOLLOWUP_TRIGGERED`。
+
+## 10. 当前阶段未覆盖边界声明（2026-04-13）
+
+1. 通知能力当前以 `msg_notify_record` 数据留痕为主，未接入真实短信/邮件通道。
+2. 逾期验证以测试内状态推进为主，未依赖真实定时调度中间件。
+3. analysis 与 followup 的真实 MQ 消费链路仍在后续 integration 阶段实施，本阶段保持 logging publisher 策略。

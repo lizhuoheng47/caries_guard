@@ -6,6 +6,7 @@ import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.followup.domain.model.FupRecordCreateModel;
 import com.cariesguard.followup.domain.model.FupTaskCreateModel;
 import com.cariesguard.followup.domain.model.FupTaskModel;
+import com.cariesguard.followup.domain.repository.FupPlanRepository;
 import com.cariesguard.followup.domain.repository.FupRecordRepository;
 import com.cariesguard.followup.domain.repository.FupTaskRepository;
 import com.cariesguard.followup.domain.service.FollowupDomainService;
@@ -25,13 +26,16 @@ public class FollowupRecordAppService {
 
     private static final Logger log = LoggerFactory.getLogger(FollowupRecordAppService.class);
 
+    private final FupPlanRepository fupPlanRepository;
     private final FupRecordRepository fupRecordRepository;
     private final FupTaskRepository fupTaskRepository;
     private final FollowupDomainService followupDomainService;
 
-    public FollowupRecordAppService(FupRecordRepository fupRecordRepository,
+    public FollowupRecordAppService(FupPlanRepository fupPlanRepository,
+                                    FupRecordRepository fupRecordRepository,
                                     FupTaskRepository fupTaskRepository,
                                     FollowupDomainService followupDomainService) {
+        this.fupPlanRepository = fupPlanRepository;
         this.fupRecordRepository = fupRecordRepository;
         this.fupTaskRepository = fupTaskRepository;
         this.followupDomainService = followupDomainService;
@@ -76,6 +80,8 @@ public class FollowupRecordAppService {
         // 若建议继续随访，在原计划下派生下一个任务
         if ("1".equals(followNextFlag)) {
             deriveNextTask(task, command.nextIntervalDays(), operator.getUserId());
+        } else {
+            autoClosePlanIfAllDone(task.planId(), operator.getUserId());
         }
 
         return fupRecordRepository.findById(recordId).map(this::toVO)
@@ -110,6 +116,13 @@ public class FollowupRecordAppService {
             log.info("Derived next task {} for plan {}", newTaskId, completedTask.planId());
         } catch (Exception e) {
             log.warn("Failed to derive next task for planId={}: {}", completedTask.planId(), e.getMessage());
+        }
+    }
+
+    private void autoClosePlanIfAllDone(Long planId, Long operatorUserId) {
+        if (fupTaskRepository.allTasksDoneOrCancelled(planId)) {
+            fupPlanRepository.updateStatus(planId, "DONE", operatorUserId);
+            log.info("Plan {} auto-closed after record completion", planId);
         }
     }
 

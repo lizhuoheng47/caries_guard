@@ -22,8 +22,9 @@ So the next phase is baseline alignment plus incremental implementation.
 - `P6 followup` has entered implementation stage:
   - followup app/repository/controller skeleton is in place
   - report-triggered followup is wired (`ReportAppService -> FollowupTriggerService`)
-  - in-memory cross-module integration tests for trigger/idempotency/non-trigger are added
-  - remaining work is real DB E2E stabilization and boundary tests (audit/overdue)
+  - in-memory boundary tests are in place (`FollowupAuditIntegrationTest`, `FollowupOverdueIntegrationTest`)
+  - boot real DB cross-module E2E is in place (`AnalysisReportFollowupE2ETest`, `FollowupTriggerIdempotencyE2ETest`, `FollowupAuditIntegrationTest`, `FollowupOverdueIntegrationTest`)
+  - remaining work is P6文档收口与 P7 dashboard 进入实施
 - `P7 dashboard` remains the next major gap after P6 stabilization.
 
 ## Phase P0: Baseline Alignment

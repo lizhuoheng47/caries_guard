@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -329,6 +330,43 @@ abstract class AnalysisReportE2EBaseTest {
                         "remark", "should fail"),
                 Map.of(),
                 400);
+    }
+
+    protected JsonNode updateFollowupTaskStatus(TestFixture fixture, long taskId, String targetStatusCode, String remark) throws Exception {
+        authenticateAsSysAdmin(fixture.orgId());
+        JsonNode body = postJson(
+                "/api/v1/followup/tasks/" + taskId + "/status",
+                Map.of(
+                        "targetStatusCode", targetStatusCode,
+                        "remark", remark),
+                Map.of(),
+                200);
+        assertThat(body.path("code").asText()).isEqualTo("00000");
+        return body;
+    }
+
+    protected JsonNode addFollowupRecord(TestFixture fixture,
+                                         long taskId,
+                                         boolean followNext,
+                                         Integer nextIntervalDays,
+                                         String outcomeSummary) throws Exception {
+        authenticateAsSysAdmin(fixture.orgId());
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("taskId", taskId);
+        request.put("followupMethodCode", "PHONE");
+        request.put("contactResultCode", "REACHED");
+        request.put("followNext", followNext);
+        request.put("nextIntervalDays", nextIntervalDays);
+        request.put("outcomeSummary", outcomeSummary);
+        request.put("doctorNotes", "boot e2e record");
+        request.put("remark", "boot e2e record");
+        JsonNode body = postJson(
+                "/api/v1/followup/records",
+                request,
+                Map.of(),
+                200);
+        assertThat(body.path("code").asText()).isEqualTo("00000");
+        return body;
     }
 
     protected long count(String sql, Object... args) {
