@@ -6,9 +6,11 @@ import com.cariesguard.analysis.domain.model.AnalysisRequestedEvent;
 import com.cariesguard.analysis.domain.service.AnalysisTaskEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(prefix = "caries.analysis.messaging", name = "mode", havingValue = "logging", matchIfMissing = true)
 public class LoggingAnalysisTaskEventPublisher implements AnalysisTaskEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingAnalysisTaskEventPublisher.class);

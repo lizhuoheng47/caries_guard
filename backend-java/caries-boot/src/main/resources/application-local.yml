@@ -29,6 +29,11 @@ logging:
   pattern:
     level: "%5p [%X{traceId}]"
 
+management:
+  health:
+    rabbit:
+      enabled: true
+
 caries:
   security:
     jwt:
@@ -48,3 +53,13 @@ caries:
     default-model-version: ${CARIES_ANALYSIS_MODEL_VERSION:caries-v1}
     callback-secret: ${CARIES_ANALYSIS_CALLBACK_SECRET:change-me-to-a-strong-analysis-callback-secret}
     callback-allowed-clock-skew-seconds: ${CARIES_ANALYSIS_CALLBACK_SKEW_SECONDS:300}
+    messaging:
+      mode: rabbit
+      rabbit:
+        exchange: ${CARIES_ANALYSIS_EXCHANGE:caries.analysis.exchange}
+        requested-queue: ${CARIES_ANALYSIS_REQUESTED_QUEUE:caries.analysis.requested.queue}
+        completed-queue: ${CARIES_ANALYSIS_COMPLETED_QUEUE:caries.analysis.completed.queue}
+        failed-queue: ${CARIES_ANALYSIS_FAILED_QUEUE:caries.analysis.failed.queue}
+        requested-routing-key: ${CARIES_ANALYSIS_REQUESTED_ROUTING_KEY:analysis.requested}
+        completed-routing-key: ${CARIES_ANALYSIS_COMPLETED_ROUTING_KEY:analysis.completed}
+        failed-routing-key: ${CARIES_ANALYSIS_FAILED_ROUTING_KEY:analysis.failed}

@@ -53,13 +53,20 @@
 - 回调状态大小写规范化与空状态校验
 - 摘要聚合列回退读取能力
 
-## 5. 仍待完成项
+## 5. 当前剩余项
 
-- `AnalysisTaskEventPublisher` 目前为日志实现，后续替换为真实 MQ Publisher/Consumer
-- 补充跨模块 E2E（`image -> analysis -> report/followup`）联测
+- Python AI 消费端联调：对接真实 `analysis.requested` 队列消费
+- 补充 MQ 消费确认、失败重投、死信等运行治理策略
 - 与 Python AI 服务进行真实签名联调验证
 
 ## 6. 当前结论
 
 `analysis` 模块当前实现已满足“业务编排中枢”定位，不是简单回调接收器。  
 本轮修正后，边界、状态机、幂等、分层与落库职责均与《一、模块定位.md》保持一致。
+
+补充说明（2026-04-14）：
+
+- `AnalysisTaskEventPublisher` 已接入真实 RabbitMQ Publisher
+- `analysis.requested` 发布原始 AI 请求 JSON，供 Python AI 消费
+- `analysis.completed` / `analysis.failed` 事件同步发布到 RabbitMQ，供后续集成侧订阅
+- `local` profile 默认走真实 RabbitMQ，`e2e` profile 仍保持 logging publisher，避免测试对 MQ 产生硬依赖

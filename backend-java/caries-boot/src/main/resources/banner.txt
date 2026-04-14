@@ -1,0 +1,16 @@
+${AnsiColor.BRIGHT_GREEN}
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@                                                                           @
+@   ${AnsiColor.GREEN}____                _                 ____                 _         ${AnsiColor.BRIGHT_GREEN}   @
+@  ${AnsiColor.GREEN}/ ___|  _ __   ____ (_) _ __    __ _  | __ )   ___    ___  | |_       ${AnsiColor.BRIGHT_GREEN}   @
+@  ${AnsiColor.GREEN}\___ \ | '_ \ | '__|| || '_ \  / _` | |  _ \  / _ \  / _ \ | __|      ${AnsiColor.BRIGHT_GREEN}   @
+@   ${AnsiColor.GREEN}___) || |_)  | |   | || | | || (_| | | |_) || (_) || (_) || |_       ${AnsiColor.BRIGHT_GREEN}   @
+@  ${AnsiColor.GREEN}|____/ | .__/ |_|   |_||_| |_| \__, | |____/  \___/  \___/  \__|      ${AnsiColor.BRIGHT_GREEN}   @
+@         ${AnsiColor.GREEN}|_|                      |___/                                 ${AnsiColor.BRIGHT_GREEN}   @
+@                                                                           @
+@@@@@@@@@@@@@@@@@ ${AnsiColor.WHITE}Dental Medical Assistant System v1.0${AnsiColor.BRIGHT_GREEN} @@@@@@@@@@@@@@@@@@@@@@S
+                 ${AnsiColor.BRIGHT_BLACK}──────────────────────────────────────────
+                 ${AnsiColor.CYAN}>> Version:   ${spring-boot.version}${AnsiColor.BRIGHT_BLACK}            │
+                 ${AnsiColor.CYAN}>> Profile:   ${spring.profiles.active:default}${AnsiColor.BRIGHT_BLACK}          │
+                 ${AnsiColor.CYAN}>> Status:    Running / Stable${AnsiColor.BRIGHT_BLACK}       │
+                 ──────────────────────────────────────────┘${AnsiColor.DEFAULT}

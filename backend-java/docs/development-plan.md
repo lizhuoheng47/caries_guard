@@ -9,7 +9,7 @@ The project is no longer in bootstrap phase. Core modules have already moved int
 ## Current Snapshot
 
 - `P3 image` core workflow is completed.
-- `P4 analysis` core workflow is completed in logging-publisher mode.
+- `P4 analysis` core workflow is completed, and local profile now uses a real RabbitMQ publisher.
 - `P5 report` core workflow is completed.
 - analysis -> report real integration tests are completed in `caries-boot`.
 - `P6 followup` is completed for current V1 scope:
@@ -71,7 +71,7 @@ Covered scope:
 
 Deferred:
 
-- real MQ publisher / consumer replacement
+- Python AI consumer integration and MQ runtime governance
 
 ## Phase P5: Report Module
 
