@@ -363,10 +363,16 @@
 请求：
 ```json
 {
-  "imageIds": [5001],
+  "caseId": 3001,
+  "patientId": 1001,
+  "forceRetryFlag": false,
   "taskTypeCode": "INFERENCE"
 }
 ```
+
+说明：
+- 当前实现由服务端自动解析病例下 `quality_status_code = PASS` 的有效影像；
+- 当前别名接口仍会先校验 body，因此 request body 中仍需携带 `caseId`。
 
 返回：
 ```json
@@ -411,6 +417,7 @@
 请求：
 ```json
 {
+  "caseId": 3001,
   "diagnosisId": 7001,
   "sourceImageId": 5001,
   "feedbackTypeCode": "RE_GRADE",
@@ -418,6 +425,10 @@
   "correctedTruthJson": {}
 }
 ```
+
+说明：
+- 当前别名接口会使用 path 中的 `caseId` 覆盖 command；
+- 但由于 `@Valid` 先校验 body，当前 request body 中仍需传 `caseId`。
 
 ---
 
@@ -440,7 +451,7 @@
   "reportNo": "RPT202604110001",
   "reportTypeCode": "DOCTOR",
   "versionNo": 1,
-  "reportStatusCode": "DRAFT"
+  "reportStatusCode": "FINAL"
 }
 ```
 
@@ -463,7 +474,7 @@
 # 8. followup 模块
 
 ## 8.1 创建随访计划
-### POST /api/v1/cases/{caseId}/followups
+### POST /api/v1/cases/{caseId}/followup/plans
 
 请求：
 ```json
@@ -474,19 +485,43 @@
 }
 ```
 
-## 8.2 随访任务列表
-### GET /api/v1/followup/tasks
+## 8.2 病例随访计划列表
+### GET /api/v1/cases/{caseId}/followup/plans
 
-## 8.3 完成随访任务
-### POST /api/v1/followup/tasks/{taskId}/complete
+## 8.3 病例随访任务列表
+### GET /api/v1/cases/{caseId}/followup/tasks
+
+## 8.4 更新随访任务状态
+### POST /api/v1/followup/tasks/{taskId}/status
 
 请求：
 ```json
 {
-  "resultCode": "DONE",
-  "recordContent": "已电话通知复查"
+  "targetStatusCode": "DONE",
+  "remark": "任务已完成"
 }
 ```
+
+## 8.5 写入随访记录
+### POST /api/v1/followup/records
+
+请求：
+```json
+{
+  "taskId": 9001,
+  "followupMethodCode": "PHONE",
+  "contactResultCode": "REACHED",
+  "followNext": false,
+  "outcomeSummary": "已电话通知复查",
+  "doctorNotes": "无需继续随访"
+}
+```
+
+## 8.6 病例随访记录列表
+### GET /api/v1/cases/{caseId}/followup/records
+
+## 8.7 任务随访记录列表
+### GET /api/v1/followup/tasks/{taskId}/records
 
 ---
 
@@ -524,7 +559,16 @@
 
 ---
 
-# 10. 结论
+# 10. dashboard 说明
+
+dashboard 接口已进入独立冻结文档管理，当前以以下文档为准：
+
+- `P7_Dashboard_数据口径冻结表与首批接口清单.md`
+- `P7_Dashboard开发文档与说明文档.md`
+
+---
+
+# 11. 结论
 
 本文件冻结的是“开发前契约”，不是“开发后补文档”。
 

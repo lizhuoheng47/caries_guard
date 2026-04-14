@@ -2,312 +2,157 @@
 
 ## Plan Position
 
-This plan is based on the actual current repository state.
+This plan reflects the actual repository state as of `2026-04-14`.
 
-It is not a greenfield bootstrap plan. The project already has:
+The project is no longer in bootstrap phase. Core modules have already moved into implementation and verification.
 
-- a working Java multi-module structure
-- security and auth baseline
-- Flyway migrations
-- a partial `system` module
+## Current Snapshot
 
-So the next phase is baseline alignment plus incremental implementation.
-
-## Current Snapshot (2026-04-13)
-
-- `P3 image` core workflow completed.
-- `P4 analysis` core workflow completed (logging publisher mode, no real MQ yet).
-- `P5 report` core workflow completed.
-- analysis -> report Stage-2 real integration tests are completed in `caries-boot`.
-- `P6 followup` has entered implementation stage:
-  - followup app/repository/controller skeleton is in place
-  - report-triggered followup is wired (`ReportAppService -> FollowupTriggerService`)
-  - in-memory boundary tests are in place (`FollowupAuditIntegrationTest`, `FollowupOverdueIntegrationTest`)
-  - boot real DB cross-module E2E is in place (`AnalysisReportFollowupE2ETest`, `FollowupTriggerIdempotencyE2ETest`, `FollowupAuditIntegrationTest`, `FollowupOverdueIntegrationTest`)
-  - remaining work is P6文档收口与 P7 dashboard 进入实施
-- `P7 dashboard` remains the next major gap after P6 stabilization.
+- `P3 image` core workflow is completed.
+- `P4 analysis` core workflow is completed in logging-publisher mode.
+- `P5 report` core workflow is completed.
+- analysis -> report real integration tests are completed in `caries-boot`.
+- `P6 followup` is completed for current V1 scope:
+  - trigger, audit, overdue, idempotency, and cross-module E2E are all covered
+  - P6 acceptance evidence has been written back to docs
+- `P7 dashboard` first implementation scope is completed:
+  - overview, status distribution, risk distribution, followup summary, backlog summary, model runtime, and trend endpoints are implemented
+  - boot real DB integration tests are in place for all 7 endpoints
 
 ## Phase P0: Baseline Alignment
 
-### Goal
+Completed.
 
-Freeze the engineering and schema baseline before feature expansion.
-
-### Scope
-
-- align codebase status with written documentation
-- reconcile external field dictionary with Flyway scripts
-- freeze naming, layering, and module conventions
-- identify missing tables, missing indexes, and missing constraints
-- resolve SQL comment encoding problems where needed
-- define V1 formal table scope for AI collaboration tables
-
-### Deliverables
-
-- README and architecture docs
-- schema gap report
-- confirmed V1 table list
-- implementation conventions for modules
-
-### Exit Criteria
-
-- docs are approved
-- P1 implementation target is frozen
-- no unresolved baseline contradiction remains between docs and migration scripts
+Baseline engineering conventions, Flyway alignment strategy, and module boundaries have been frozen.
 
 ## Phase P1: System Module Completion
 
-### Goal
+Core baseline is available and can support later business modules.
 
-Turn `caries-system` into the actual access-control and org-isolation foundation.
+Current status:
 
-### Scope
-
-- user management
-- role management
-- menu / permission management
-- dictionary query
-- config query
-- login audit
-- operation audit
-- initial data-scope enforcement
-
-### Deliverables
-
-- complete auth flow
-- RBAC query and maintenance APIs
-- current-user permission set API
-- org-aware access checks
-
-### Exit Criteria
-
-- login and permission checks are complete
-- role-based permission effect is verifiable
-- org isolation is testable
+- auth and org-isolation baseline are available
+- remaining work belongs to management enhancement, not mainline blocker
 
 ## Phase P2: Patient and Case Core Workflow
 
-### Goal
+Core workflow is in place.
 
-Build the first medical business chain.
+Covered chain:
 
-### Scope
-
-- patient master data
-- guardian
-- patient profile
-- visit registration
-- case creation
-- case status transition log
-- diagnosis
-- tooth record
-
-### Deliverables
-
-- patient create/update/query
-- visit create/query
-- case create/detail/query
-- explicit case state machine enforcement
-- state transition audit persistence
-
-### Exit Criteria
-
-- `patient -> visit -> case` is fully runnable
-- invalid case status transitions are blocked
-- every valid case transition is logged
+- patient
+- visit
+- case
+- case status log
 
 ## Phase P3: Image Module
 
-### Goal
+Completed.
 
-Complete image and file persistence workflow.
-
-### Current Status
-
-Completed. Detailed completion note is tracked in `docs/09_image_模块开发检查与完成情况.md`.
-
-### Scope
+Covered scope:
 
 - attachment persistence
-- medical image persistence
+- image metadata persistence
 - upload flow
-- MD5 dedup strategy
 - primary-image rule
-- image quality check table and APIs
-- object storage integration
-
-### Deliverables
-
-- file upload API
-- image metadata API
-- quality check record API
-- storage integration abstraction
-
-### Exit Criteria
-
-- image upload succeeds end to end
-- metadata and attachment records are consistent
-- primary-image rule is enforced
+- image quality check
 
 ## Phase P4: Analysis Module
 
-### Goal
+Completed for current stage.
 
-Connect medical images with AI processing workflow.
+Covered scope:
 
-### Current Status
-
-Core workflow implemented. Task create/query, callback idempotency, result write-back,
-correction feedback, and case status synchronization are online in code.
-MQ consumer-side finalization remains for later phase.
-Module-positioning alignment fixes (callback validation normalization, event publish timing,
-state-machine precondition tightening, summary aggregate fallback) are completed.
-Cross-module E2E test and Python real-signature compatibility test are completed in `caries-integration`.
-
-### Scope
-
-- AI task creation
-- MQ event publishing
-- task status tracking
-- result summary callback
-- correction feedback entry
+- task creation
+- callback write-back
+- correction feedback
 - case status synchronization
+- callback idempotency
 
-### Deliverables
+Deferred:
 
-- `ana_task_record`
-- `ana_result_summary`
-- `ana_correction_feedback`
-- analysis event chain
-- AI callback integration contract
-
-### Exit Criteria
-
-- `image upload -> AI request -> result writeback -> case status update` runs successfully
+- real MQ publisher / consumer replacement
 
 ## Phase P5: Report Module
 
-### Goal
+Completed for current V1 scope.
 
-Generate doctor and patient reports with version control.
+Covered scope:
 
-### Current Status
-
-Core chain implemented in `caries-report`:
-
-- report template management (`rpt_template`)
-- report generation with per-case per-type version increment (`rpt_record`)
-- PDF archive to attachment system (`med_attachment`)
-- report export audit logging (`rpt_export_log`)
-- case status transition through `CaseCommandAppService` only (no direct `med_case` update)
-
-### Scope
-
-- report record management
+- template management
 - report generation
-- PDF archive persistence
-- version retention
+- version increment
 - export audit
-
-### Exit Criteria
-
-- same case can produce doctor and patient reports
-- previous versions remain preserved
+- PDF archive persistence
 
 ## Phase P6: Follow-up Module
 
-### Goal
+Completed for current V1 scope.
 
-Generate and track follow-up plans from risk or diagnosis outcome.
-
-### Current Status
-
-Partially implemented:
-
-- `fup_plan / fup_task / fup_record` domain + app + controller are present
-- trigger entry is centralized in `FollowupTriggerService`
-- report generation can auto-trigger followup for high-risk or review-suggested cases
-- idempotent trigger behavior is covered in `caries-integration`
-
-Remaining:
-
-- finish schema migration alignment for evolved followup fields
-- complete real DB E2E and edge tests (audit and overdue)
-- finalize docs after all P6 acceptance scenarios pass
-
-### Scope
+Covered scope:
 
 - follow-up plan
 - follow-up task
 - follow-up record
 - notification trace
+- trigger idempotency
+- overdue handling
+- audit evidence
+- analysis -> report -> followup E2E
 
-### Exit Criteria
+Acceptance evidence:
 
-- report or review outcome can trigger follow-up plan creation
+- `AnalysisReportFollowupE2ETest`
+- `FollowupTriggerIdempotencyE2ETest`
+- `FollowupAuditIntegrationTest`
+- `FollowupOverdueIntegrationTest`
 
 ## Phase P7: Dashboard and Operations
 
-### Goal
+Current implementation scope is completed.
 
-Expose management and demo-facing aggregation capabilities.
+Covered endpoints:
 
-### Scope
+1. `/api/v1/dashboard/overview`
+2. `/api/v1/dashboard/case-status-distribution`
+3. `/api/v1/dashboard/risk-level-distribution`
+4. `/api/v1/dashboard/followup-task-summary`
+5. `/api/v1/dashboard/backlog-summary`
+6. `/api/v1/dashboard/model-runtime`
+7. `/api/v1/dashboard/trend`
 
-- statistics aggregation
-- backlog monitoring
-- health and operations metrics
-- model version query
+Acceptance evidence:
 
-### Exit Criteria
+- `DashboardOverviewIntegrationTest`
+- `DashboardCaseStatusDistributionIntegrationTest`
+- `DashboardRiskLevelDistributionIntegrationTest`
+- `DashboardFollowupTaskSummaryIntegrationTest`
+- `DashboardBacklogIntegrationTest`
+- `DashboardModelRuntimeIntegrationTest`
+- `DashboardTrendIntegrationTest`
 
-- supports management demo and operational inspection
+Deferred:
+
+- dashboard frontend page integration
+- cache and offline aggregation optimization
+- cross-org drill-down
 
 ## Phase P8: Testing and Delivery
 
+This phase is now in progress.
+
 ### Goal
 
-Close the release loop with test coverage and deployment baseline.
+Close the release loop with:
 
-### Current Status
+- module acceptance evidence
+- deployment baseline
+- API/doc cleanup
+- final demo and答辩材料收口
 
-`caries-integration` has added stage-1 analysis->report E2E design-first tests:
+### Mainline Coverage
 
-- `AnalysisToReportE2ETest`
-- `AnalysisCallbackIdempotencyE2ETest`
-- `ReportExportAuditIntegrationTest`
-
-The current stage validates cross-module orchestration and state/audit invariants with in-memory adapters.
-Stage-2 is now completed in `caries-boot` with real Spring integration tests:
-
-- `com.cariesguard.boot.e2e.AnalysisToReportE2ETest`
-- `com.cariesguard.boot.e2e.AnalysisCallbackIdempotencyE2ETest`
-- `com.cariesguard.boot.e2e.ReportExportAuditIntegrationTest`
-
-Execution baseline:
-
-- `@SpringBootTest + MockMvc(addFilters = false)`
-- real MySQL schema via Flyway migrations
-- HTTP entry on real controller + service + repository chain
-- object storage mocked at bean level to avoid external file dependency
-
-Test profile:
-
-- `application-e2e.yml`
-- isolated database: `cg_e2e` (`createDatabaseIfNotExist=true`)
-- avoids polluting production-like `cg` and bypasses local Flyway checksum drift
-
-### Scope
-
-- unit tests
-- integration tests
-- end-to-end workflow tests
-- deployment scripts
-- API doc cleanup
-
-### Required Mainline Coverage
-
-At minimum, cover:
+At minimum, keep the following chains verifiable:
 
 1. login
 2. patient registration
@@ -318,46 +163,61 @@ At minimum, cover:
 7. report generation
 8. correction feedback
 9. follow-up creation
+10. dashboard aggregation query
+
+Current evidence:
+
+- `MainlineWorkflowE2ETest` now covers:
+  - login
+  - current-user query
+  - patient registration
+  - visit creation
+  - case creation
+  - file upload
+  - image creation
+  - image quality check
+  - AI analysis callback
+  - doctor correction feedback
+  - report generation
+  - report export audit
+  - follow-up completion
+  - dashboard overview and followup aggregation
 
 ## Fixed Delivery Template Per Module
 
 Each module should ship with:
 
 - migration validation
-- DO + Mapper + Repository + AppService + Controller
-- Command / Query / VO
-- OpenAPI annotations
-- minimal unit and integration tests
-- module note and integration points
+- repository + app service + controller
+- command / query / VO
+- integration tests
+- module note and acceptance evidence
 
 ## Recommended Sequence
 
-Implementation order should remain:
+Completed sequence:
 
 1. P0 baseline alignment
-2. P1 system
+2. P1 system baseline
 3. P2 patient + case
 4. P3 image
 5. P4 analysis
 6. P5 report
 7. P6 follow-up
 8. P7 dashboard
+
+Next sequence:
+
 9. P8 testing and delivery
-
-Reason:
-
-- `system` is the access and isolation foundation
-- `patient + case + image + analysis + report` forms the MVP chain
-- `follow-up + dashboard` is enhancement, not bootstrap
 
 ## Next Implementation Step
 
-Next development should complete `P6 followup` acceptance, then enter `P7 dashboard`.
+Next development should enter `P8`.
 
-Execution order:
+Recommended execution order:
 
-1. Finalize followup migration + repository alignment against Flyway baseline.
-2. Stabilize cross-module E2E assertions for `analysis -> report -> followup`.
-3. Add missing boundary tests: followup audit and overdue handling.
-4. Update P6 docs with completed acceptance evidence.
-5. After P6 is stable, implement P7 dashboard aggregation APIs and ops metrics endpoints.
+1. consolidate module acceptance docs and答辩证据
+2. clean API/document inconsistencies
+3. prepare deployment and environment documentation
+4. produce final test evidence summary
+5. perform frontend/dashboard joint verification if needed

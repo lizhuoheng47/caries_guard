@@ -269,7 +269,11 @@ abstract class AnalysisReportE2EBaseTest {
     }
 
     protected JsonNode callbackSuccess(AnalysisTaskRef task, TestFixture fixture) throws Exception {
-        String callbackBody = buildSuccessCallbackBody(task.taskNo(), fixture.visualAssetAttachmentId());
+        return callbackSuccess(task, fixture.visualAssetAttachmentId());
+    }
+
+    protected JsonNode callbackSuccess(AnalysisTaskRef task, Long visualAssetAttachmentId) throws Exception {
+        String callbackBody = buildSuccessCallbackBody(task.taskNo(), visualAssetAttachmentId);
         String timestamp = String.valueOf(java.time.Instant.now().getEpochSecond());
         String signature = signCallback(callbackBody, timestamp);
         JsonNode body = postRawJson(
@@ -396,7 +400,11 @@ abstract class AnalysisReportE2EBaseTest {
     }
 
     protected JsonNode getJson(String url, TestFixture fixture) throws Exception {
-        authenticateAsSysAdmin(fixture.orgId());
+        return getJson(url, fixture.orgId());
+    }
+
+    protected JsonNode getJson(String url, Long orgId) throws Exception {
+        authenticateAsSysAdmin(orgId);
         MvcResult result = mockMvc.perform(MockMvcRequestBuilders.get(url)).andReturn();
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
@@ -404,12 +412,12 @@ abstract class AnalysisReportE2EBaseTest {
         return body;
     }
 
-    private JsonNode postJson(String url, Object requestBody, Map<String, String> headers, int expectedStatus) throws Exception {
+    protected JsonNode postJson(String url, Object requestBody, Map<String, String> headers, int expectedStatus) throws Exception {
         String json = objectMapper.writeValueAsString(requestBody);
         return postRawJson(url, json, headers, expectedStatus);
     }
 
-    private JsonNode postRawJson(String url, String rawBody, Map<String, String> headers, int expectedStatus) throws Exception {
+    protected JsonNode postRawJson(String url, String rawBody, Map<String, String> headers, int expectedStatus) throws Exception {
         MockHttpServletRequestBuilder builder = org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                 .post(url)
                 .contentType(APPLICATION_JSON);
