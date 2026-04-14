@@ -17,7 +17,12 @@ public record AiAnalysisRequestDTO(
             Long attachmentId,
             String imageTypeCode,
             String bucketName,
-            String objectKey) {
+            String objectKey,
+            String storageProviderCode,
+            String attachmentMd5,
+            String accessUrl,
+            Long accessExpireAt,
+            String localStoragePath) {
     }
 
     public record PatientProfile(

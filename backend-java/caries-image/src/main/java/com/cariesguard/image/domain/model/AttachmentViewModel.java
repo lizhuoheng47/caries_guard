@@ -9,5 +9,6 @@ public record AttachmentViewModel(
         String contentType,
         String md5,
         Long fileSizeBytes,
+        String storageProviderCode,
         Long orgId) {
 }

@@ -24,20 +24,7 @@ public class AnalysisQueryRepositoryImpl implements AnalysisQueryRepository {
                 .eq(AnaTaskRecordDO::getDeletedFlag, 0L)
                 .eq(AnaTaskRecordDO::getStatus, "ACTIVE")
                 .last("LIMIT 1"));
-        return entity == null ? Optional.empty() : Optional.of(new AnalysisTaskViewModel(
-                entity.getId(),
-                entity.getTaskNo(),
-                entity.getCaseId(),
-                entity.getPatientId(),
-                entity.getModelVersion(),
-                entity.getTaskTypeCode(),
-                entity.getTaskStatusCode(),
-                entity.getErrorMessage(),
-                entity.getCreatedAt(),
-                entity.getStartedAt(),
-                entity.getCompletedAt(),
-                entity.getOrgId(),
-                entity.getRetryFromTaskId()));
+        return entity == null ? Optional.empty() : Optional.of(toView(entity));
     }
 
     @Override
@@ -67,7 +54,11 @@ public class AnalysisQueryRepositoryImpl implements AnalysisQueryRepository {
         }
         wrapper.orderByDesc(AnaTaskRecordDO::getCreatedAt)
                 .last("LIMIT " + Math.max(offset, 0) + "," + Math.max(limit, 1));
-        return analysisTaskRecordMapper.selectList(wrapper).stream().map(entity -> new AnalysisTaskViewModel(
+        return analysisTaskRecordMapper.selectList(wrapper).stream().map(this::toView).toList();
+    }
+
+    private AnalysisTaskViewModel toView(AnaTaskRecordDO entity) {
+        return new AnalysisTaskViewModel(
                 entity.getId(),
                 entity.getTaskNo(),
                 entity.getCaseId(),
@@ -80,6 +71,8 @@ public class AnalysisQueryRepositoryImpl implements AnalysisQueryRepository {
                 entity.getStartedAt(),
                 entity.getCompletedAt(),
                 entity.getOrgId(),
-                entity.getRetryFromTaskId())).toList();
+                entity.getRetryFromTaskId(),
+                entity.getTraceId(),
+                entity.getInferenceMillis());
     }
 }

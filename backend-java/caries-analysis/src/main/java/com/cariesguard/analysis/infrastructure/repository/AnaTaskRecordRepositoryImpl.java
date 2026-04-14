@@ -10,6 +10,7 @@ import com.cariesguard.analysis.infrastructure.dataobject.AnaTaskRecordDO;
 import com.cariesguard.analysis.infrastructure.mapper.AnalysisTaskRecordMapper;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -69,13 +70,23 @@ public class AnaTaskRecordRepositoryImpl implements AnaTaskRecordRepository {
 
     @Override
     public void updateStatus(AnalysisTaskStatusUpdateModel model) {
-        analysisTaskRecordMapper.update(null, new LambdaUpdateWrapper<AnaTaskRecordDO>()
+        LambdaUpdateWrapper<AnaTaskRecordDO> update = new LambdaUpdateWrapper<AnaTaskRecordDO>()
                 .eq(AnaTaskRecordDO::getTaskNo, model.taskNo())
                 .eq(AnaTaskRecordDO::getDeletedFlag, 0L)
                 .set(AnaTaskRecordDO::getTaskStatusCode, model.taskStatusCode())
                 .set(AnaTaskRecordDO::getErrorMessage, model.errorMessage())
                 .set(AnaTaskRecordDO::getStartedAt, model.startedAt())
-                .set(AnaTaskRecordDO::getCompletedAt, model.completedAt()));
+                .set(AnaTaskRecordDO::getCompletedAt, model.completedAt());
+        if (model.traceId() != null) {
+            update.set(AnaTaskRecordDO::getTraceId, model.traceId());
+        }
+        if (model.inferenceMillis() != null) {
+            update.set(AnaTaskRecordDO::getInferenceMillis, model.inferenceMillis());
+        }
+        if (StringUtils.hasText(model.modelVersion())) {
+            update.set(AnaTaskRecordDO::getModelVersion, model.modelVersion().trim());
+        }
+        analysisTaskRecordMapper.update(null, update);
     }
 
     @Override
@@ -141,6 +152,11 @@ public class AnaTaskRecordRepositoryImpl implements AnaTaskRecordRepository {
                 entity.getStartedAt(),
                 entity.getCompletedAt(),
                 entity.getOrgId(),
-                entity.getRetryFromTaskId());
+                entity.getRetryFromTaskId(),
+                entity.getTraceId(),
+                entity.getInferenceMillis());
     }
 }
+
+
+

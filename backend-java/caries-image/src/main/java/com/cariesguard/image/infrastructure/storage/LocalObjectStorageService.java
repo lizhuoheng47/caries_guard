@@ -9,11 +9,13 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 @Component
+@ConditionalOnProperty(prefix = "caries.image.storage", name = "provider-code", havingValue = "LOCAL_FS")
 public class LocalObjectStorageService implements ObjectStorageService {
 
     private final ImageStorageProperties properties;
@@ -38,6 +40,9 @@ public class LocalObjectStorageService implements ObjectStorageService {
                 fileExt);
         Path basePath = Path.of(properties.getLocalRoot(), properties.getBucketName()).toAbsolutePath().normalize();
         Path targetPath = basePath.resolve(objectKey).normalize();
+        if (!targetPath.startsWith(basePath)) {
+            throw new IOException("Invalid local object key");
+        }
         Files.createDirectories(targetPath.getParent());
         if (Files.notExists(targetPath)) {
             Files.copy(inputStream, targetPath);
@@ -49,7 +54,7 @@ public class LocalObjectStorageService implements ObjectStorageService {
                 contentType,
                 fileSizeBytes,
                 md5,
-                properties.getProviderCode());
+                "LOCAL_FS");
     }
 
     @Override

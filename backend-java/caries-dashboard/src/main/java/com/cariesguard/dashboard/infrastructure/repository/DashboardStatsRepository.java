@@ -6,6 +6,7 @@ import com.cariesguard.dashboard.interfaces.vo.CaseStatusDistributionVO;
 import com.cariesguard.dashboard.interfaces.vo.DashboardOverviewVO;
 import com.cariesguard.dashboard.interfaces.vo.FollowupTaskSummaryVO;
 import com.cariesguard.dashboard.interfaces.vo.ModelRuntimeVO;
+import com.cariesguard.dashboard.interfaces.vo.ModelVersionRuntimeVO;
 import com.cariesguard.dashboard.interfaces.vo.RiskLevelDistributionVO;
 import com.cariesguard.dashboard.interfaces.vo.DashboardTrendPointVO;
 import java.math.BigDecimal;
@@ -169,19 +170,64 @@ public class DashboardStatsRepository {
                      WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ? AND task_status_code = 'SUCCESS') AS success_task_count,
                     (SELECT COUNT(1)
                      FROM ana_task_record
-                     WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ? AND task_status_code = 'FAILED') AS failed_task_count
-                """, orgId, orgId, recentThreshold, orgId, recentThreshold, orgId, recentThreshold);
+                     WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ? AND task_status_code = 'FAILED') AS failed_task_count,
+                    (SELECT AVG(inference_millis)
+                     FROM ana_task_record
+                     WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ? AND inference_millis IS NOT NULL) AS average_inference_millis
+                """, orgId, orgId, recentThreshold, orgId, recentThreshold, orgId, recentThreshold, orgId, recentThreshold);
+        Map<String, Object> qualityRow = jdbcTemplate.queryForMap("""
+                SELECT
+                    COUNT(s.id) AS summary_count,
+                    SUM(CASE WHEN s.uncertainty_score IS NOT NULL AND s.uncertainty_score >= 0.5000 THEN 1 ELSE 0 END) AS high_uncertainty_count,
+                    SUM(CASE WHEN s.review_suggested_flag = '1' THEN 1 ELSE 0 END) AS review_suggested_count,
+                    (SELECT COUNT(1)
+                     FROM ana_correction_feedback f
+                     WHERE f.org_id = ? AND f.deleted_flag = 0 AND f.created_at >= ?) AS correction_feedback_count
+                FROM ana_result_summary s
+                INNER JOIN ana_task_record t ON t.id = s.task_id
+                WHERE t.org_id = ?
+                  AND t.deleted_flag = 0
+                  AND s.deleted_flag = 0
+                  AND t.created_at >= ?
+                """, orgId, recentThreshold, orgId, recentThreshold);
+        List<ModelVersionRuntimeVO> modelVersions = jdbcTemplate.queryForList("""
+                SELECT
+                    COALESCE(NULLIF(model_version, ''), 'UNKNOWN') AS model_version,
+                    COUNT(1) AS task_count,
+                    SUM(CASE WHEN task_status_code = 'SUCCESS' THEN 1 ELSE 0 END) AS success_task_count,
+                    SUM(CASE WHEN task_status_code = 'FAILED' THEN 1 ELSE 0 END) AS failed_task_count,
+                    AVG(inference_millis) AS average_inference_millis
+                FROM ana_task_record
+                WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ?
+                GROUP BY COALESCE(NULLIF(model_version, ''), 'UNKNOWN')
+                ORDER BY task_count DESC, model_version ASC
+                """, orgId, recentThreshold).stream().map(item -> {
+            long taskCount = longValue(item.get("task_count"));
+            long successTaskCount = longValue(item.get("success_task_count"));
+            return new ModelVersionRuntimeVO(
+                    stringValue(item.get("model_version")),
+                    taskCount,
+                    successTaskCount,
+                    longValue(item.get("failed_task_count")),
+                    rate(successTaskCount, taskCount),
+                    decimalValue(item.get("average_inference_millis")));
+        }).toList();
         long recentTaskCount = longValue(row.get("recent_task_count"));
         long successTaskCount = longValue(row.get("success_task_count"));
         long failedTaskCount = longValue(row.get("failed_task_count"));
+        long summaryCount = longValue(qualityRow.get("summary_count"));
         return new ModelRuntimeVO(
                 stringValue(row.get("current_model_version")),
                 recentTaskCount,
                 successTaskCount,
                 failedTaskCount,
-                rate(successTaskCount, recentTaskCount));
+                rate(successTaskCount, recentTaskCount),
+                decimalValue(row.get("average_inference_millis")),
+                rate(longValue(qualityRow.get("high_uncertainty_count")), summaryCount),
+                rate(longValue(qualityRow.get("review_suggested_count")), summaryCount),
+                longValue(qualityRow.get("correction_feedback_count")),
+                modelVersions);
     }
-
     public List<DashboardTrendPointVO> queryTrend(Long orgId, DashboardRangeQuery rangeQuery) {
         LocalDateTime startDateTime = rangeQuery.startDate().atStartOfDay();
         LocalDateTime endExclusive = rangeQuery.endDate().plusDays(1).atStartOfDay();
@@ -238,6 +284,16 @@ public class DashboardStatsRepository {
         return value == null ? null : value.toString();
     }
 
+    private BigDecimal decimalValue(Object value) {
+        if (value == null) {
+            return ZERO;
+        }
+        if (value instanceof BigDecimal decimal) {
+            return decimal.setScale(4, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.valueOf(((Number) value).doubleValue()).setScale(4, RoundingMode.HALF_UP);
+    }
+
     private BigDecimal rate(long numerator, long denominator) {
         if (denominator <= 0) {
             return ZERO;
@@ -260,3 +316,7 @@ public class DashboardStatsRepository {
         return countMap;
     }
 }
+
+
+
+

@@ -7,5 +7,8 @@ public record AnalysisTaskStatusUpdateModel(
         String taskStatusCode,
         String errorMessage,
         LocalDateTime startedAt,
-        LocalDateTime completedAt) {
+        LocalDateTime completedAt,
+        String traceId,
+        Long inferenceMillis,
+        String modelVersion) {
 }

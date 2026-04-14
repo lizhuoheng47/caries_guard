@@ -62,8 +62,14 @@ public class CorrectionFeedbackAppService {
                 toJson(command.correctedTruthJson()),
                 command.feedbackTypeCode().trim(),
                 "0",
+                "1",
+                "0",
+                null,
+                "PENDING",
+                null,
+                null,
                 medicalCase.orgId()));
-        return new CorrectionFeedbackVO(feedbackId, medicalCase.caseId(), command.feedbackTypeCode().trim(), "0");
+        return new CorrectionFeedbackVO(feedbackId, medicalCase.caseId(), command.feedbackTypeCode().trim(), "0", "1", "0", null, "PENDING");
     }
 
     private void ensureOrgAccess(AuthenticatedUser operator, Long recordOrgId) {
@@ -83,3 +89,5 @@ public class CorrectionFeedbackAppService {
         }
     }
 }
+
+

@@ -100,6 +100,9 @@ public class AnalysisCommandRepositoryImpl implements AnalysisCommandRepository 
                 image.getImageTypeCode(),
                 image.getQualityStatusCode(),
                 attachment == null ? null : attachment.getBucketName(),
-                attachment == null ? null : attachment.getObjectKey());
+                attachment == null ? null : attachment.getObjectKey(),
+                attachment == null ? null : attachment.getStorageProviderCode(),
+                attachment == null ? null : attachment.getMd5());
     }
 }
+

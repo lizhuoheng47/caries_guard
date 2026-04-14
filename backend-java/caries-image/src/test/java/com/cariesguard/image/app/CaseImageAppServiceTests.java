@@ -57,7 +57,7 @@ class CaseImageAppServiceTests {
         setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
         when(imageCommandRepository.findCase(6001L)).thenReturn(Optional.of(new AttachmentOwnerCaseModel(6001L, "CASE1", 4001L, 3001L, 2001L, "CREATED")));
         when(imageCommandRepository.findAttachment(7001L)).thenReturn(Optional.of(new AttachmentViewModel(
-                7001L, "x.jpg", "orig.jpg", "caries-image", "attachments/x.jpg", "image/jpeg", "md5", 10L, 2001L)));
+                7001L, "x.jpg", "orig.jpg", "caries-image", "attachments/x.jpg", "image/jpeg", "md5", 10L, "MINIO", 2001L)));
         when(imageCommandRepository.nextImageIndexNo(6001L, "PANORAMIC")).thenReturn(2);
 
         CaseImageMutationVO result = appService.createCaseImage(6001L, new CreateCaseImageCommand(
@@ -75,7 +75,7 @@ class CaseImageAppServiceTests {
         setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
         when(imageCommandRepository.findCase(6001L)).thenReturn(Optional.of(new AttachmentOwnerCaseModel(6001L, "CASE1", 4001L, 3001L, 2001L, "QC_PENDING")));
         when(imageCommandRepository.findAttachment(7001L)).thenReturn(Optional.of(new AttachmentViewModel(
-                7001L, "x.jpg", "orig.jpg", "caries-image", "attachments/x.jpg", "image/jpeg", "md5", 10L, 2001L)));
+                7001L, "x.jpg", "orig.jpg", "caries-image", "attachments/x.jpg", "image/jpeg", "md5", 10L, "MINIO", 2001L)));
 
         assertThatThrownBy(() -> appService.createCaseImage(6001L, new CreateCaseImageCommand(
                 7001L, 9999L, 3001L, "PANORAMIC", "UPLOAD", null, null, "0", null)))
@@ -140,3 +140,4 @@ class CaseImageAppServiceTests {
                 user.getAuthorities()));
     }
 }
+

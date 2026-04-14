@@ -47,8 +47,14 @@ caries:
       local-root: ${CARIES_IMAGE_STORAGE_ROOT:${user.dir}/var/image-storage}
       bucket-name: ${CARIES_IMAGE_BUCKET:caries-image}
       provider-code: ${CARIES_IMAGE_STORAGE_PROVIDER:MINIO}
+      public-base-url: ${CARIES_IMAGE_PUBLIC_BASE_URL:http://127.0.0.1:8080}
       access-url-secret: ${CARIES_IMAGE_ACCESS_SECRET:change-me-to-a-strong-image-access-secret}
       access-url-expire-seconds: ${CARIES_IMAGE_ACCESS_EXPIRE_SECONDS:900}
+      minio:
+        endpoint: ${CARIES_MINIO_ENDPOINT:http://127.0.0.1:9000}
+        access-key: ${CARIES_MINIO_ACCESS_KEY:minioadmin}
+        secret-key: ${CARIES_MINIO_SECRET_KEY:minioadmin}
+        secure: ${CARIES_MINIO_SECURE:false}
   analysis:
     default-model-version: ${CARIES_ANALYSIS_MODEL_VERSION:caries-v1}
     callback-secret: ${CARIES_ANALYSIS_CALLBACK_SECRET:change-me-to-a-strong-analysis-callback-secret}
@@ -63,3 +69,4 @@ caries:
         requested-routing-key: ${CARIES_ANALYSIS_REQUESTED_ROUTING_KEY:analysis.requested}
         completed-routing-key: ${CARIES_ANALYSIS_COMPLETED_ROUTING_KEY:analysis.completed}
         failed-routing-key: ${CARIES_ANALYSIS_FAILED_ROUTING_KEY:analysis.failed}
+

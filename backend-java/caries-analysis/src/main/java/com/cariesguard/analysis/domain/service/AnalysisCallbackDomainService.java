@@ -1,6 +1,6 @@
 package com.cariesguard.analysis.domain.service;
 
-import com.cariesguard.analysis.interfaces.dto.AiAnalysisCallbackDTO;
+import com.cariesguard.analysis.interfaces.command.AiAnalysisResultCallbackCommand;
 import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -10,10 +10,6 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-/**
- * Domain service for analysis callback rules.
- * Centralizes callback validation, status resolution, and summary aggregate extraction.
- */
 @Component
 public class AnalysisCallbackDomainService {
 
@@ -37,7 +33,7 @@ public class AnalysisCallbackDomainService {
         return normalized;
     }
 
-    public void validateSuccessCallbackCompleteness(AiAnalysisCallbackDTO callback) {
+    public void validateSuccessCallbackCompleteness(AiAnalysisResultCallbackCommand callback) {
         boolean hasSummary = callback.summary() != null;
         boolean hasRawResult = callback.rawResultJson() != null && !callback.rawResultJson().isNull();
         if (!hasSummary && !hasRawResult) {
@@ -61,10 +57,9 @@ public class AnalysisCallbackDomainService {
         };
     }
 
-    /**
-     * Extract aggregate values from callback summary for direct column storage.
-     */
-    public SummaryAggregates extractSummaryAggregates(AiAnalysisCallbackDTO.Summary summary, JsonNode rawResultJson) {
+    public SummaryAggregates extractSummaryAggregates(AiAnalysisResultCallbackCommand.Summary summary,
+                                                      JsonNode rawResultJson,
+                                                      Double topLevelUncertaintyScore) {
         String severity = null;
         BigDecimal uncertainty = null;
         String reviewFlag = "0";
@@ -79,6 +74,9 @@ public class AnalysisCallbackDomainService {
             uncertainty = uncertaintyDouble != null ? BigDecimal.valueOf(uncertaintyDouble) : null;
             String flag = textValueFromJson(rawResultJson, "reviewSuggestedFlag", "review_suggested_flag");
             reviewFlag = flag != null ? flag : "0";
+        }
+        if (uncertainty == null && topLevelUncertaintyScore != null) {
+            uncertainty = BigDecimal.valueOf(topLevelUncertaintyScore);
         }
 
         return new SummaryAggregates(severity, uncertainty, reviewFlag);

@@ -1,551 +1,227 @@
-# Java 后端命名规范与 AI 协同开发约定
+# Java后端命名规范与AI协同开发约定
 
-> 项目：多模态龋齿智能识别与分级预警平台（CariesGuard）
-> 
-> 目标：统一数据库、Java 代码、接口、消息、对象存储、AI 协同开发的命名语言
+本文档统一当前数据库、Java 代码、接口、事件、AI 协同对象的命名口径，并补充与当前实现一致的边界说明。
 
----
+## 1. 总体原则
 
-# 1. 命名总原则
+1. 同一业务语义在数据库、Java、接口和联调文档中保持一致。
+2. 命名优先可读性，避免生造缩写。
+3. 当前已落地的命名必须跟代码一致，不能按理想设计重写历史实现。
+4. 治理类设计名词可以保留，但必须标注“当前未落地”。
 
-1. **统一**：同一语义在数据库、后端、前端、AI 提示词中必须保持一致。
-2. **稳定**：一旦字段和状态冻结，不允许频繁重命名。
-3. **可读**：优先完整单词，不用晦涩拼音缩写。
-4. **分层清晰**：数据库命名、Java 类命名、接口命名、消息命名分别遵循各自规则。
-5. **面向 AI 协作**：命名必须足够直白，使 Codex、Gemini、Claude Code 不会误判语义。
+## 2. 数据库命名规范
 
----
+### 2.1 表名前缀
 
-# 2. 数据库命名规范
+当前已使用的域前缀：
+- `sys_`：系统管理
+- `pat_`：患者主档
+- `med_`：病例与医疗业务
+- `ana_`：分析任务与结果
+- `rpt_`：报告
+- `fup_`：随访
+- `msg_`：消息通知
 
-## 2.1 表名
+### 2.2 字段命名
 
-格式：
+当前统一约定：
+- 主键：`id`
+- 编号：`*_no`
+- 外键：`*_id`
+- 类型码：`*_code`
+- 标记位：`*_flag`
+- JSON：`*_json`
+- 时间点：`*_at`
+- 日期：`*_date`
 
-```text
-域前缀_业务名词
-```
+### 2.3 当前应特别强调的字段
 
-示例：
+| 字段 | 说明 |
+| --- | --- |
+| `org_id` | 机构隔离基础字段 |
+| `deleted_flag` | 逻辑删除 |
+| `case_status_code` | 病例主状态机字段 |
+| `quality_status_code` | 图像质检结果核心状态 |
+| `model_version` | 当前模型版本留痕字段 |
+| `retry_from_task_id` | 分析任务重试链路字段 |
+| `trigger_source_code` / `trigger_ref_id` | 随访触发幂等字段 |
 
-- `sys_user`
-- `sys_role`
-- `pat_patient`
-- `med_case`
-- `med_image_file`
-- `rpt_record`
-- `fup_task`
-- `msg_notify_record`
+## 3. Java 包和类命名规范
 
-## 2.2 字段命名
+### 3.1 模块内包结构
 
-### 主键
+当前建议固定：
+- `controller`
+- `app`
+- `domain.model`
+- `domain.service`
+- `domain.repository`
+- `infrastructure.*`
+- `interfaces.command`
+- `interfaces.dto`
+- `interfaces.vo`
+- `interfaces.query`
 
-- `id`
+### 3.2 类命名
 
-### 业务编号
+当前应遵守：
+- Controller：`XxxController`
+- 应用服务：`XxxAppService`
+- 领域服务：`XxxDomainService`
+- Repository 接口：`XxxRepository`
+- Repository 实现：`XxxRepositoryImpl`
+- Command：`CreateXxxCommand` / `UpdateXxxCommand`
+- DTO：`XxxDTO`
+- VO：`XxxVO`
 
-- `*_no`
+### 3.3 当前真实示例
 
-示例：
+| 类型 | 示例 |
+| --- | --- |
+| Controller | `AnalysisTaskController` |
+| AppService | `AnalysisTaskAppService` |
+| DomainService | `AnalysisCallbackDomainService` |
+| DTO | `AiAnalysisRequestDTO` `AiAnalysisCallbackDTO` |
+| VO | `ReportGenerateResultVO` |
+| Command | `CreateAnalysisTaskCommand` |
 
-- `user_no`
-- `visit_no`
-- `case_no`
-- `report_no`
-- `plan_no`
-- `task_no`
+## 4. API 命名规范
 
-### 外键
+### 4.1 REST 路径
 
-- `xxx_id`
-
-示例：
-
-- `patient_id`
-- `case_id`
-- `visit_id`
-- `attachment_id`
-- `role_id`
-
-### 类型与状态
-
-- `*_code` 或 `status`
-
-示例：
-
-- `user_type_code`
-- `case_status_code`
-- `report_status_code`
-- `quality_status_code`
-- `status`
-
-### 布尔值
-
-- `*_flag`
-
-示例：
-
-- `deleted_flag`
-- `report_ready_flag`
-- `followup_required_flag`
-- `is_primary` 不推荐，建议统一为 `primary_flag`
-
-> 说明：如果历史表已经使用 `is_primary`，可以保留，但新表优先统一 `*_flag`。
-
-### 时间字段
-
-- `*_at`：时间点
-- `*_date`：日期
+当前统一风格：
+- 版本前缀：`/api/v1`
+- 资源名用复数
+- 病例下游资源使用子资源路径
 
 示例：
-
-- `created_at`
-- `updated_at`
-- `generated_at`
-- `visit_date`
-- `next_followup_date`
-
-### JSON 字段
-
-- `*_json`
-
-示例：
-
-- `ext_json`
-- `column_mask_policy_json`
-- `raw_result_json`
-
----
-
-# 3. Java 包命名规范
-
-统一小写英文包名：
-
-```text
-com.cariesguard
-```
-
-模块包示例：
-
-```text
-com.cariesguard.system
-com.cariesguard.patient
-com.cariesguard.image
-com.cariesguard.analysis
-com.cariesguard.report
-com.cariesguard.followup
-com.cariesguard.dashboard
-```
-
----
-
-# 4. Java 类命名规范
-
-## 4.1 Entity / DO
-
-推荐：
-
-- `SysUserDO`
-- `PatPatientDO`
-- `MedCaseDO`
-- `RptRecordDO`
-
-说明：
-
-- 若你团队偏向 `Entity`，也可统一为 `SysUserEntity`；
-- 但必须全项目统一，不要一半 `DO` 一半 `Entity`。
-
-**推荐本项目统一使用 `DO`**，因为更适合和 DTO / VO / Query / Command 区分。
-
-## 4.2 Mapper
-
-- `SysUserMapper`
-- `MedCaseMapper`
-- `RptRecordMapper`
-
-## 4.3 Repository
-
-### 领域接口
-
-- `PatientRepository`
-- `CaseRepository`
-
-### 基础设施实现
-
-- `PatientRepositoryImpl`
-- `CaseRepositoryImpl`
-
-## 4.4 Service
-
-### 应用服务
-
-- `PatientAppService`
-- `CaseAppService`
-- `ReportAppService`
-
-### 领域服务
-
-- `CaseDomainService`
-- `ReportDomainService`
-- `FollowupDomainService`
-
-## 4.5 Controller
-
-- `PatientController`
-- `CaseController`
-- `ImageController`
-- `ReportController`
-
-## 4.6 Convert / MapperStruct
-
-- `PatientConvert`
-- `CaseConvert`
-- `ReportConvert`
-
-## 4.7 Client / Adapter
-
-- `AiAnalysisClient`
-- `AiRiskClient`
-- `MinioStorageClient`
-- `RabbitPublisher`
-
----
-
-# 5. DTO / VO / Query / Command 命名规范
-
-## 5.1 DTO
-
-适用于跨层数据传输对象。
-
-示例：
-
-- `PatientDTO`
-- `CaseSummaryDTO`
-- `ImageQualityDTO`
-
-## 5.2 VO
-
-适用于接口返回视图对象。
-
-示例：
-
-- `PatientDetailVO`
-- `CaseListVO`
-- `ReportPreviewVO`
-
-## 5.3 Query
-
-适用于列表查询、筛选查询。
-
-示例：
-
-- `PatientPageQuery`
-- `CaseSearchQuery`
-- `FollowupTaskPageQuery`
-
-## 5.4 Command
-
-适用于写操作命令对象。
-
-示例：
-
-- `CreatePatientCommand`
-- `CreateCaseCommand`
-- `UploadImageCommand`
-- `SubmitCaseReviewCommand`
-
-## 5.5 Request / Response
-
-只有在第三方集成或极简模块中才使用：
-
-- `AiAnalyzeRequest`
-- `AiAnalyzeResponse`
-- `MinioUploadResponse`
-
-不建议业务 Controller 入口全部都叫 `XXXRequest`，优先 `Command / Query / VO`。
-
----
-
-# 6. 方法命名规范
-
-## 6.1 Controller 层
-
-统一使用动词 + 业务语义：
-
-- `createPatient`
-- `getPatientDetail`
-- `pagePatients`
-- `createCase`
-- `uploadCaseImage`
-- `triggerCaseAnalysis`
-- `generateDoctorReport`
-- `submitCaseReview`
-
-## 6.2 AppService 层
-
-- `createPatient`
-- `createCase`
-- `uploadImage`
-- `startAnalysis`
-- `generateReport`
-- `submitReview`
-- `createFollowupPlan`
-
-## 6.3 Repository 层
-
-- `save`
-- `updateById`
-- `findById`
-- `findByCaseNo`
-- `pageQuery`
-- `existsByUsername`
-
-## 6.4 禁止命名
-
-禁止使用：
-
-- `doSomething`
-- `handleData`
-- `processInfo`
-- `aaa`
-- `temp`
-- `test1`
-- `finalDeal`
-
----
-
-# 7. API 路径命名规范
-
-统一：
-
-```text
-/api/v1/资源复数
-```
-
-示例：
-
-- `GET /api/v1/patients`
-- `POST /api/v1/patients`
-- `GET /api/v1/cases/{caseId}`
-- `POST /api/v1/cases/{caseId}/images`
-- `POST /api/v1/cases/{caseId}/analysis`
-- `POST /api/v1/cases/{caseId}/reviews`
-- `GET /api/v1/reports/{reportId}`
-- `POST /api/v1/reports/{reportId}/export`
-
-不推荐：
-
-- `/getPatientList`
-- `/saveCaseInfo`
-- `/doUpload`
-- `/queryReportByCondition`
-
----
-
-# 8. 枚举与状态码命名规范
-
-## 8.1 Java 枚举类
-
-命名格式：
-
-- `UserTypeEnum`
-- `CaseStatusEnum`
-- `ReportStatusEnum`
-- `FollowupTaskStatusEnum`
-
-## 8.2 枚举值
-
-统一全大写英文：
-
-- `ACTIVE`
-- `DISABLED`
-- `CREATED`
-- `ANALYZING`
-- `REPORT_READY`
-- `DONE`
-- `FAILED`
-
-## 8.3 原则
-
-- 数据库存编码；
-- Java 枚举与数据库编码一致；
-- 前端通过字典接口映射中文标签；
-- 不在数据库里直接存中文状态。
-
----
-
-# 9. 数据库字段与 Java 属性映射规范
-
-## 9.1 映射方式
-
-数据库字段：下划线风格
-
-Java 属性：驼峰风格
-
-示例：
-
-| DB 字段 | Java 属性 |
-|---|---|
-| `patient_no` | `patientNo` |
-| `case_status_code` | `caseStatusCode` |
-| `created_at` | `createdAt` |
-| `report_ready_flag` | `reportReadyFlag` |
-
-## 9.2 不要做的事
-
-- Java 属性名和数据库字段语义不一致；
-- 一个地方叫 `followupPlanId`，另一个地方叫 `planId` 却表达同一层含义；
-- DTO 为了“简写”而丢失语义。
-
----
-
-# 10. 对象存储命名规范
-
-## 10.1 Bucket 命名建议
-
-- `caries-image`
-- `caries-report`
-- `caries-export`
-- `caries-visual`
-
-## 10.2 Object Key 规则
-
-推荐：
-
-```text
-{biz-module}/{yyyy}/{MM}/{dd}/{biz-id}/{filename}
-```
-
-示例：
-
-```text
-case-image/2026/04/11/CASE202604110001/original_01.jpg
-report/2026/04/11/RPT202604110001/doctor_v1.pdf
-visual/2026/04/11/CASE202604110001/lesion_mask.png
-```
-
----
-
-# 11. MQ 事件命名规范
-
-## 11.1 事件名称
-
-统一小写英文 + 点分层：
-
-- `image.uploaded`
+- `/api/v1/patients`
+- `/api/v1/visits`
+- `/api/v1/cases`
+- `/api/v1/cases/{caseId}/images`
+- `/api/v1/analysis/tasks`
+- `/api/v1/reports/{reportId}/export`
+
+### 4.2 当前不应误写的路径
+
+不要写成：
+- `/api/v1/ai/tasks` 当前并不存在
+- `/api/v1/followups` 当前并不是已实现主路径
+
+## 5. AI 协同命名约定
+
+### 5.1 当前已存在对象
+
+| 对象 | 当前状态 |
+| --- | --- |
+| `AiAnalysisRequestDTO` | 已实现 |
+| `AiAnalysisCallbackDTO` | 已实现 |
+| `AnalysisRequestedEvent` | 已实现 |
+| `AnalysisCompletedEvent` | 已实现 |
+| `AnalysisFailedEvent` | 已实现 |
+
+### 5.2 当前建议冻结的命名
+
+建议保持以下命名不再轻易变动：
+- `taskNo`
+- `taskStatusCode`
+- `modelVersion`
+- `summary`
+- `rawResultJson`
+- `visualAssets`
+- `riskAssessment`
+- `errorMessage`
+
+建议新增并冻结：
+- `traceId`
+- `inferenceMillis`
+
+### 5.3 事件命名
+
+当前真实事件名：
 - `analysis.requested`
 - `analysis.completed`
 - `analysis.failed`
-- `report.generated`
-- `followup.plan.created`
-- `followup.task.due`
-- `review.submitted`
 
-## 11.2 消费者命名
+对应 routing key：
+- `analysis.requested`
+- `analysis.completed`
+- `analysis.failed`
 
-- `ImageUploadedConsumer`
-- `AnalysisCompletedConsumer`
-- `FollowupTaskDueConsumer`
+### 5.4 资源访问字段命名建议
 
----
+当前消息里只有：
+- `bucketName`
+- `objectKey`
 
-# 12. SQL 脚本命名规范
+建议后续统一命名增加：
+- `accessUrl`
+- `accessExpireAt`
+- `storageProviderCode`
+- `localStoragePath`
+- `attachmentMd5`
 
-```text
-V001__init_schema.sql
-V002__init_sys_dict.sql
-V003__init_sys_menu.sql
-V004__create_patient_case_tables.sql
-V005__create_image_tables.sql
-```
+## 6. 对象存储命名修正建议
 
-要求：
+当前问题：
+- local 配置默认 provider code 为 `MINIO`
+- `MINIO` 对应 `MinioObjectStorageService`，`LOCAL_FS` 对应 `LocalObjectStorageService`
 
-- 版本号递增；
-- 文件名表达变更目的；
-- 不允许 `final.sql`、`new.sql`、`最新版.sql` 这种命名。
+建议统一口径：
+- `LOCAL_FS`
+- `MINIO`
+- `OSS`
 
----
+文档要求：
+- 当前本地 profile 默认写 `MINIO`；只有 E2E 或共享卷联调才写 `LOCAL_FS`
+- MinIO 已经接入实现；OSS 仍只是预留 provider 口径
 
-# 13. 测试类命名规范
+## 7. ModelAdmin 与 Risk 术语使用规则
 
-- `PatientAppServiceTest`
-- `CaseControllerTest`
-- `ReportGenerateIntegrationTest`
-- `FollowupPlanDomainServiceTest`
+### 7.1 ModelAdmin
 
-测试方法建议：
+允许写：
+- 模型治理能力
+- 模型版本治理方向
+- 候选模型 / 审批上线流程
 
-- `should_create_patient_successfully`
-- `should_reject_case_review_when_status_invalid`
-- `should_generate_doctor_report_after_analysis_done`
+不允许写：
+- 当前已存在独立 `ModelAdmin` 模块
+- 当前已有独立 `ModelAdmin` API / 表 / 管理端
 
----
+### 7.2 Risk
 
-# 14. Git 分支命名规范
+允许写：
+- 风险评估能力
+- 风险等级结果
+- 风险分布统计
 
-- `main`
-- `develop`
-- `feature/patient-module`
-- `feature/image-upload`
-- `feature/report-generate`
-- `fix/case-status-transition`
-- `refactor/system-auth`
-- `docs/java-dev-manual`
+不允许写：
+- 当前已存在独立 `Risk` 模块
+- 当前已有独立 `caries-risk`
 
----
+## 8. 文档与代码统一规则
 
-# 15. AI 协同开发约定
+文档里必须与当前代码保持一致的事实：
+1. `LOCAL_FS` 本地对象存储实现是 `LocalObjectStorageService`，默认 `MINIO` 实现是 `MinioObjectStorageService`
+2. 风险评估不是独立模块
+3. ModelAdmin 不是当前已实现模块
+4. local profile 分析消息模式是 `rabbit`
+5. 导出接口当前是导出审计，不是完整下载接口
+6. PDF 当前是极简 ASCII 生成
 
-## 15.1 给 AI 的任务命名必须具体
+## 9. 建议新增命名对象
 
-推荐：
+为后续治理扩展保留的推荐命名：
+- `ana_model_version_registry`
+- `training_candidate_flag`
+- `desensitized_export_flag`
+- `dataset_snapshot_no`
+- `review_status_code`
+- `reviewed_by`
+- `reviewed_at`
 
-- “生成患者模块的 DO / Mapper / Repository / AppService / Controller”
-- “根据数据字典生成 med_case 对应的 Java 代码骨架”
-- “为报告模块生成 PDF 导出用例，不要修改其他模块”
+这些名字可以进入设计文档，但必须标注：
+- 当前建议新增
+- 当前数据库未落地
 
-不推荐：
-
-- “把整个后端写出来”
-- “帮我把系统都补全”
-- “自由发挥优化架构”
-
-## 15.2 AI 输出代码必须遵守的固定术语
-
-- 患者：`patient`
-- 就诊：`visit`
-- 病例：`case`
-- 影像：`image`
-- 报告：`report`
-- 随访：`followup`
-- 修正：`review` / `correction`
-- 组织：`org`
-- 字典：`dict`
-
-## 15.3 AI 禁止做的事
-
-- 擅自替换已冻结字段名；
-- 把 `*_code` 改成数字枚举；
-- 把模块化单体改写成微服务脚手架；
-- 把病例主线和 AI 训练治理表混成一个库；
-- 用中文直接做数据库字段名；
-- 自创与数据字典不一致的缩写。
-
----
-
-# 16. 最终强制规则
-
-从进入正式开发开始，以下规则必须强制执行：
-
-1. **数据库命名以数据字典为准**；
-2. **Java 命名以本规范为准**；
-3. **接口命名以 REST 资源风格为准**；
-4. **消息命名以事件风格为准**；
-5. **AI 协同开发必须以模块和用例为边界**；
-6. **任何新命名先看是否已经有既定术语，不允许重复造词**。
-
-这份规范的目标只有一个：
-
-> 让你的后端、人类开发者、前端、数据库、AI 工具说同一种语言。

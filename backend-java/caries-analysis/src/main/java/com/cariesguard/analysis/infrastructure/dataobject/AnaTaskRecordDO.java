@@ -20,6 +20,8 @@ public class AnaTaskRecordDO {
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
     private String errorMessage;
+    private String traceId;
+    private Long inferenceMillis;
     private Long orgId;
     private Long retryFromTaskId;
     private String status;
@@ -50,6 +52,10 @@ public class AnaTaskRecordDO {
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    public String getTraceId() { return traceId; }
+    public void setTraceId(String traceId) { this.traceId = traceId; }
+    public Long getInferenceMillis() { return inferenceMillis; }
+    public void setInferenceMillis(Long inferenceMillis) { this.inferenceMillis = inferenceMillis; }
     public Long getOrgId() { return orgId; }
     public void setOrgId(Long orgId) { this.orgId = orgId; }
     public Long getRetryFromTaskId() { return retryFromTaskId; }

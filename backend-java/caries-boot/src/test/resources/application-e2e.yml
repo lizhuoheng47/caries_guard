@@ -44,7 +44,8 @@ caries:
     storage:
       local-root: ${user.dir}/var/image-storage-e2e
       bucket-name: caries-image
-      provider-code: MINIO
+      provider-code: LOCAL_FS
+      public-base-url: http://127.0.0.1:8080
       access-url-secret: change-me-to-a-strong-image-access-secret
       access-url-expire-seconds: 900
   analysis:
@@ -53,3 +54,4 @@ caries:
     callback-allowed-clock-skew-seconds: 300
     messaging:
       mode: logging
+

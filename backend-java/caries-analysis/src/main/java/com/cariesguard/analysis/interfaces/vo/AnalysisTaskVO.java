@@ -11,5 +11,20 @@ public record AnalysisTaskVO(
         String errorMessage,
         LocalDateTime createdAt,
         LocalDateTime startedAt,
-        LocalDateTime completedAt) {
+        LocalDateTime completedAt,
+        String traceId,
+        Long inferenceMillis) {
+
+    public AnalysisTaskVO(Long taskId,
+                          String taskNo,
+                          String taskStatusCode,
+                          String taskTypeCode,
+                          String modelVersion,
+                          String errorMessage,
+                          LocalDateTime createdAt,
+                          LocalDateTime startedAt,
+                          LocalDateTime completedAt) {
+        this(taskId, taskNo, taskStatusCode, taskTypeCode, modelVersion, errorMessage,
+                createdAt, startedAt, completedAt, null, null);
+    }
 }

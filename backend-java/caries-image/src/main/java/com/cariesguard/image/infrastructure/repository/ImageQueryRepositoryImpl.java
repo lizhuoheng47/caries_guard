@@ -46,6 +46,7 @@ public class ImageQueryRepositoryImpl implements ImageQueryRepository {
                 attachment.getContentType(),
                 attachment.getMd5(),
                 attachment.getFileSizeBytes(),
+                attachment.getStorageProviderCode(),
                 attachment.getOrgId()));
     }
 
@@ -112,3 +113,4 @@ public class ImageQueryRepositoryImpl implements ImageQueryRepository {
                 image.getBodyPositionCode());
     }
 }
+

@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -72,21 +73,27 @@ public class AttachmentAppService {
     }
 
     public AttachmentAccessVO createAccessUrl(Long attachmentId, HttpServletRequest request) {
+        return createAccessUrl(attachmentId, requestBaseUrl(request));
+    }
+
+    public AttachmentAccessVO createAccessUrl(Long attachmentId, String baseUrl) {
         AuthenticatedUser operator = SecurityContextUtils.currentUser();
         AttachmentViewModel attachment = loadAttachment(attachmentId);
         ensureOrgAccess(operator, attachment.orgId());
-        long expireAt = System.currentTimeMillis() / 1000 + imageStorageProperties.getAccessUrlExpireSeconds();
-        String signature = sign(attachmentId, attachment.bucketName(), attachment.objectKey(), expireAt);
-        String accessUrl = UriComponentsBuilder.newInstance()
-                .scheme(request.getScheme())
-                .host(request.getServerName())
-                .port(request.getServerPort())
-                .replacePath("/api/v1/files/" + attachmentId + "/content")
-                .queryParam("expireAt", expireAt)
-                .queryParam("signature", signature)
-                .build()
-                .toUriString();
-        return new AttachmentAccessVO(accessUrl, expireAt);
+        return buildAccessUrl(attachment, baseUrl);
+    }
+
+    public AttachmentAccessVO createInternalAccessUrl(Long attachmentId) {
+        return buildAccessUrl(loadAttachment(attachmentId), imageStorageProperties.getPublicBaseUrl());
+    }
+
+    public String resolveLocalStoragePath(String bucketName, String objectKey) {
+        if (!StringUtils.hasText(imageStorageProperties.getLocalRoot())
+                || !StringUtils.hasText(bucketName)
+                || !StringUtils.hasText(objectKey)) {
+            return null;
+        }
+        return Path.of(imageStorageProperties.getLocalRoot(), bucketName).resolve(objectKey).toAbsolutePath().normalize().toString();
     }
 
     public StoredObjectResource loadContent(Long attachmentId, Long expireAt, String signature) {
@@ -159,6 +166,32 @@ public class AttachmentAppService {
                 storedObject.bucketName(),
                 storedObject.objectKey(),
                 storedObject.md5());
+    }
+
+    private AttachmentAccessVO buildAccessUrl(AttachmentViewModel attachment, String baseUrl) {
+        String resolvedBaseUrl = StringUtils.hasText(baseUrl) ? baseUrl : imageStorageProperties.getPublicBaseUrl();
+        if (!StringUtils.hasText(resolvedBaseUrl)) {
+            throw new BusinessException(CommonErrorCode.SYSTEM_ERROR.code(), "Image public base URL is not configured");
+        }
+        long expireAt = System.currentTimeMillis() / 1000 + imageStorageProperties.getAccessUrlExpireSeconds();
+        String signature = sign(attachment.attachmentId(), attachment.bucketName(), attachment.objectKey(), expireAt);
+        String accessUrl = UriComponentsBuilder.fromUriString(resolvedBaseUrl)
+                .replacePath("/api/v1/files/" + attachment.attachmentId() + "/content")
+                .replaceQuery(null)
+                .queryParam("expireAt", expireAt)
+                .queryParam("signature", signature)
+                .build()
+                .toUriString();
+        return new AttachmentAccessVO(accessUrl, expireAt);
+    }
+
+    private String requestBaseUrl(HttpServletRequest request) {
+        return UriComponentsBuilder.newInstance()
+                .scheme(request.getScheme())
+                .host(request.getServerName())
+                .port(request.getServerPort())
+                .build()
+                .toUriString();
     }
 
     private AttachmentViewModel loadAttachment(Long attachmentId) {

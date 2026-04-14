@@ -1,106 +1,152 @@
 package com.cariesguard.report.infrastructure.service;
 
 import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Component
 public class ReportPdfService {
 
+    private static final float FONT_SIZE = 11F;
+    private static final float TITLE_FONT_SIZE = 15F;
+    private static final float LEADING = 16F;
+    private static final float MARGIN = 48F;
+    private static final float PAGE_WIDTH = PDRectangle.A4.getWidth();
+    private static final float PAGE_HEIGHT = PDRectangle.A4.getHeight();
+
     public byte[] generatePdf(String renderedContent) {
-        String contentStream = buildContentStream(renderedContent);
-        List<String> objects = List.of(
-                "<< /Type /Catalog /Pages 2 0 R >>",
-                "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
-                "<< /Length " + contentStream.getBytes(StandardCharsets.US_ASCII).length + " >>\nstream\n"
-                        + contentStream + "\nendstream",
-                "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
-
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        write(output, "%PDF-1.4\n");
-        List<Integer> offsets = new ArrayList<>();
-        for (int i = 0; i < objects.size(); i++) {
-            offsets.add(output.size());
-            write(output, (i + 1) + " 0 obj\n");
-            write(output, objects.get(i));
-            write(output, "\nendobj\n");
+        try (PDDocument document = new PDDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            PDFont font = loadChineseCapableFont(document);
+            List<String> lines = wrapLines(renderedContent, font, FONT_SIZE, PAGE_WIDTH - (MARGIN * 2));
+            writePages(document, font, lines);
+            document.save(output);
+            return output.toByteArray();
+        } catch (IOException exception) {
+            throw new IllegalStateException("Generate report PDF failed", exception);
         }
-
-        int xrefOffset = output.size();
-        int totalObjects = objects.size() + 1;
-        write(output, "xref\n");
-        write(output, "0 " + totalObjects + "\n");
-        write(output, "0000000000 65535 f \n");
-        for (Integer offset : offsets) {
-            write(output, String.format("%010d 00000 n \n", offset));
-        }
-        write(output, "trailer\n");
-        write(output, "<< /Size " + totalObjects + " /Root 1 0 R >>\n");
-        write(output, "startxref\n");
-        write(output, String.valueOf(xrefOffset));
-        write(output, "\n%%EOF");
-        return output.toByteArray();
     }
 
-    private String buildContentStream(String renderedContent) {
-        List<String> lines = splitLines(renderedContent);
-        StringBuilder builder = new StringBuilder();
-        builder.append("BT\n");
-        builder.append("/F1 12 Tf\n");
-        builder.append("50 800 Td\n");
-        for (int i = 0; i < lines.size(); i++) {
-            if (i > 0) {
-                builder.append("0 -18 Td\n");
+    private PDFont loadChineseCapableFont(PDDocument document) throws IOException {
+        for (String path : fontCandidates()) {
+            File file = new File(path);
+            if (file.exists() && file.isFile()) {
+                return PDType0Font.load(document, file);
             }
-            builder.append("(").append(escapePdfText(lines.get(i))).append(") Tj\n");
         }
-        builder.append("ET");
-        return builder.toString();
+        return PDType1Font.HELVETICA;
     }
 
-    private List<String> splitLines(String renderedContent) {
-        String[] rawLines = renderedContent == null ? new String[0] : renderedContent.split("\\R");
-        List<String> lines = new ArrayList<>();
-        int maxLines = 35;
+    private List<String> fontCandidates() {
+        return List.of(
+                "C:/Windows/Fonts/NotoSansSC-VF.ttf",
+                "C:/Windows/Fonts/simhei.ttf",
+                "C:/Windows/Fonts/simsunb.ttf",
+                "C:/Windows/Fonts/SimsunExtG.ttf",
+                "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+                "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc");
+    }
+
+    private void writePages(PDDocument document, PDFont font, List<String> lines) throws IOException {
+        PDPage page = new PDPage(PDRectangle.A4);
+        document.addPage(page);
+        PDPageContentStream content = startContent(document, page, font);
+        int lineIndex = 0;
+        float y = PAGE_HEIGHT - MARGIN - TITLE_FONT_SIZE - 18F;
+        try {
+            while (lineIndex < lines.size()) {
+                if (y < MARGIN) {
+                    content.endText();
+                    content.close();
+                    page = new PDPage(PDRectangle.A4);
+                    document.addPage(page);
+                    content = startContent(document, page, font);
+                    y = PAGE_HEIGHT - MARGIN - TITLE_FONT_SIZE - 18F;
+                }
+                String safeLine = encodeSafe(font, lines.get(lineIndex));
+                content.showText(safeLine);
+                content.newLineAtOffset(0, -LEADING);
+                y -= LEADING;
+                lineIndex++;
+            }
+            content.endText();
+        } finally {
+            content.close();
+        }
+    }
+
+    private PDPageContentStream startContent(PDDocument document, PDPage page, PDFont font) throws IOException {
+        PDPageContentStream content = new PDPageContentStream(document, page);
+        content.beginText();
+        content.setFont(font, TITLE_FONT_SIZE);
+        content.newLineAtOffset(MARGIN, PAGE_HEIGHT - MARGIN);
+        content.showText(encodeSafe(font, "CariesGuard 龋齿智能分析报告"));
+        content.newLineAtOffset(0, -24F);
+        content.setFont(font, FONT_SIZE);
+        return content;
+    }
+
+    private List<String> wrapLines(String renderedContent, PDFont font, float fontSize, float maxWidth) throws IOException {
+        String normalized = StringUtils.hasText(renderedContent) ? renderedContent : "Empty report content";
+        String[] rawLines = normalized.split("\\R", -1);
+        List<String> result = new ArrayList<>();
         for (String rawLine : rawLines) {
-            String safeLine = toAscii(rawLine == null ? "" : rawLine);
-            if (safeLine.length() > 110) {
-                lines.add(safeLine.substring(0, 110));
-            } else {
-                lines.add(safeLine);
+            String line = rawLine == null ? "" : rawLine.trim();
+            if (line.isEmpty()) {
+                result.add(" ");
+                continue;
             }
-            if (lines.size() >= maxLines) {
-                lines.set(maxLines - 1, "...(truncated)");
-                break;
+            StringBuilder current = new StringBuilder();
+            for (int offset = 0; offset < line.length(); ) {
+                int codePoint = line.codePointAt(offset);
+                String token = new String(Character.toChars(codePoint));
+                String candidate = current + token;
+                if (!current.isEmpty() && stringWidth(font, encodeSafe(font, candidate), fontSize) > maxWidth) {
+                    result.add(current.toString());
+                    current.setLength(0);
+                    current.append(token);
+                } else {
+                    current.append(token);
+                }
+                offset += Character.charCount(codePoint);
+            }
+            if (!current.isEmpty()) {
+                result.add(current.toString());
             }
         }
-        if (lines.isEmpty()) {
-            lines.add("Empty report content");
-        }
-        return lines;
+        return result;
     }
 
-    private String toAscii(String text) {
+    private float stringWidth(PDFont font, String text, float fontSize) throws IOException {
+        return font.getStringWidth(text) / 1000F * fontSize;
+    }
+
+    private String encodeSafe(PDFont font, String text) {
         StringBuilder builder = new StringBuilder(text.length());
-        for (int i = 0; i < text.length(); i++) {
-            char current = text.charAt(i);
-            builder.append(current <= 0x7F ? current : '?');
+        for (int offset = 0; offset < text.length(); ) {
+            int codePoint = text.codePointAt(offset);
+            String token = new String(Character.toChars(codePoint));
+            try {
+                font.encode(token);
+                builder.append(token);
+            } catch (IllegalArgumentException exception) {
+                builder.append('?');
+            } catch (IOException exception) {
+                builder.append('?');
+            }
+            offset += Character.charCount(codePoint);
         }
         return builder.toString();
-    }
-
-    private String escapePdfText(String text) {
-        return text
-                .replace("\\", "\\\\")
-                .replace("(", "\\(")
-                .replace(")", "\\)");
-    }
-
-    private void write(ByteArrayOutputStream output, String value) {
-        output.writeBytes(value.getBytes(StandardCharsets.US_ASCII));
     }
 }
-

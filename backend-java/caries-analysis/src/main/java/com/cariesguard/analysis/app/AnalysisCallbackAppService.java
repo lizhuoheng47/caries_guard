@@ -16,7 +16,7 @@ import com.cariesguard.analysis.domain.service.AnalysisCallbackDomainService;
 import com.cariesguard.analysis.domain.service.AnalysisIdempotencyDomainService;
 import com.cariesguard.analysis.domain.service.AnalysisTaskEventPublisher;
 import com.cariesguard.analysis.infrastructure.client.AiCallbackSignatureVerifier;
-import com.cariesguard.analysis.interfaces.dto.AiAnalysisCallbackDTO;
+import com.cariesguard.analysis.interfaces.command.AiAnalysisResultCallbackCommand;
 import com.cariesguard.analysis.interfaces.dto.AiVisualAssetDTO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisCallbackAckVO;
 import com.cariesguard.common.exception.BusinessException;
@@ -74,19 +74,17 @@ public class AnalysisCallbackAppService {
     @Transactional
     public AnalysisCallbackAckVO handleResultCallback(String rawBody, String timestamp, String signature) {
         aiCallbackSignatureVerifier.verify(rawBody, timestamp, signature);
-        AiAnalysisCallbackDTO callback = readCallback(rawBody);
+        AiAnalysisResultCallbackCommand callback = readCallback(rawBody);
         String taskNo = analysisCallbackDomainService.normalizeAndValidateTaskNo(callback.taskNo());
         String incomingStatus = analysisCallbackDomainService.normalizeAndValidateTaskStatus(callback.taskStatusCode());
         AnalysisTaskViewModel task = anaTaskRecordRepository.findByTaskNo(taskNo)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Analysis task does not exist"));
 
-        // Idempotent duplicate check
         if (analysisIdempotencyDomainService.isDuplicateTerminalCallback(task, incomingStatus)) {
             return new AnalysisCallbackAckVO(task.taskNo(), task.taskStatusCode(), true);
         }
         analysisIdempotencyDomainService.ensureCallbackAllowed(task, incomingStatus);
 
-        // R-LATE-CALLBACK: skip write-back if task has already been retried
         if (analysisIdempotencyDomainService.hasBeenRetried(task.taskId())) {
             log.warn("Late callback on retried task taskNo={} incomingStatus={}, logging only", task.taskNo(), incomingStatus);
             return new AnalysisCallbackAckVO(task.taskNo(), incomingStatus, true);
@@ -100,31 +98,35 @@ public class AnalysisCallbackAppService {
         };
     }
 
-    private AnalysisCallbackAckVO processProcessing(AnalysisTaskViewModel task, AiAnalysisCallbackDTO callback) {
+    private AnalysisCallbackAckVO processProcessing(AnalysisTaskViewModel task, AiAnalysisResultCallbackCommand callback) {
         anaTaskRecordRepository.updateStatus(new AnalysisTaskStatusUpdateModel(
                 task.taskNo(),
                 "PROCESSING",
                 null,
                 defaultStartedAt(callback.startedAt()),
-                null));
+                null,
+                trimToNull(callback.traceId()),
+                callback.inferenceMillis(),
+                callback.modelVersion()));
         return new AnalysisCallbackAckVO(task.taskNo(), "PROCESSING", false);
     }
 
-    private AnalysisCallbackAckVO processSuccess(AnalysisTaskViewModel task, AiAnalysisCallbackDTO callback) {
-        // Delegate validation to domain service
+    private AnalysisCallbackAckVO processSuccess(AnalysisTaskViewModel task, AiAnalysisResultCallbackCommand callback) {
         analysisCallbackDomainService.validateSuccessCallbackCompleteness(callback);
-
-        // Extract summary aggregates for direct column storage (D2)
         AnalysisCallbackDomainService.SummaryAggregates aggregates =
-                analysisCallbackDomainService.extractSummaryAggregates(callback.summary(), callback.rawResultJson());
+                analysisCallbackDomainService.extractSummaryAggregates(callback.summary(), callback.rawResultJson(), callback.uncertaintyScore());
 
         String rawResultJson = resolveRawResultJson(callback);
+        String resolvedModelVersion = StringUtils.hasText(callback.modelVersion()) ? callback.modelVersion().trim() : task.modelVersion();
         anaTaskRecordRepository.updateStatus(new AnalysisTaskStatusUpdateModel(
                 task.taskNo(),
                 "SUCCESS",
                 null,
                 defaultStartedAt(callback.startedAt()),
-                defaultCompletedAt(callback.completedAt())));
+                defaultCompletedAt(callback.completedAt()),
+                trimToNull(callback.traceId()),
+                callback.inferenceMillis(),
+                resolvedModelVersion));
         anaResultSummaryRepository.save(new AnalysisResultSummaryModel(
                 IdWorker.getId(),
                 task.taskId(),
@@ -135,7 +137,7 @@ public class AnalysisCallbackAppService {
                 aggregates.reviewSuggestedFlag(),
                 task.orgId(),
                 0L));
-        anaVisualAssetRepository.replaceByTaskId(task.taskId(), buildVisualAssets(task, callback.visualAssets(), callback.modelVersion()));
+        anaVisualAssetRepository.replaceByTaskId(task.taskId(), buildVisualAssets(task, callback.visualAssets(), resolvedModelVersion));
         if (callback.riskAssessment() != null && StringUtils.hasText(callback.riskAssessment().overallRiskLevelCode())) {
             medRiskAssessmentRecordRepository.save(new RiskAssessmentCreateModel(
                     IdWorker.getId(),
@@ -149,36 +151,35 @@ public class AnalysisCallbackAppService {
                     0L));
         }
 
-        // Status transition via case module (R1: never directly update med_case)
         String targetStatus = analysisCallbackDomainService.resolveTargetCaseStatus("SUCCESS");
         String reasonCode = analysisCallbackDomainService.resolveChangeReasonCode("SUCCESS");
         caseCommandAppService.transitionStatusAsSystem(task.caseId(), task.orgId(), new CaseStatusTransitionCommand(
                 targetStatus, reasonCode, "AI callback success: " + task.taskNo()));
 
-        // Publish completed event
         analysisTaskEventPublisher.publishCompleted(new AnalysisCompletedEvent(
-                task.taskId(), task.taskNo(), task.caseId(), task.modelVersion(),
+                task.taskId(), task.taskNo(), task.caseId(), resolvedModelVersion,
                 defaultCompletedAt(callback.completedAt())));
 
         return new AnalysisCallbackAckVO(task.taskNo(), "SUCCESS", false);
     }
 
-    private AnalysisCallbackAckVO processFailure(AnalysisTaskViewModel task, AiAnalysisCallbackDTO callback) {
+    private AnalysisCallbackAckVO processFailure(AnalysisTaskViewModel task, AiAnalysisResultCallbackCommand callback) {
         anaTaskRecordRepository.updateStatus(new AnalysisTaskStatusUpdateModel(
                 task.taskNo(),
                 "FAILED",
                 trimToNull(callback.errorMessage()),
                 defaultStartedAt(callback.startedAt()),
-                defaultCompletedAt(callback.completedAt())));
+                defaultCompletedAt(callback.completedAt()),
+                trimToNull(callback.traceId()),
+                callback.inferenceMillis(),
+                callback.modelVersion()));
 
-        // Status transition via case module (R1: never directly update med_case)
         String targetStatus = analysisCallbackDomainService.resolveTargetCaseStatus("FAILED");
         String reasonCode = analysisCallbackDomainService.resolveChangeReasonCode("FAILED");
         caseCommandAppService.transitionStatusAsSystem(task.caseId(), task.orgId(), new CaseStatusTransitionCommand(
                 targetStatus, reasonCode,
                 defaultRemark(callback.errorMessage(), "AI callback failed: " + task.taskNo())));
 
-        // Publish failed event
         analysisTaskEventPublisher.publishFailed(new AnalysisFailedEvent(
                 task.taskId(), task.taskNo(), task.caseId(),
                 trimToNull(callback.errorMessage()),
@@ -187,15 +188,15 @@ public class AnalysisCallbackAppService {
         return new AnalysisCallbackAckVO(task.taskNo(), "FAILED", false);
     }
 
-    private AiAnalysisCallbackDTO readCallback(String rawBody) {
+    private AiAnalysisResultCallbackCommand readCallback(String rawBody) {
         try {
-            return objectMapper.readValue(rawBody, AiAnalysisCallbackDTO.class);
+            return objectMapper.readValue(rawBody, AiAnalysisResultCallbackCommand.class);
         } catch (Exception exception) {
             throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "AI callback payload is invalid");
         }
     }
 
-    private String resolveRawResultJson(AiAnalysisCallbackDTO callback) {
+    private String resolveRawResultJson(AiAnalysisResultCallbackCommand callback) {
         if (callback.rawResultJson() != null && !callback.rawResultJson().isNull()) {
             return toJson(callback.rawResultJson());
         }

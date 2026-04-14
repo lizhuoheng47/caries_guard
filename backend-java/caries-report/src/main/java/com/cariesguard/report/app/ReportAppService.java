@@ -5,6 +5,7 @@ import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
+import com.cariesguard.image.app.AttachmentAppService;
 import com.cariesguard.image.domain.model.StoredObject;
 import com.cariesguard.image.domain.service.ObjectStorageService;
 import com.cariesguard.patient.app.CaseCommandAppService;
@@ -30,6 +31,7 @@ import com.cariesguard.report.interfaces.command.ExportReportCommand;
 import com.cariesguard.report.interfaces.command.GenerateReportCommand;
 import com.cariesguard.followup.app.FollowupTriggerService;
 import com.cariesguard.report.interfaces.vo.ReportExportResultVO;
+import com.cariesguard.image.interfaces.vo.AttachmentAccessVO;
 import com.cariesguard.report.interfaces.vo.ReportGenerateResultVO;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -38,6 +40,7 @@ import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -53,8 +56,34 @@ public class ReportAppService {
     private final ReportRenderService reportRenderService;
     private final ReportPdfService reportPdfService;
     private final ObjectStorageService objectStorageService;
+    private final AttachmentAppService attachmentAppService;
     private final CaseCommandAppService caseCommandAppService;
     private final FollowupTriggerService followupTriggerService;
+
+    @Autowired
+    public ReportAppService(ReportSourceQueryRepository reportSourceQueryRepository,
+                            ReportRecordRepository reportRecordRepository,
+                            ReportExportLogRepository reportExportLogRepository,
+                            ReportDomainService reportDomainService,
+                            ReportTemplateResolver reportTemplateResolver,
+                            ReportRenderService reportRenderService,
+                            ReportPdfService reportPdfService,
+                            ObjectStorageService objectStorageService,
+                            AttachmentAppService attachmentAppService,
+                            CaseCommandAppService caseCommandAppService,
+                            FollowupTriggerService followupTriggerService) {
+        this.reportSourceQueryRepository = reportSourceQueryRepository;
+        this.reportRecordRepository = reportRecordRepository;
+        this.reportExportLogRepository = reportExportLogRepository;
+        this.reportDomainService = reportDomainService;
+        this.reportTemplateResolver = reportTemplateResolver;
+        this.reportRenderService = reportRenderService;
+        this.reportPdfService = reportPdfService;
+        this.objectStorageService = objectStorageService;
+        this.attachmentAppService = attachmentAppService;
+        this.caseCommandAppService = caseCommandAppService;
+        this.followupTriggerService = followupTriggerService;
+    }
 
     public ReportAppService(ReportSourceQueryRepository reportSourceQueryRepository,
                             ReportRecordRepository reportRecordRepository,
@@ -66,16 +95,9 @@ public class ReportAppService {
                             ObjectStorageService objectStorageService,
                             CaseCommandAppService caseCommandAppService,
                             FollowupTriggerService followupTriggerService) {
-        this.reportSourceQueryRepository = reportSourceQueryRepository;
-        this.reportRecordRepository = reportRecordRepository;
-        this.reportExportLogRepository = reportExportLogRepository;
-        this.reportDomainService = reportDomainService;
-        this.reportTemplateResolver = reportTemplateResolver;
-        this.reportRenderService = reportRenderService;
-        this.reportPdfService = reportPdfService;
-        this.objectStorageService = objectStorageService;
-        this.caseCommandAppService = caseCommandAppService;
-        this.followupTriggerService = followupTriggerService;
+        this(reportSourceQueryRepository, reportRecordRepository, reportExportLogRepository,
+                reportDomainService, reportTemplateResolver, reportRenderService, reportPdfService,
+                objectStorageService, null, caseCommandAppService, followupTriggerService);
     }
 
     @Transactional
@@ -187,6 +209,7 @@ public class ReportAppService {
         reportRecordRepository.findAttachment(report.attachmentId())
                 .filter(attachment -> operator.hasAnyRole("ADMIN", "SYS_ADMIN") || attachment.orgId().equals(operator.getOrgId()))
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Report attachment does not exist"));
+        AttachmentAccessVO downloadAccess = attachmentAppService == null ? new AttachmentAccessVO(null, 0L) : attachmentAppService.createAccessUrl(report.attachmentId(), (String) null);
         long exportLogId = IdWorker.getId();
         reportExportLogRepository.create(new ReportExportLogModel(
                 exportLogId,
@@ -197,7 +220,7 @@ public class ReportAppService {
                 operator.getUserId(),
                 LocalDateTime.now(),
                 report.orgId()));
-        return new ReportExportResultVO(report.reportId(), true, exportLogId);
+        return new ReportExportResultVO(report.reportId(), true, exportLogId, report.attachmentId(), downloadAccess.accessUrl(), downloadAccess.expireAt());
     }
 
     private StoredObject storeReportPdf(String reportNo, byte[] pdfBytes) {
@@ -271,3 +294,7 @@ public class ReportAppService {
         }
     }
 }
+
+
+
+

@@ -127,7 +127,7 @@ class AttachmentAppServiceTests {
                 imageStorageProperties);
         setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
         when(imageQueryRepository.findAttachment(3001L)).thenReturn(Optional.of(
-                new AttachmentViewModel(3001L, "x.jpg", "orig.jpg", "caries-image", "attachments/x.jpg", "image/jpeg", "md5", 10L, 2001L)));
+                new AttachmentViewModel(3001L, "x.jpg", "orig.jpg", "caries-image", "attachments/x.jpg", "image/jpeg", "md5", 10L, "MINIO", 2001L)));
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/files/3001/access-url");
         request.setScheme("http");
@@ -148,7 +148,7 @@ class AttachmentAppServiceTests {
                 objectStorageService,
                 imageStorageProperties);
         when(imageQueryRepository.findAttachment(3001L)).thenReturn(Optional.of(
-                new AttachmentViewModel(3001L, "x.jpg", "orig.jpg", "caries-image", "attachments/x.jpg", "image/jpeg", "md5", 10L, 2001L)));
+                new AttachmentViewModel(3001L, "x.jpg", "orig.jpg", "caries-image", "attachments/x.jpg", "image/jpeg", "md5", 10L, "MINIO", 2001L)));
 
         assertThatThrownBy(() -> appService.loadContent(3001L, Instant.now().plusSeconds(60).getEpochSecond(), "bad-signature"))
                 .isInstanceOf(BusinessException.class);
@@ -163,7 +163,7 @@ class AttachmentAppServiceTests {
                 imageStorageProperties);
         setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
         AttachmentViewModel attachment = new AttachmentViewModel(
-                3001L, "x.jpg", "orig.jpg", "caries-image", "attachments/x.jpg", "image/jpeg", "md5", 10L, 2001L);
+                3001L, "x.jpg", "orig.jpg", "caries-image", "attachments/x.jpg", "image/jpeg", "md5", 10L, "MINIO", 2001L);
         when(imageQueryRepository.findAttachment(3001L)).thenReturn(Optional.of(attachment));
         when(objectStorageService.load("caries-image", "attachments/x.jpg", "orig.jpg", "image/jpeg")).thenReturn(
                 new StoredObjectResource(new ByteArrayResource("abc".getBytes(StandardCharsets.UTF_8)), "image/jpeg", "orig.jpg", 3L));
@@ -191,3 +191,4 @@ class AttachmentAppServiceTests {
                 user.getAuthorities()));
     }
 }
+

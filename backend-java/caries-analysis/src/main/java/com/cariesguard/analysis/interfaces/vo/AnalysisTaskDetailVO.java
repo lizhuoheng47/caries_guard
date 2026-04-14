@@ -14,6 +14,8 @@ public record AnalysisTaskDetailVO(
         LocalDateTime createdAt,
         LocalDateTime startedAt,
         LocalDateTime completedAt,
+        String traceId,
+        Long inferenceMillis,
         AnalysisSummaryVO summary,
         List<AnalysisVisualAssetVO> visualAssets) {
 }

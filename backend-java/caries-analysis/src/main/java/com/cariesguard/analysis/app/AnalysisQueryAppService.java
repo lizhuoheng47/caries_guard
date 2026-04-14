@@ -59,6 +59,8 @@ public class AnalysisQueryAppService {
                 task.createdAt(),
                 task.startedAt(),
                 task.completedAt(),
+                task.traceId(),
+                task.inferenceMillis(),
                 summary,
                 visualAssets);
     }
@@ -80,7 +82,9 @@ public class AnalysisQueryAppService {
                         item.errorMessage(),
                         item.createdAt(),
                         item.startedAt(),
-                        item.completedAt()))
+                        item.completedAt(),
+                        item.traceId(),
+                        item.inferenceMillis()))
                 .toList();
         return new AnalysisTaskPageVO(pageNo, pageSize, total, records);
     }
@@ -157,3 +161,5 @@ public class AnalysisQueryAppService {
         return null;
     }
 }
+
+

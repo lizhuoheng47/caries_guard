@@ -18,6 +18,12 @@ public class AnaCorrectionFeedbackDO {
     private String correctedTruthJson;
     private String feedbackTypeCode;
     private String isExportedForTrain;
+    private String trainingCandidateFlag;
+    private String desensitizedExportFlag;
+    private String datasetSnapshotNo;
+    private String reviewStatusCode;
+    private Long reviewedBy;
+    private LocalDateTime reviewedAt;
     private Long orgId;
     private String status;
     private Long deletedFlag;
@@ -43,6 +49,18 @@ public class AnaCorrectionFeedbackDO {
     public void setFeedbackTypeCode(String feedbackTypeCode) { this.feedbackTypeCode = feedbackTypeCode; }
     public String getIsExportedForTrain() { return isExportedForTrain; }
     public void setIsExportedForTrain(String isExportedForTrain) { this.isExportedForTrain = isExportedForTrain; }
+    public String getTrainingCandidateFlag() { return trainingCandidateFlag; }
+    public void setTrainingCandidateFlag(String trainingCandidateFlag) { this.trainingCandidateFlag = trainingCandidateFlag; }
+    public String getDesensitizedExportFlag() { return desensitizedExportFlag; }
+    public void setDesensitizedExportFlag(String desensitizedExportFlag) { this.desensitizedExportFlag = desensitizedExportFlag; }
+    public String getDatasetSnapshotNo() { return datasetSnapshotNo; }
+    public void setDatasetSnapshotNo(String datasetSnapshotNo) { this.datasetSnapshotNo = datasetSnapshotNo; }
+    public String getReviewStatusCode() { return reviewStatusCode; }
+    public void setReviewStatusCode(String reviewStatusCode) { this.reviewStatusCode = reviewStatusCode; }
+    public Long getReviewedBy() { return reviewedBy; }
+    public void setReviewedBy(Long reviewedBy) { this.reviewedBy = reviewedBy; }
+    public LocalDateTime getReviewedAt() { return reviewedAt; }
+    public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
     public Long getOrgId() { return orgId; }
     public void setOrgId(Long orgId) { this.orgId = orgId; }
     public String getStatus() { return status; }

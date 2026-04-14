@@ -27,6 +27,12 @@ public class AnaCorrectionFeedbackRepositoryImpl implements AnaCorrectionFeedbac
         entity.setCorrectedTruthJson(model.correctedTruthJson());
         entity.setFeedbackTypeCode(model.feedbackTypeCode());
         entity.setIsExportedForTrain(model.exportedForTrainFlag());
+        entity.setTrainingCandidateFlag(model.trainingCandidateFlag());
+        entity.setDesensitizedExportFlag(model.desensitizedExportFlag());
+        entity.setDatasetSnapshotNo(model.datasetSnapshotNo());
+        entity.setReviewStatusCode(model.reviewStatusCode());
+        entity.setReviewedBy(model.reviewedBy());
+        entity.setReviewedAt(model.reviewedAt());
         entity.setOrgId(model.orgId());
         entity.setStatus("ACTIVE");
         entity.setDeletedFlag(0L);
@@ -34,3 +40,4 @@ public class AnaCorrectionFeedbackRepositoryImpl implements AnaCorrectionFeedbac
         anaCorrectionFeedbackMapper.insert(entity);
     }
 }
+

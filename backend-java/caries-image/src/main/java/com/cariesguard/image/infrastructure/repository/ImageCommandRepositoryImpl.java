@@ -101,6 +101,7 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
                 attachment.getContentType(),
                 attachment.getMd5(),
                 attachment.getFileSizeBytes(),
+                attachment.getStorageProviderCode(),
                 attachment.getOrgId()));
     }
 
@@ -218,3 +219,4 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
                 .set(MedImageFileDO::getUpdatedBy, model.operatorUserId()));
     }
 }
+
