@@ -1,35 +1,24 @@
-# Architecture
+﻿# Architecture
 
-## Positioning
+## 1. 当前架构定位
 
-The current backend should be treated as a modular monolith, not a microservice system.
+当前后端应被定义为“多模块单体”，不是微服务系统。
 
-This is the correct choice for the current phase because:
+原因不是抽象偏好，而是代码现实：
 
-- domain boundaries are already visible in module structure
-- core business workflow is not yet fully implemented
-- patient, case, image, analysis, report, and follow-up flows are strongly coupled
-- a single deployable unit keeps delivery risk lower while the model is still stabilizing
+- 各业务域已经分模块
+- 但患者、病例、影像、分析、报告、随访之间仍强耦合
+- 一个可部署单元更适合当前测试、答辩和交付阶段
 
-Future service extraction can be evaluated after the main workflow is stable and integration pressure becomes real.
+## 2. 模块划分
 
-## Architectural Goals
-
-- keep domain boundaries explicit
-- keep deployment simple
-- align code, schema, and API contracts
-- preserve traceability and auditability
-- support later AI workflow integration without rewriting the base system
-
-## Module Layout
-
-### Foundation modules
+### 2.1 基础模块
 
 - `caries-common`
 - `caries-framework`
 - `caries-boot`
 
-### Business modules
+### 2.2 业务模块
 
 - `caries-system`
 - `caries-patient`
@@ -40,127 +29,76 @@ Future service extraction can be evaluated after the main workflow is stable and
 - `caries-dashboard`
 - `caries-integration`
 
-## Layering Rule
+## 3. 分层结构
 
-Business modules should follow a consistent internal structure:
+大部分业务模块采用：
 
-- `controller`: REST API layer
-- `app`: application services, orchestration, transaction boundary
-- `domain`: domain models, domain services, repository interfaces
-- `infrastructure`: DOs, mappers, repository implementations, external gateways
-- `interfaces`: commands, queries, VOs, assemblers
+- `controller`
+- `app`
+- `domain`
+- `infrastructure`
+- `interfaces`
 
-`caries-system` already partially follows this direction and should be used as the normalization baseline.
+这说明当前仓库已经不是简单 CRUD 工程，而是有明确应用层、领域层和基础设施层分工。
 
-## Current Foundation Capabilities
+## 4. 请求处理链路
 
-Already implemented in code:
+典型请求路径：
 
-- unified response envelope
-- business exception abstraction
-- common error codes
-- request trace ID propagation
-- global exception handling
-- Spring Security filter chain
-- JWT generation and parsing
-- OpenAPI base configuration
+1. 请求进入 Spring MVC
+2. `JwtAuthenticationFilter` 解析 Token
+3. `SecurityContext` 装载当前用户
+4. `@RequirePermission` 做权限校验
+5. Controller 调用 AppService
+6. AppService 驱动领域规则与仓储
+7. 数据落到 MySQL
+8. 统一返回 `ApiResponse`
 
-## Current Security Model
+## 5. 数据架构
 
-Current security chain:
+当前持久层组合：
 
-1. request enters `TraceIdFilter`
-2. JWT token is resolved by `JwtAuthenticationFilter`
-3. `SystemUserDetailsService` loads user details
-4. security context is populated
-5. controller accesses current user via `SecurityContextUtils`
+- MyBatis-Plus：DO/Mapper/Repository
+- Flyway：schema 迁移
+- MySQL：事务型主库
+- JdbcTemplate：dashboard 聚合 SQL
 
-Current public endpoints:
+当前通用设计：
 
-- auth login
-- system ping
-- actuator health
-- OpenAPI / Swagger
+- `org_id` 机构隔离
+- `deleted_flag` 逻辑删除
+- `created_* / updated_*` 审计字段
+- 状态码 + 状态日志并存
 
-Current limitation:
+## 6. 外部依赖架构
 
-- the repository contains login authentication, but not a complete RBAC management implementation
-- menu permission and data-scope enforcement are modeled in schema, not completed in Java code
+当前外部依赖的真实状态：
 
-## Data Architecture
+- MySQL：已实际使用
+- RabbitMQ：analysis 事件可真实发布
+- Redis：配置存在但尚未成为业务核心依赖
+- 对象存储：抽象已存在，当前实现为本地文件系统
+- Python AI：通过消息/回调契约协同，不在仓库内
 
-Current schema direction is domain-complete but code-incomplete.
+## 7. 当前核心业务链路
 
-Main data domains already modeled in Flyway:
+目前架构真正支撑的主链路是：
 
-- system and organization
-- patient and guardian
-- patient profile
-- visit
-- case and case status log
-- diagnosis and tooth findings
-- attachment and image
-- AI task / result / correction
-- risk assessment
-- report
-- follow-up plan
-- notification
+- auth -> patient -> visit -> case -> image -> analysis -> report -> followup -> dashboard
 
-Design characteristics already visible in schema:
+这条链路既体现在控制器和服务里，也体现在 boot 真库测试里。
 
-- `org_id` is the row-level isolation anchor
-- `deleted_flag` is the logical-delete strategy
-- many sensitive fields are prepared for encrypted/hash/masked storage
-- status flow is intended to be auditable
+## 8. 当前架构缺口
 
-## Integration Architecture
+- 权限菜单种子数据不足，导致普通角色演示不完整
+- 数据权限规则没有横向下沉到所有模块
+- dashboard 直接查业务表，未来需要缓存/快照/宽表
+- PDF 生成与对象存储还未产品化
 
-Planned integration direction inferred from stack and schema:
+## 9. 结论
 
-- MySQL for transactional persistence
-- Redis for cache / token / hot data scenarios
-- RabbitMQ for async AI workflow decoupling
-- object storage for image and report payloads
-- external AI service as an independent service boundary
+当前最准确的架构描述是：
 
-Current reality:
-
-- MySQL + Flyway integration is present in config
-- Redis and RabbitMQ are configured but not yet functionally integrated in domain code
-- object storage integration is not yet implemented
-
-## Target Core Workflow
-
-The intended MVP business chain should be:
-
-1. user logs in
-2. patient is registered or selected
-3. visit is created
-4. case is created
-5. images are uploaded and linked
-6. AI analysis task is submitted
-7. AI result is written back
-8. doctor reviews and corrects result
-9. report is generated
-10. follow-up is created when required
-
-Current code only covers step 1 and a minimal system health check.
-
-## Engineering Constraints
-
-The following constraints should be kept during implementation:
-
-- schema changes must be managed by Flyway
-- module boundaries should be respected
-- do not mix future design assumptions into current-state documentation
-- expose APIs only after DTO/VO contract is stable
-- every status transition must be auditable
-- business data isolation must be org-aware
-- sensitive data handling must not be bypassed by convenience shortcuts
-
-## Immediate Architectural Priorities
-
-1. align schema, documentation, and code baseline
-2. finish `system` as the permission and organization foundation
-3. implement patient/case/image chain before dashboard and operations features
-4. formalize AI collaboration tables into V1 scope to avoid repeated rework
+- 一个以 MySQL 为核心的多模块单体后端
+- 已具备可演示的业务闭环
+- 仍保留若干外部集成和工程化收尾点

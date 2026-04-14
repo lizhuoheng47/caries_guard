@@ -1,68 +1,94 @@
-# Report 模块开发检查与完成情况
+﻿# Report 模块开发检查与完成情况
 
-## 1. 对齐范围
+## 1. 当前结论
 
-本次实现对齐以下约束：
+`report` 模块已经实现模板管理、报告生成、报告查询和导出审计，但当前“导出”仍以审计留痕为主，PDF 输出也仍是极简实现。
 
-- `report.md` 的 P5 顺序与领域规则
-- `03_核心API契约与模块接口规范.md` 的 report 接口契约
-- `V004/V006` 中 `rpt_record`、`rpt_template`、`rpt_export_log` 与 `med_attachment` 表结构
-- 报告完成后只能通过 case 模块做状态流转，禁止 report 直接改 `med_case`
+## 2. 已实现接口
 
-## 2. 已完成能力
+- `POST /api/v1/cases/{caseId}/reports`
+- `GET /api/v1/cases/{caseId}/reports`
+- `GET /api/v1/reports/{reportId}`
+- `POST /api/v1/reports/{reportId}/export`
+- `POST /api/v1/report-templates`
+- `PUT /api/v1/report-templates/{templateId}`
+- `GET /api/v1/report-templates`
+- `GET /api/v1/report-templates/{templateId}`
 
-- 报告主链路
-  - `POST /api/v1/cases/{caseId}/reports`
-  - `ReportAppService.generateReport(caseId, reportTypeCode)` 已实现
-  - 按 `(case_id, report_type_code)` 后端自动递增 `version_no`
-  - 先写 `DRAFT`，归档完成后更新为 `FINAL`
-  - 同步写入 `med_attachment`，`biz_module_code=REPORT`、`file_category_code=REPORT`
-  - 病例状态通过 `CaseCommandAppService` 从 `REVIEW_PENDING -> REPORT_READY`
+## 3. 生成报告的真实规则
 
-- 报告查询
-  - `GET /api/v1/cases/{caseId}/reports`
-  - `GET /api/v1/reports/{reportId}`
-  - 查询全量 org-aware，非 `ADMIN/SYS_ADMIN` 仅可访问本机构数据
+当前生成报告时会：
 
-- 导出审计
-  - `POST /api/v1/reports/{reportId}/export`
-  - 校验报告与归档附件后写入 `rpt_export_log`
+1. 校验病例存在且状态为 `REVIEW_PENDING` 或 `REPORT_READY`
+2. 读取最近一次分析摘要
+3. 读取病例影像、风险评估、最新医生纠偏
+4. 解析模板内容（无模板时走默认模板）
+5. 渲染占位符
+6. 生成 PDF 字节流
+7. 存入对象存储并在 `med_attachment` 建档
+8. 在 `rpt_record` 中先创建 `DRAFT`，再更新为 `FINAL`
+9. 若病例原状态为 `REVIEW_PENDING`，推进到 `REPORT_READY`
+10. 调用 `FollowupTriggerService` 判断是否自动触发随访
 
-- 模板管理
-  - `POST /api/v1/report-templates`
-  - `PUT /api/v1/report-templates/{templateId}`
-  - `GET /api/v1/report-templates`
-  - `GET /api/v1/report-templates/{templateId}`
-  - 模板按 `report_type_code` 管理，支持 `DOCTOR/PATIENT`
+## 4. 模板能力
 
-## 3. 分层与结构
+当前模板支持两类：
 
-`caries-report` 已补齐：
+- `DOCTOR`
+- `PATIENT`
 
-- `controller`
-- `app`
-- `domain/model|repository|service`
-- `infrastructure/dataobject|mapper|repository|service`
-- `interfaces/command|query|vo`
+当前解析方式：
 
-并已在 `caries-boot` 注册 mapper 扫描包：
+- 模板内容中使用 `{{placeholder}}`
+- `ReportRenderService` 直接字符串替换
 
-- `com.cariesguard.report.infrastructure.mapper`
+注意：
 
-## 4. 验证结果
+- 模板更新当前不会自动递增 `version_no`
+- 若数据库中没有模板，会使用代码内置默认模板
 
-已执行并通过：
+## 5. 导出能力的当前真实含义
 
-- `mvn test -pl caries-report -am`
-- `mvn -DskipTests package -pl caries-boot -am`
+`POST /api/v1/reports/{reportId}/export` 当前做的是：
 
-覆盖点包括：
+- 校验报告与附件存在
+- 写入 `rpt_export_log`
+- 返回 `exported=true` 和 `exportLogId`
 
-- 生成报告后记录落库调用、附件归档调用、病例状态流转调用
-- 导出审计写入调用
-- 报告类型与病例状态核心规则
+当前不会：
 
-## 5. 当前边界说明
+- 单独生成新的导出文件
+- 直接返回文件流
+- 直接返回下载地址
 
-- 当前 PDF 生成采用最小可执行实现（结构化文本转 PDF），先保证链路可运行与可归档。
-- 模板美化、复杂版式、图文混排可在下一阶段迭代，不影响当前 P5 主验收项。
+## 6. PDF 生成实现
+
+当前 `ReportPdfService` 是一个极简 PDF 生成器：
+
+- 只支持基本 ASCII 文本
+- 最多约 35 行
+- 非 ASCII 字符会被替换为 `?`
+
+这说明它适合测试和演示闭环，不适合作为正式生产版病历报告输出。
+
+## 7. 当前数据库表
+
+- `rpt_template`
+- `rpt_record`
+- `rpt_export_log`
+- `med_attachment`（报告归档文件）
+
+## 8. 当前限制
+
+- 报告没有电子签章流程，`signed_at` 当前未形成完整业务链路
+- 导出仅审计留痕
+- PDF 质量需要后续替换成熟渲染组件
+
+## 9. 测试证据
+
+当前 report 能力在以下测试中被覆盖：
+
+- `AnalysisToReportE2ETest`
+- `AnalysisReportFollowupE2ETest`
+- `ReportExportAuditIntegrationTest`
+- `MainlineWorkflowE2ETest`

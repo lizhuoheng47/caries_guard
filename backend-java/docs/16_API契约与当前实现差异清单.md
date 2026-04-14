@@ -1,179 +1,75 @@
-# API 契约与当前实现差异清单
+﻿# API 契约与当前实现差异清单
 
-## 1. 文档目标
+## 1. 目标
 
-本文件用于对齐：
+本文列出当前“文档契约”和“真实实现”之间最值得关注的差异点，避免对外说明时把目标态误说成现状。
 
-- `docs/03_核心API契约与模块接口规范.md`
-- 当前仓库真实实现
+## 2. 当前已对齐项
 
-目标不是推翻契约，而是明确哪些已经一致，哪些仍需在文档或代码层收口。
-
-## 2. 已基本对齐的部分
-
-### 2.1 统一响应结构
-
-当前已实现：
-
-```json
-{
-  "code": "00000",
-  "message": "success",
-  "data": {},
-  "traceId": "xxx",
-  "timestamp": "2026-04-14T00:00:00Z"
-}
-```
-
-与 `03` 文档口径一致。
-
-### 2.2 system 基础接口
-
-以下接口当前与契约已基本一致：
-
-- `POST /api/v1/auth/login`
-- `GET /api/v1/auth/me`
-- `GET /api/v1/system/ping`
-
-当前真实情况：
-
-- `login` 返回 `token / expireIn / user`
-- `me` 返回 `userId / username / nickName / userTypeCode / orgId / roles / permissions`
-- `ping` 返回 `pong / app`
+- 统一 URL 前缀 ` /api/v1/** `
+- 统一 `ApiResponse<T>` 返回体
+- auth / patient / visit / case / image / analysis / report / followup / dashboard 主接口均已落地
+- 病例主状态机已由代码实现并写状态日志
+- AI 回调、报告生成、随访触发均已具备真实表写入
 
 ## 3. 当前主要差异
 
-### 3.1 analysis 创建任务入参与契约不一致
+### 3.1 权限体系
 
-契约文档写法：
+契约层通常会理解为“普通角色菜单权限可直接演示”，但当前真实情况是：
 
-- `POST /api/v1/cases/{caseId}/analysis`
-- request 示例使用 `imageIds`
+- 代码已支持 `@RequirePermission`
+- `sys_menu` 本地库默认无种子数据
+- 只有 `SYS_ADMIN` 场景可直接完整演示
 
-当前真实实现：
+### 3.2 数据权限
 
-- 真实 command 为 `CreateAnalysisTaskCommand`
-- 当前接口实际接收：
-  - `caseId`
-  - `patientId`
-  - `forceRetryFlag`
-  - `taskTypeCode`
-  - `remark`
+契约上常写“支持数据权限规则”，当前真实情况是：
 
-当前业务逻辑：
+- 表与服务已存在
+- system 模块有支撑
+- 其他业务模块仍以 `org_id` 校验为主
 
-- 可分析影像不是前端显式传 `imageIds`
-- 服务端会按病例自动选择 `quality_status_code = PASS` 的有效影像
+### 3.3 analysis 消息模式
 
-结论：
+旧文档里存在“仍为 logging publisher”表述，当前真实情况是：
 
-- `03` 文档中的 `imageIds` 示例已经落后
-- 应更新为服务端按病例自动解析影像
+- 本地 profile：`rabbit`
+- E2E profile：`logging`
 
-### 3.2 case 别名接口的 body 校验要求需要写清楚
+### 3.4 对象存储
 
-当前别名接口：
+契约层经常表述为“MinIO/OSS/S3 对接”，当前真实情况是：
 
-- `POST /api/v1/cases/{caseId}/analysis`
-- `POST /api/v1/cases/{caseId}/corrections`
+- 已有抽象接口
+- 当前实现仍是本地文件系统
 
-虽然控制器内部会使用 path 中的 `caseId` 覆盖 command，但由于 `@Valid` 会先校验 request body：
+### 3.5 report 导出
 
-- `analysis` 的 body 当前仍需要带 `caseId`
-- `corrections` 的 body 当前仍需要带 `caseId`
+契约容易被理解为“导出接口直接下载报告”，当前真实情况是：
 
-结论：
+- `POST /api/v1/reports/{reportId}/export` 只做导出审计入库
+- 真实文件访问仍依赖附件签名访问链路
 
-- 这是当前实现细节
-- 若不改代码，则文档应明确 body 仍需包含 `caseId`
+### 3.6 报告模板版本
 
-### 3.3 report 生成返回状态与契约样例不一致
+契约层可能会理解为“模板每次更新自动升级版本”，当前真实情况是：
 
-契约文档示例：
+- 创建模板时 `version_no = 1`
+- 更新模板不会自动递增版本号
 
-- `reportStatusCode = DRAFT`
+### 3.7 PDF 能力
 
-当前真实实现：
+契约层容易默认“正式 PDF 报告”，当前真实情况是：
 
-- 报告生成后会完成附件归档和状态更新
-- 返回的 `reportStatusCode` 为 `FINAL`
+- 当前 PDF 生成器是极简 ASCII 版本
+- 中文与复杂排版不具备正式生产可用性
 
-结论：
+## 4. 当前建议写法
 
-- 契约样例应调整为当前真实口径
+后续所有文档如需写“已实现”，建议使用以下口径：
 
-### 3.4 followup 路径设计已经演进
-
-契约文档写法：
-
-- `POST /api/v1/cases/{caseId}/followups`
-- `GET /api/v1/followup/tasks`
-- `POST /api/v1/followup/tasks/{taskId}/complete`
-
-当前真实实现：
-
-- `POST /api/v1/cases/{caseId}/followup/plans`
-- `GET /api/v1/cases/{caseId}/followup/plans`
-- `POST /api/v1/cases/{caseId}/followup/tasks`
-- `GET /api/v1/cases/{caseId}/followup/tasks`
-- `POST /api/v1/followup/tasks/{taskId}/status`
-- `POST /api/v1/followup/records`
-
-当前完成随访的真实方式：
-
-- 通过 `POST /api/v1/followup/records` 写记录
-- 同时自动将任务改为 `DONE`
-
-结论：
-
-- `03` 文档中的 followup 路径已经明显落后
-- 应按 plan / task / record 三层结构更新
-
-### 3.5 dashboard 不在 03 文档中
-
-当前真实实现已存在：
-
-- `/api/v1/dashboard/overview`
-- `/api/v1/dashboard/case-status-distribution`
-- `/api/v1/dashboard/risk-level-distribution`
-- `/api/v1/dashboard/followup-task-summary`
-- `/api/v1/dashboard/backlog-summary`
-- `/api/v1/dashboard/model-runtime`
-- `/api/v1/dashboard/trend`
-
-这些接口当前已冻结在：
-
-- `P7_Dashboard_数据口径冻结表与首批接口清单.md`
-- `P7_Dashboard开发文档与说明文档.md`
-
-结论：
-
-- `03` 不再覆盖完整 API 现状
-- dashboard 应继续以 P7 专项文档为准
-
-## 4. 建议收口动作
-
-### 4.1 文档层
-
-优先修改 `03_核心API契约与模块接口规范.md`：
-
-- 修正 analysis request 示例
-- 修正 report 生成返回状态
-- 重写 followup 部分路径和交互
-- 增加 dashboard 章节或明确引用 P7 文档
-
-### 4.2 代码层
-
-当前最值得后续优化的一点：
-
-- 让 case 别名接口真正只依赖 path variable，不再要求 body 内重复传 `caseId`
-
-这属于体验优化，不影响当前主链路可用。
-
-## 5. 当前统一口径
-
-如果当前要联调或答辩，应以以下文档优先级为准：
-
-1. `03_核心API契约与模块接口规范.md` 中已对齐部分
-2. 本文档中的差异修正
-3. P7 / P8 专项文档中的新增接口与测试口径
+- 权限框架已实现，普通角色菜单数据未补齐
+- 数据权限基础设施已实现，跨模块细粒度裁剪未全面接入
+- 本地对象存储已实现，云对象存储未切换
+- 导出审计已实现，下载封装待完善
