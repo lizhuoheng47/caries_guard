@@ -1,9 +1,15 @@
 package com.cariesguard.analysis.interfaces.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 public record AiVisualAssetDTO(
         @NotBlank String assetTypeCode,
-        @NotNull Long attachmentId) {
+        Long attachmentId,
+        String bucketName,
+        String objectKey,
+        String contentType,
+        Long relatedImageId,
+        String toothCode,
+        Long fileSizeBytes,
+        String md5) {
 }

@@ -1,4 +1,4 @@
-﻿# CariesGuard Backend
+# CariesGuard Backend
 
 ## 当前基线
 
@@ -82,7 +82,7 @@
 
 - Redis 在配置中存在，但当前业务代码没有形成显式依赖链路
 - 对象存储当前实现为本地文件系统，默认目录为 `${user.dir}/var/image-storage`
-- `storage.provider-code` 默认值为 `MINIO`，但实现类实际是 `LocalObjectStorageService`
+- 对象存储统一使用 `caries.storage`，当前长期实现为 `caries-integration` 的 `MinioObjectStorageClient`
 
 ## 启动方式
 

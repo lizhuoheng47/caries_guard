@@ -106,6 +106,26 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
     }
 
     @Override
+    public Optional<AttachmentViewModel> findAttachmentByObject(String bucketName, String objectKey) {
+        MedAttachmentDO attachment = medAttachmentMapper.selectOne(new LambdaQueryWrapper<MedAttachmentDO>()
+                .eq(MedAttachmentDO::getBucketName, bucketName)
+                .eq(MedAttachmentDO::getObjectKey, objectKey)
+                .eq(MedAttachmentDO::getDeletedFlag, 0L)
+                .eq(MedAttachmentDO::getStatus, "ACTIVE")
+                .last("LIMIT 1"));
+        return attachment == null ? Optional.empty() : Optional.of(new AttachmentViewModel(
+                attachment.getId(),
+                attachment.getFileName(),
+                attachment.getOriginalName(),
+                attachment.getBucketName(),
+                attachment.getObjectKey(),
+                attachment.getContentType(),
+                attachment.getMd5(),
+                attachment.getFileSizeBytes(),
+                attachment.getStorageProviderCode(),
+                attachment.getOrgId()));
+    }
+    @Override
     public Optional<AttachmentOwnerCaseModel> findCase(Long caseId) {
         MedCaseDO medicalCase = imageCaseMapper.selectOne(new LambdaQueryWrapper<MedCaseDO>()
                 .eq(MedCaseDO::getId, caseId)
@@ -219,4 +239,5 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
                 .set(MedImageFileDO::getUpdatedBy, model.operatorUserId()));
     }
 }
+
 

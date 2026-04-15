@@ -13,8 +13,8 @@
 | Spring profile | `local`、`e2e` |
 | 数据库迁移 | Flyway V001-V014 |
 | 默认对象存储 | `MINIO` |
-| 默认对象存储实现 | `MinioObjectStorageService` |
-| 本地兼容对象存储 | `LOCAL_FS` / `LocalObjectStorageService` |
+| 默认对象存储实现 | `MinioObjectStorageClient` |
+| 本地兼容对象存储 | 不作为当前运行口径 |
 | AI 回调 DTO | `AiAnalysisResultCallbackCommand` |
 | 报告 PDF 生成 | `ReportPdfService` + PDFBox |
 | 报告导出结果 | 审计日志 + `attachmentId` + `downloadUrl` + `expireAt` |
@@ -34,9 +34,9 @@ mvn -q -pl caries-analysis -am test
 caries:
   image:
     storage:
-      provider-code: ${CARIES_IMAGE_STORAGE_PROVIDER:MINIO}
+      provider: ${CARIES_STORAGE_PROVIDER:MINIO}
       bucket-name: ${CARIES_IMAGE_BUCKET:caries-image}
-      public-base-url: ${CARIES_IMAGE_PUBLIC_BASE_URL:http://127.0.0.1:8080}
+      endpoint: ${CARIES_MINIO_ENDPOINT:http://127.0.0.1:9000}
       minio:
         endpoint: ${CARIES_MINIO_ENDPOINT:http://127.0.0.1:9000}
         access-key: ${CARIES_MINIO_ACCESS_KEY:minioadmin}
@@ -76,8 +76,8 @@ caries:
 | `AttachmentAppService` | `createInternalAccessUrl` | 面向 AI 内部服务生成 URL |
 | `AttachmentAppService` | `resolveLocalStoragePath` | LOCAL_FS 场景解析路径 |
 | `ObjectStorageService` | `store`、`load`、`delete` | 对象存储统一接口 |
-| `MinioObjectStorageService` | `store`、`load`、`delete` | MinIO 实现，默认启用 |
-| `LocalObjectStorageService` | `store`、`load`、`delete` | 本地文件兼容实现 |
+| `MinioObjectStorageClient` | `store`、`load`、`delete` | MinIO 实现，默认启用 |
+| `ImageObjectStorageServiceAdapter` | `store`、`load`、`delete` | 本地文件兼容实现 |
 
 开发注意：
 
@@ -224,4 +224,4 @@ Python 消费任务消息时应：
 1. 不建议为了图好看拆出 `caries-risk`，风险能力已有表和流程承载。
 2. 不建议声称已有独立 ModelAdmin 平台，当前只是最小模型治理落点。
 3. 不建议绕过 `AttachmentAppService` 直接拼下载地址。
-4. 不建议在业务代码中硬编码 MinIO endpoint，应通过 `ImageStorageProperties` 读取配置。
+4. 不建议在业务代码中硬编码 MinIO endpoint，应通过 `StorageProperties` 读取配置。

@@ -36,15 +36,15 @@
 | `CaseImageController` | `create`、`list`、`detail` | 病例影像 API |
 | `ImageQualityCheckController` | `save`、`getCurrent` | 影像质检 API |
 | `AttachmentAppService` | `upload` | MD5 去重、对象存储、附件落库 |
-| `AttachmentAppService` | `createAccessUrl(Long, HttpServletRequest)` | 根据请求 host 生成 URL |
-| `AttachmentAppService` | `createAccessUrl(Long, String)` | 根据指定 baseUrl 生成 URL |
+| `AttachmentAppService` | `createAccessUrl(Long, HttpServletRequest)` | 生成 MinIO 预签名 GET URL |
+| `AttachmentAppService` | `createAccessUrl(Long, String)` | 兼容旧签名，当前返回 MinIO 预签名 GET URL |
 | `AttachmentAppService` | `createInternalAccessUrl` | 内部 AI 服务访问 URL |
-| `AttachmentAppService` | `resolveLocalStoragePath` | LOCAL_FS 兼容路径解析 |
+| `AttachmentAppService` | `registerExternalObject` | 登记 Python 已写入 MinIO 的对象元数据 |
 | `AttachmentAppService` | `loadContent` | 签名下载 |
 | `ObjectStorageService` | `store`、`load`、`delete` | 存储抽象 |
-| `MinioObjectStorageService` | `store`、`load`、`delete` | MinIO 实现 |
-| `LocalObjectStorageService` | `store`、`load`、`delete` | LocalFS 实现 |
-| `ImageStorageProperties` | `providerCode`、`bucketName`、`publicBaseUrl`、`minio` | 存储配置 |
+| `StorageProperties` | `provider`、`endpoint`、`buckets`、`defaultPresignExpireSeconds` | `caries.storage` 配置 |
+| `MinioObjectStorageClient` | `upload`、`download`、`delete`、`presignGetObject`、`presignPutObject` | MinIO 基础设施实现 |
+| `ImageObjectStorageServiceAdapter` | `store`、`load`、`presignGetObject` | 业务端口到 MinIO 客户端的适配器 | 存储配置 |
 
 ## 4. AI 分析模块
 
@@ -67,7 +67,7 @@
 | `AiAnalysisRequestDTO` | `taskNo`、`modelVersion`、`images`、`patientProfile` |
 | `AiAnalysisRequestDTO.ImageItem` | `attachmentId`、`storageProviderCode`、`attachmentMd5`、`accessUrl`、`accessExpireAt`、`localStoragePath` |
 | `AiAnalysisResultCallbackCommand` | `taskNo`、`taskStatusCode`、`modelVersion`、`summary`、`rawResultJson`、`visualAssets`、`riskAssessment`、`traceId`、`inferenceMillis` |
-| `AiVisualAssetDTO` | 可视化资产信息 |
+| `AiVisualAssetDTO` | `assetTypeCode`、`attachmentId` 或 `bucketName/objectKey`、`relatedImageId`、`toothCode` |
 | `RiskAssessmentDTO` | 风险等级和建议 |
 | `SubmitCorrectionFeedbackCommand` | 医生修正反馈 |
 
@@ -78,7 +78,7 @@
 | `ReportController` | `generateReport`、`listCaseReports`、`getReport`、`exportReport` | 报告 API |
 | `ReportTemplateController` | `createTemplate`、`updateTemplate`、`listTemplates`、`getTemplate` | 模板 API |
 | `ReportAppService` | `generateReport` | 聚合病例、分析、风险、模板并生成 PDF 附件 |
-| `ReportAppService` | `exportReport` | 写导出审计并返回下载 URL |
+| `ReportAppService` | `exportReport` | 复制到 `caries-export`、写导出审计并返回下载 URL |
 | `ReportPdfService` | `generatePdf` | PDFBox 生成 PDF，支持中文字体候选 |
 | `ReportExportResultVO` | `reportId`、`exported`、`exportLogId`、`attachmentId`、`downloadUrl`、`expireAt` | 导出返回对象 |
 

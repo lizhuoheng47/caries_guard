@@ -452,7 +452,7 @@ class AnalysisWorkflowE2ETests {
         @Override
         public void replaceByTaskId(Long taskId, List<AnalysisVisualAssetCreateModel> models) {
             byTaskId.put(taskId, models.stream()
-                    .map(item -> new AnalysisVisualAssetModel(item.assetTypeCode(), item.attachmentId()))
+                    .map(item -> new AnalysisVisualAssetModel(item.assetTypeCode(), item.attachmentId(), null, null))
                     .toList());
         }
 

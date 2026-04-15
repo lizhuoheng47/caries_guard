@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -31,6 +31,11 @@
         </dependency>
         <dependency>
             <groupId>com.cariesguard</groupId>
+            <artifactId>caries-image</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.cariesguard</groupId>
             <artifactId>caries-analysis</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -43,6 +48,10 @@
             <groupId>com.cariesguard</groupId>
             <artifactId>caries-followup</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

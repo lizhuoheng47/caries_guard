@@ -17,6 +17,8 @@ public interface ImageCommandRepository {
 
     Optional<AttachmentViewModel> findAttachment(Long attachmentId);
 
+    Optional<AttachmentViewModel> findAttachmentByObject(String bucketName, String objectKey);
+
     Optional<AttachmentOwnerCaseModel> findCase(Long caseId);
 
     int nextImageIndexNo(Long caseId, String imageTypeCode);
@@ -29,3 +31,4 @@ public interface ImageCommandRepository {
 
     void saveQualityCheck(ImageQualityCheckCreateModel model);
 }
+

@@ -5,9 +5,10 @@ import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
-import com.cariesguard.image.config.ImageStorageProperties;
+import com.cariesguard.image.domain.model.AttachmentObjectRegistrationModel;
 import com.cariesguard.image.domain.model.AttachmentUploadModel;
 import com.cariesguard.image.domain.model.AttachmentViewModel;
+import com.cariesguard.image.domain.model.ObjectStoreCommand;
 import com.cariesguard.image.domain.model.StoredObject;
 import com.cariesguard.image.domain.model.StoredObjectResource;
 import com.cariesguard.image.domain.repository.ImageCommandRepository;
@@ -19,7 +20,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -29,7 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 public class AttachmentAppService {
@@ -37,16 +36,13 @@ public class AttachmentAppService {
     private final ImageCommandRepository imageCommandRepository;
     private final ImageQueryRepository imageQueryRepository;
     private final ObjectStorageService objectStorageService;
-    private final ImageStorageProperties imageStorageProperties;
 
     public AttachmentAppService(ImageCommandRepository imageCommandRepository,
                                 ImageQueryRepository imageQueryRepository,
-                                ObjectStorageService objectStorageService,
-                                ImageStorageProperties imageStorageProperties) {
+                                ObjectStorageService objectStorageService) {
         this.imageCommandRepository = imageCommandRepository;
         this.imageQueryRepository = imageQueryRepository;
         this.objectStorageService = objectStorageService;
-        this.imageStorageProperties = imageStorageProperties;
     }
 
     @Transactional
@@ -69,31 +65,39 @@ public class AttachmentAppService {
                         item.bucketName(),
                         item.objectKey(),
                         item.md5()))
-                .orElseGet(() -> createAttachment(operator, file, bytes.length, md5));
+                .orElseGet(() -> createCaseImageAttachment(operator, file, bytes.length, md5));
+    }
+
+    @Transactional
+    public AttachmentUploadVO registerExternalObject(AttachmentObjectRegistrationModel model) {
+        validateExternalObject(model);
+        return imageCommandRepository.findAttachmentByObject(model.bucketName().trim(), model.objectKey().trim())
+                .map(item -> new AttachmentUploadVO(
+                        item.attachmentId(),
+                        item.fileName(),
+                        item.bucketName(),
+                        item.objectKey(),
+                        item.md5()))
+                .orElseGet(() -> createExternalAttachment(model));
     }
 
     public AttachmentAccessVO createAccessUrl(Long attachmentId, HttpServletRequest request) {
-        return createAccessUrl(attachmentId, requestBaseUrl(request));
+        return createAccessUrl(attachmentId, (String) null);
     }
 
-    public AttachmentAccessVO createAccessUrl(Long attachmentId, String baseUrl) {
+    public AttachmentAccessVO createAccessUrl(Long attachmentId, String ignoredBaseUrl) {
         AuthenticatedUser operator = SecurityContextUtils.currentUser();
         AttachmentViewModel attachment = loadAttachment(attachmentId);
         ensureOrgAccess(operator, attachment.orgId());
-        return buildAccessUrl(attachment, baseUrl);
+        return buildPresignedAccessUrl(attachment);
     }
 
     public AttachmentAccessVO createInternalAccessUrl(Long attachmentId) {
-        return buildAccessUrl(loadAttachment(attachmentId), imageStorageProperties.getPublicBaseUrl());
+        return buildPresignedAccessUrl(loadAttachment(attachmentId));
     }
 
     public String resolveLocalStoragePath(String bucketName, String objectKey) {
-        if (!StringUtils.hasText(imageStorageProperties.getLocalRoot())
-                || !StringUtils.hasText(bucketName)
-                || !StringUtils.hasText(objectKey)) {
-            return null;
-        }
-        return Path.of(imageStorageProperties.getLocalRoot(), bucketName).resolve(objectKey).toAbsolutePath().normalize().toString();
+        return null;
     }
 
     public StoredObjectResource loadContent(Long attachmentId, Long expireAt, String signature) {
@@ -119,22 +123,25 @@ public class AttachmentAppService {
         }
     }
 
-    private AttachmentUploadVO createAttachment(AuthenticatedUser operator,
-                                                MultipartFile file,
-                                                long fileSizeBytes,
-                                                String md5) {
+    private AttachmentUploadVO createCaseImageAttachment(AuthenticatedUser operator,
+                                                        MultipartFile file,
+                                                        long fileSizeBytes,
+                                                        String md5) {
+        long attachmentId = IdWorker.getId();
         StoredObject storedObject;
         try (InputStream inputStream = file.getInputStream()) {
-            storedObject = objectStorageService.store(
+            storedObject = objectStorageService.store(new ObjectStoreCommand(
+                    "IMAGE",
+                    "case-image",
+                    String.valueOf(attachmentId),
                     file.getOriginalFilename(),
                     defaultContentType(file.getContentType()),
                     inputStream,
                     fileSizeBytes,
-                    md5);
+                    md5));
         } catch (IOException exception) {
             throw new BusinessException(CommonErrorCode.EXTERNAL_SERVICE_ERROR.code(), "Store attachment failed");
         }
-        long attachmentId = IdWorker.getId();
         try {
             imageCommandRepository.createAttachment(new AttachmentUploadModel(
                     attachmentId,
@@ -168,30 +175,41 @@ public class AttachmentAppService {
                 storedObject.md5());
     }
 
-    private AttachmentAccessVO buildAccessUrl(AttachmentViewModel attachment, String baseUrl) {
-        String resolvedBaseUrl = StringUtils.hasText(baseUrl) ? baseUrl : imageStorageProperties.getPublicBaseUrl();
-        if (!StringUtils.hasText(resolvedBaseUrl)) {
-            throw new BusinessException(CommonErrorCode.SYSTEM_ERROR.code(), "Image public base URL is not configured");
-        }
-        long expireAt = System.currentTimeMillis() / 1000 + imageStorageProperties.getAccessUrlExpireSeconds();
-        String signature = sign(attachment.attachmentId(), attachment.bucketName(), attachment.objectKey(), expireAt);
-        String accessUrl = UriComponentsBuilder.fromUriString(resolvedBaseUrl)
-                .replacePath("/api/v1/files/" + attachment.attachmentId() + "/content")
-                .replaceQuery(null)
-                .queryParam("expireAt", expireAt)
-                .queryParam("signature", signature)
-                .build()
-                .toUriString();
-        return new AttachmentAccessVO(accessUrl, expireAt);
+    private AttachmentUploadVO createExternalAttachment(AttachmentObjectRegistrationModel model) {
+        long attachmentId = model.attachmentId() == null ? IdWorker.getId() : model.attachmentId();
+        String originalName = StringUtils.hasText(model.originalName()) ? model.originalName().trim() : fileNameFromObjectKey(model.objectKey());
+        String fileName = fileNameFromObjectKey(model.objectKey());
+        imageCommandRepository.createAttachment(new AttachmentUploadModel(
+                attachmentId,
+                trimOrDefault(model.bizModuleCode(), "ANALYSIS"),
+                model.bizId(),
+                trimOrDefault(model.fileCategoryCode(), "IMAGE"),
+                fileName,
+                originalName,
+                model.bucketName().trim(),
+                model.objectKey().trim(),
+                defaultContentType(model.contentType()),
+                fileExtension(originalName),
+                model.fileSizeBytes(),
+                trimToNull(model.md5()),
+                "MINIO",
+                trimOrDefault(model.visibilityCode(), "PRIVATE"),
+                model.uploadUserId(),
+                model.orgId(),
+                trimOrDefault(model.status(), "ACTIVE"),
+                trimToNull(model.remark()),
+                model.operatorUserId()));
+        return new AttachmentUploadVO(attachmentId, fileName, model.bucketName().trim(), model.objectKey().trim(), trimToNull(model.md5()));
     }
 
-    private String requestBaseUrl(HttpServletRequest request) {
-        return UriComponentsBuilder.newInstance()
-                .scheme(request.getScheme())
-                .host(request.getServerName())
-                .port(request.getServerPort())
-                .build()
-                .toUriString();
+    private AttachmentAccessVO buildPresignedAccessUrl(AttachmentViewModel attachment) {
+        try {
+            String accessUrl = objectStorageService.presignGetObject(attachment.bucketName(), attachment.objectKey());
+            long expireAt = System.currentTimeMillis() / 1000 + objectStorageService.defaultPresignExpireSeconds();
+            return new AttachmentAccessVO(accessUrl, expireAt);
+        } catch (IOException exception) {
+            throw new BusinessException(CommonErrorCode.EXTERNAL_SERVICE_ERROR.code(), "Create object access URL failed");
+        }
     }
 
     private AttachmentViewModel loadAttachment(Long attachmentId) {
@@ -205,10 +223,19 @@ public class AttachmentAppService {
         }
     }
 
+    private void validateExternalObject(AttachmentObjectRegistrationModel model) {
+        if (model == null
+                || !StringUtils.hasText(model.bucketName())
+                || !StringUtils.hasText(model.objectKey())
+                || model.orgId() == null) {
+            throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "External object metadata is incomplete");
+        }
+    }
+
     private String sign(Long attachmentId, String bucketName, String objectKey, long expireAt) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(imageStorageProperties.getAccessUrlSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            mac.init(new SecretKeySpec(objectStorageService.proxyAccessSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             String payload = attachmentId + ":" + bucketName + ":" + objectKey + ":" + expireAt;
             return Base64.getUrlEncoder().withoutPadding().encodeToString(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception exception) {
@@ -225,7 +252,7 @@ public class AttachmentAppService {
     }
 
     private String defaultContentType(String contentType) {
-        return StringUtils.hasText(contentType) ? contentType : "application/octet-stream";
+        return StringUtils.hasText(contentType) ? contentType.trim() : "application/octet-stream";
     }
 
     private String fileExtension(String originalFileName) {
@@ -233,6 +260,23 @@ public class AttachmentAppService {
             return null;
         }
         return originalFileName.substring(originalFileName.lastIndexOf('.') + 1);
+    }
+
+    private String fileNameFromObjectKey(String objectKey) {
+        if (!StringUtils.hasText(objectKey)) {
+            return "object.bin";
+        }
+        String normalized = objectKey.replace('\\', '/');
+        int index = normalized.lastIndexOf('/');
+        return index >= 0 ? normalized.substring(index + 1) : normalized;
+    }
+
+    private String trimOrDefault(String value, String fallback) {
+        return StringUtils.hasText(value) ? value.trim() : fallback;
+    }
+
+    private String trimToNull(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     private void deleteStoredObjectQuietly(StoredObject storedObject) {

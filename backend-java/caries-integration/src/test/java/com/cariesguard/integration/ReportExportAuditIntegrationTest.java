@@ -49,7 +49,8 @@ class ReportExportAuditIntegrationTest {
         assertThat(fixture.reportExportLogRepository.logs()).hasSize(1);
         ReportExportLogModel exportLog = fixture.reportExportLogRepository.logs().get(0);
         assertThat(exportLog.reportId()).isEqualTo(report.reportId());
-        assertThat(exportLog.attachmentId()).isEqualTo(reportRecord.attachmentId());
+        assertThat(exportLog.attachmentId()).isEqualTo(exportResult.attachmentId());
+        assertThat(exportLog.attachmentId()).isNotEqualTo(reportRecord.attachmentId());
         assertThat(exportLog.exportTypeCode()).isEqualTo("PDF");
         assertThat(exportLog.exportChannelCode()).isEqualTo("DOWNLOAD");
         assertThat(exportLog.exportedBy()).isNotNull();

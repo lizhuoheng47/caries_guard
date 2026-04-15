@@ -46,7 +46,7 @@ public class AnalysisQueryAppService {
         ensureOrgAccess(operator, task.orgId());
         AnalysisSummaryVO summary = anaResultSummaryRepository.findByTaskId(taskId).map(this::toSummaryVO).orElse(null);
         List<AnalysisVisualAssetVO> visualAssets = anaVisualAssetRepository.listByTaskId(taskId).stream()
-                .map(item -> new AnalysisVisualAssetVO(item.assetTypeCode(), item.attachmentId()))
+                .map(item -> new AnalysisVisualAssetVO(item.assetTypeCode(), item.attachmentId(), item.relatedImageId(), item.toothCode()))
                 .toList();
         return new AnalysisTaskDetailVO(
                 task.taskId(),
@@ -161,5 +161,6 @@ public class AnalysisQueryAppService {
         return null;
     }
 }
+
 
 

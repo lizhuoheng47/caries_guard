@@ -33,6 +33,8 @@ public class AnaVisualAssetRepositoryImpl implements AnaVisualAssetRepository {
             entity.setModelVersion(model.modelVersion());
             entity.setAssetTypeCode(model.assetTypeCode());
             entity.setAttachmentId(model.attachmentId());
+            entity.setRelatedImageId(model.relatedImageId());
+            entity.setToothCode(model.toothCode());
             entity.setOrgId(model.orgId());
             entity.setStatus("ACTIVE");
             entity.setDeletedFlag(0L);
@@ -51,7 +53,11 @@ public class AnaVisualAssetRepositoryImpl implements AnaVisualAssetRepository {
                         .orderByAsc(AnaVisualAssetDO::getAssetTypeCode)
                         .orderByAsc(AnaVisualAssetDO::getId))
                 .stream()
-                .map(item -> new AnalysisVisualAssetModel(item.getAssetTypeCode(), item.getAttachmentId()))
+                .map(item -> new AnalysisVisualAssetModel(
+                        item.getAssetTypeCode(),
+                        item.getAttachmentId(),
+                        item.getRelatedImageId(),
+                        item.getToothCode()))
                 .toList();
     }
 }

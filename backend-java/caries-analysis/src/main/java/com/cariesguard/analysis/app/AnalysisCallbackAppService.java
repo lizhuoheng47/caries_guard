@@ -21,6 +21,9 @@ import com.cariesguard.analysis.interfaces.dto.AiVisualAssetDTO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisCallbackAckVO;
 import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
+import com.cariesguard.image.app.AttachmentAppService;
+import com.cariesguard.image.domain.model.AttachmentObjectRegistrationModel;
+import com.cariesguard.image.interfaces.vo.AttachmentUploadVO;
 import com.cariesguard.patient.app.CaseCommandAppService;
 import com.cariesguard.patient.interfaces.command.CaseStatusTransitionCommand;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -29,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -47,7 +51,33 @@ public class AnalysisCallbackAppService {
     private final AnalysisCallbackDomainService analysisCallbackDomainService;
     private final AnalysisTaskEventPublisher analysisTaskEventPublisher;
     private final CaseCommandAppService caseCommandAppService;
+    private final AttachmentAppService attachmentAppService;
     private final ObjectMapper objectMapper;
+
+    @Autowired
+    public AnalysisCallbackAppService(AiCallbackSignatureVerifier aiCallbackSignatureVerifier,
+                                      AnaTaskRecordRepository anaTaskRecordRepository,
+                                      AnaResultSummaryRepository anaResultSummaryRepository,
+                                      AnaVisualAssetRepository anaVisualAssetRepository,
+                                      MedRiskAssessmentRecordRepository medRiskAssessmentRecordRepository,
+                                      AnalysisIdempotencyDomainService analysisIdempotencyDomainService,
+                                      AnalysisCallbackDomainService analysisCallbackDomainService,
+                                      AnalysisTaskEventPublisher analysisTaskEventPublisher,
+                                      CaseCommandAppService caseCommandAppService,
+                                      AttachmentAppService attachmentAppService,
+                                      ObjectMapper objectMapper) {
+        this.aiCallbackSignatureVerifier = aiCallbackSignatureVerifier;
+        this.anaTaskRecordRepository = anaTaskRecordRepository;
+        this.anaResultSummaryRepository = anaResultSummaryRepository;
+        this.anaVisualAssetRepository = anaVisualAssetRepository;
+        this.medRiskAssessmentRecordRepository = medRiskAssessmentRecordRepository;
+        this.analysisIdempotencyDomainService = analysisIdempotencyDomainService;
+        this.analysisCallbackDomainService = analysisCallbackDomainService;
+        this.analysisTaskEventPublisher = analysisTaskEventPublisher;
+        this.caseCommandAppService = caseCommandAppService;
+        this.attachmentAppService = attachmentAppService;
+        this.objectMapper = objectMapper;
+    }
 
     public AnalysisCallbackAppService(AiCallbackSignatureVerifier aiCallbackSignatureVerifier,
                                       AnaTaskRecordRepository anaTaskRecordRepository,
@@ -59,16 +89,9 @@ public class AnalysisCallbackAppService {
                                       AnalysisTaskEventPublisher analysisTaskEventPublisher,
                                       CaseCommandAppService caseCommandAppService,
                                       ObjectMapper objectMapper) {
-        this.aiCallbackSignatureVerifier = aiCallbackSignatureVerifier;
-        this.anaTaskRecordRepository = anaTaskRecordRepository;
-        this.anaResultSummaryRepository = anaResultSummaryRepository;
-        this.anaVisualAssetRepository = anaVisualAssetRepository;
-        this.medRiskAssessmentRecordRepository = medRiskAssessmentRecordRepository;
-        this.analysisIdempotencyDomainService = analysisIdempotencyDomainService;
-        this.analysisCallbackDomainService = analysisCallbackDomainService;
-        this.analysisTaskEventPublisher = analysisTaskEventPublisher;
-        this.caseCommandAppService = caseCommandAppService;
-        this.objectMapper = objectMapper;
+        this(aiCallbackSignatureVerifier, anaTaskRecordRepository, anaResultSummaryRepository, anaVisualAssetRepository,
+                medRiskAssessmentRecordRepository, analysisIdempotencyDomainService, analysisCallbackDomainService,
+                analysisTaskEventPublisher, caseCommandAppService, null, objectMapper);
     }
 
     @Transactional
@@ -218,10 +241,55 @@ public class AnalysisCallbackAppService {
                 task.taskId(),
                 task.caseId(),
                 resolvedModelVersion,
-                item.assetTypeCode().trim(),
-                item.attachmentId(),
+                normalizeAssetType(item.assetTypeCode()),
+                resolveVisualAttachmentId(task, item),
+                item.relatedImageId(),
+                trimToNull(item.toothCode()),
                 task.orgId(),
                 0L)).toList();
+    }
+
+    private Long resolveVisualAttachmentId(AnalysisTaskViewModel task, AiVisualAssetDTO item) {
+        if (item.attachmentId() != null) {
+            return item.attachmentId();
+        }
+        if (!StringUtils.hasText(item.bucketName()) || !StringUtils.hasText(item.objectKey())) {
+            throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "visualAssets item must contain attachmentId or bucketName/objectKey");
+        }
+        if (attachmentAppService == null) {
+            throw new BusinessException(CommonErrorCode.SYSTEM_ERROR.code(), "Attachment registration service is not available");
+        }
+        AttachmentUploadVO registered = attachmentAppService.registerExternalObject(new AttachmentObjectRegistrationModel(
+                null,
+                "ANALYSIS",
+                task.taskId(),
+                "IMAGE",
+                fileNameFromObjectKey(item.objectKey()),
+                item.bucketName(),
+                item.objectKey(),
+                item.contentType(),
+                item.fileSizeBytes(),
+                trimToNull(item.md5()),
+                "PRIVATE",
+                null,
+                task.orgId(),
+                "ACTIVE",
+                "AI visual asset callback for task " + task.taskNo(),
+                0L));
+        return registered.attachmentId();
+    }
+
+    private String normalizeAssetType(String assetTypeCode) {
+        if (!StringUtils.hasText(assetTypeCode)) {
+            throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "visual asset assetTypeCode is required");
+        }
+        return assetTypeCode.trim().toUpperCase();
+    }
+
+    private String fileNameFromObjectKey(String objectKey) {
+        String normalized = objectKey.replace('\\', '/');
+        int index = normalized.lastIndexOf('/');
+        return index >= 0 ? normalized.substring(index + 1) : normalized;
     }
 
     private String toJson(Object value) {

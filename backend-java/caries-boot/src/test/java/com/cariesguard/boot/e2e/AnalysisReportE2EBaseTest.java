@@ -8,7 +8,9 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import com.cariesguard.analysis.config.AnalysisProperties;
 import com.cariesguard.boot.CariesBootApplication;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
+import com.cariesguard.image.domain.model.ObjectStoreCommand;
 import com.cariesguard.image.domain.model.StoredObject;
+import com.cariesguard.image.domain.model.StoredObjectResource;
 import com.cariesguard.image.domain.service.ObjectStorageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -69,27 +72,45 @@ abstract class AnalysisReportE2EBaseTest {
 
     @BeforeEach
     void setUpStorageMock() throws Exception {
-        org.mockito.BDDMockito.given(objectStorageService.store(
-                        any(String.class),
-                        any(String.class),
-                        any(InputStream.class),
-                        anyLong(),
-                        any(String.class)))
+        Map<String, byte[]> objects = new java.util.concurrent.ConcurrentHashMap<>();
+        org.mockito.BDDMockito.given(objectStorageService.store(any(ObjectStoreCommand.class)))
                 .willAnswer(invocation -> {
-                    String originalFileName = invocation.getArgument(0, String.class);
-                    String contentType = invocation.getArgument(1, String.class);
-                    long fileSize = invocation.getArgument(3, Long.class);
-                    String md5 = invocation.getArgument(4, String.class);
-                    String safeName = originalFileName == null ? "report.pdf" : originalFileName;
+                    ObjectStoreCommand command = invocation.getArgument(0, ObjectStoreCommand.class);
+                    String safeName = command.originalFileName() == null ? "object.bin" : command.originalFileName();
+                    String objectKey = command.keyModule() + "/" + UUID.randomUUID() + "/" + safeName;
+                    byte[] bytes = command.inputStream().readAllBytes();
+                    objects.put(objectKey, bytes);
+                    String bucketName = switch (command.bucketCode()) {
+                        case "REPORT" -> "caries-report";
+                        case "EXPORT" -> "caries-export";
+                        case "VISUAL" -> "caries-visual";
+                        default -> "caries-image";
+                    };
                     return new StoredObject(
-                            "e2e-bucket",
-                            "e2e/" + UUID.randomUUID() + "/" + safeName,
+                            bucketName,
+                            objectKey,
                             safeName,
-                            contentType,
-                            fileSize,
-                            md5,
+                            command.contentType(),
+                            command.fileSizeBytes(),
+                            command.md5(),
                             "MINIO");
                 });
+        org.mockito.BDDMockito.given(objectStorageService.load(any(String.class), any(String.class), any(String.class), any(String.class)))
+                .willAnswer(invocation -> {
+                    String objectKey = invocation.getArgument(1, String.class);
+                    String originalName = invocation.getArgument(2, String.class);
+                    String contentType = invocation.getArgument(3, String.class);
+                    byte[] bytes = objects.getOrDefault(objectKey, new byte[] {1, 2, 3});
+                    return new StoredObjectResource(
+                            new ByteArrayResource(bytes),
+                            contentType == null ? "application/octet-stream" : contentType,
+                            originalName == null ? objectKey : originalName,
+                            bytes.length);
+                });
+        org.mockito.BDDMockito.given(objectStorageService.presignGetObject(any(String.class), any(String.class)))
+                .willAnswer(invocation -> "http://minio.test/" + invocation.getArgument(0, String.class) + "/" + invocation.getArgument(1, String.class) + "?signature=test");
+        org.mockito.BDDMockito.given(objectStorageService.defaultPresignExpireSeconds()).willReturn(900L);
+        org.mockito.BDDMockito.given(objectStorageService.proxyAccessSecret()).willReturn("e2e-image-access-secret");
         org.mockito.BDDMockito.willDoNothing().given(objectStorageService).delete(any(String.class), any(String.class));
     }
 

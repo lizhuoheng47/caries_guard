@@ -7,9 +7,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
-import com.cariesguard.image.domain.model.StoredObject;
-import com.cariesguard.image.domain.service.ObjectStorageService;
 import com.cariesguard.followup.app.FollowupTriggerService;
+import com.cariesguard.image.domain.model.ObjectStoreCommand;
+import com.cariesguard.image.domain.model.StoredObject;
+import com.cariesguard.image.domain.model.StoredObjectResource;
+import com.cariesguard.image.domain.service.ObjectStorageService;
 import com.cariesguard.patient.app.CaseCommandAppService;
 import com.cariesguard.report.domain.model.ReportAnalysisSummaryModel;
 import com.cariesguard.report.domain.model.ReportAttachmentModel;
@@ -38,6 +40,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -69,7 +72,7 @@ class ReportAppServiceTests {
     }
 
     @Test
-    void generateReportShouldCreateArchiveAndTransitionCase() throws IOException {
+    void generateReportShouldCreateArchiveInReportBucketAndTransitionCase() throws IOException {
         ReportAppService appService = createService();
         setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
         when(reportSourceQueryRepository.findCase(3001L)).thenReturn(Optional.of(
@@ -77,7 +80,7 @@ class ReportAppServiceTests {
         when(reportSourceQueryRepository.findLatestSummary(3001L)).thenReturn(Optional.of(
                 new ReportAnalysisSummaryModel(1L, "{\"k\":1}", "C2", new BigDecimal("0.18"), "1")));
         when(reportSourceQueryRepository.listCaseImages(3001L)).thenReturn(List.of(
-                new ReportImageModel(5001L, 6001L, "PANORAMIC", "PASS", "1", "caries-image", "attachments/a.jpg", "a.jpg")));
+                new ReportImageModel(5001L, 6001L, "PANORAMIC", "PASS", "1", "caries-image", "case-image/a.jpg", "a.jpg")));
         when(reportSourceQueryRepository.findLatestRiskAssessment(3001L)).thenReturn(Optional.of(
                 new ReportRiskAssessmentModel(9001L, "HIGH", "{\"risk\":1}", 30, LocalDateTime.now())));
         when(reportSourceQueryRepository.findLatestCorrection(3001L)).thenReturn(Optional.empty());
@@ -85,8 +88,8 @@ class ReportAppServiceTests {
         when(reportTemplateResolver.resolveContent(2001L, "DOCTOR")).thenReturn("template");
         when(reportRenderService.render(any(), any(), any())).thenReturn("rendered");
         when(reportPdfService.generatePdf("rendered")).thenReturn(new byte[] {1, 2, 3});
-        when(objectStorageService.store(any(), any(), any(), any(Long.class), any())).thenReturn(
-                new StoredObject("caries-image", "attachments/rpt.pdf", "rpt.pdf", "application/pdf", 3L, "md5", "MINIO"));
+        when(objectStorageService.store(any(ObjectStoreCommand.class))).thenReturn(
+                new StoredObject("caries-report", "report/2026/04/15/report/rpt.pdf", "rpt.pdf", "application/pdf", 3L, "md5", "MINIO"));
 
         ReportGenerateResultVO result = appService.generateReport(3001L, new GenerateReportCommand("DOCTOR", "Looks good", null));
 
@@ -100,19 +103,25 @@ class ReportAppServiceTests {
     }
 
     @Test
-    void exportReportShouldWriteAuditLog() {
+    void exportReportShouldCopyToExportBucketAndWriteAuditLog() throws IOException {
         ReportAppService appService = createService();
         setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
         when(reportRecordRepository.findById(8001L)).thenReturn(Optional.of(
                 new ReportRecordModel(8001L, "RPT202604130001", 3001L, 4001L, 7001L, "DOCTOR", "FINAL", 1,
                         "summary", LocalDateTime.now(), null, 2001L, LocalDateTime.now())));
         when(reportRecordRepository.findAttachment(7001L)).thenReturn(Optional.of(
-                new ReportAttachmentModel(7001L, "caries-image", "attachments/rpt.pdf", "rpt.pdf", "application/pdf", 2001L, "ACTIVE")));
+                new ReportAttachmentModel(7001L, "caries-report", "report/rpt.pdf", "rpt.pdf", "application/pdf", 2001L, "ACTIVE")));
+        when(objectStorageService.load("caries-report", "report/rpt.pdf", "rpt.pdf", "application/pdf")).thenReturn(
+                new StoredObjectResource(new ByteArrayResource(new byte[] {1, 2, 3}), "application/pdf", "rpt.pdf", 3L));
+        when(objectStorageService.store(any(ObjectStoreCommand.class))).thenReturn(
+                new StoredObject("caries-export", "export/2026/04/15/1/rpt.pdf", "rpt.pdf", "application/pdf", 3L, "md5", "MINIO"));
 
         ReportExportResultVO result = appService.exportReport(8001L, new ExportReportCommand(null, null));
 
         assertThat(result.reportId()).isEqualTo(8001L);
         assertThat(result.exported()).isTrue();
+        assertThat(result.attachmentId()).isNotEqualTo(7001L);
+        verify(reportRecordRepository).createAttachment(any());
         verify(reportExportLogRepository).create(any());
     }
 
@@ -137,4 +146,3 @@ class ReportAppServiceTests {
                 user.getAuthorities()));
     }
 }
-

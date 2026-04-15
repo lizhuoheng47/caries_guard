@@ -32,8 +32,8 @@
 
 | 项 | 当前状态 |
 | --- | --- |
-| MinIO | 已实现 `MinioObjectStorageService`，local 默认启用 |
-| LocalFS | 已实现 `LocalObjectStorageService`，e2e 默认使用 |
+| MinIO | 已实现 `MinioObjectStorageClient`，local 默认启用 |
+| LocalFS | 已实现 `ImageObjectStorageServiceAdapter`，e2e 默认使用 |
 | AI 请求 | `AiAnalysisRequestDTO.ImageItem` 已补取图字段 |
 | AI 回调 | `AiAnalysisResultCallbackCommand` 已替代旧回调 DTO |
 | 模型版本 | `ana_model_version_registry` 已新增，dashboard 可统计 |
@@ -65,10 +65,10 @@ mvn -q test
 MinIO 联调需要单独启动 MinIO 服务，并保证以下配置可用：
 
 ```powershell
-$env:CARIES_IMAGE_STORAGE_PROVIDER='MINIO'
+$env:CARIES_STORAGE_PROVIDER='MINIO'
 $env:CARIES_MINIO_ENDPOINT='http://127.0.0.1:9000'
 $env:CARIES_MINIO_ACCESS_KEY='minioadmin'
 $env:CARIES_MINIO_SECRET_KEY='minioadmin'
 ```
 
-如果不启动 MinIO，只能使用 `e2e` 或显式设置 `CARIES_IMAGE_STORAGE_PROVIDER=LOCAL_FS`。
+当前长期运行口径为 MinIO；如果不启动 MinIO，只能运行不触发真实对象写入的单元测试或使用测试桩。

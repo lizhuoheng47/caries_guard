@@ -1,0 +1,151 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: caries-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${CARIES_MYSQL_PASSWORD:-1234}
+      MYSQL_DATABASE: ${CARIES_MYSQL_DATABASE:-cg}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+    ports:
+      - "${CARIES_MYSQL_HOST_PORT:-13306}:3306"
+    volumes:
+      - caries_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - caries-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: caries-redis
+    ports:
+      - "${CARIES_REDIS_HOST_PORT:-16379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - caries-net
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: caries-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${CARIES_RABBIT_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${CARIES_RABBIT_PASSWORD:-guest}
+    ports:
+      - "${CARIES_RABBIT_HOST_PORT:-5672}:5672"
+      - "${CARIES_RABBIT_MGMT_HOST_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - caries-net
+
+  minio:
+    image: minio/minio:latest
+    container_name: caries-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${CARIES_MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${CARIES_MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "${CARIES_MINIO_HOST_PORT:-9000}:9000"
+      - "${CARIES_MINIO_CONSOLE_HOST_PORT:-9001}:9001"
+    volumes:
+      - caries_minio_data:/data
+    networks:
+      - caries-net
+
+  backend-java:
+    build:
+      context: ./backend-java
+      dockerfile: Dockerfile
+    container_name: caries-backend-java
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CARIES_MYSQL_HOST: mysql
+      CARIES_MYSQL_PORT: 3306
+      CARIES_MYSQL_DATABASE: ${CARIES_MYSQL_DATABASE:-cg}
+      CARIES_MYSQL_USERNAME: root
+      CARIES_MYSQL_PASSWORD: ${CARIES_MYSQL_PASSWORD:-1234}
+      CARIES_REDIS_HOST: redis
+      CARIES_REDIS_PORT: 6379
+      CARIES_RABBIT_HOST: rabbitmq
+      CARIES_RABBIT_PORT: 5672
+      CARIES_RABBIT_USERNAME: ${CARIES_RABBIT_USERNAME:-guest}
+      CARIES_RABBIT_PASSWORD: ${CARIES_RABBIT_PASSWORD:-guest}
+      CARIES_STORAGE_PROVIDER: MINIO
+      CARIES_MINIO_ENDPOINT: http://minio:9000
+      CARIES_MINIO_ACCESS_KEY: ${CARIES_MINIO_ACCESS_KEY:-minioadmin}
+      CARIES_MINIO_SECRET_KEY: ${CARIES_MINIO_SECRET_KEY:-minioadmin}
+      CARIES_BUCKET_IMAGE: ${CARIES_BUCKET_IMAGE:-caries-image}
+      CARIES_BUCKET_VISUAL: ${CARIES_BUCKET_VISUAL:-caries-visual}
+      CARIES_BUCKET_REPORT: ${CARIES_BUCKET_REPORT:-caries-report}
+      CARIES_BUCKET_EXPORT: ${CARIES_BUCKET_EXPORT:-caries-export}
+      CARIES_ANALYSIS_CALLBACK_SECRET: ${CARIES_ANALYSIS_CALLBACK_SECRET:-docker-change-me-to-a-strong-analysis-callback-secret}
+      CARIES_ANALYSIS_MODEL_VERSION: ${CARIES_ANALYSIS_MODEL_VERSION:-caries-v1}
+      TZ: Asia/Shanghai
+    ports:
+      - "${CARIES_BACKEND_JAVA_HOST_PORT:-8080}:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      caries-net:
+        aliases:
+          - backend-java
+
+  backend-python:
+    build:
+      context: ./backend-python
+      dockerfile: Dockerfile
+    container_name: caries-backend-python
+    environment:
+      CG_RABBIT_HOST: rabbitmq
+      CG_RABBIT_PORT: 5672
+      CG_RABBIT_USERNAME: ${CARIES_RABBIT_USERNAME:-guest}
+      CG_RABBIT_PASSWORD: ${CARIES_RABBIT_PASSWORD:-guest}
+      CG_ANALYSIS_EXCHANGE: ${CARIES_ANALYSIS_EXCHANGE:-caries.analysis.exchange}
+      CG_ANALYSIS_REQUESTED_QUEUE: ${CARIES_ANALYSIS_REQUESTED_QUEUE:-caries.analysis.requested.queue}
+      CG_ANALYSIS_REQUESTED_ROUTING_KEY: ${CARIES_ANALYSIS_REQUESTED_ROUTING_KEY:-analysis.requested}
+      CG_JAVA_CALLBACK_URL: http://backend-java:8080/api/v1/internal/ai/callbacks/analysis-result
+      CG_ANALYSIS_CALLBACK_SECRET: ${CARIES_ANALYSIS_CALLBACK_SECRET:-docker-change-me-to-a-strong-analysis-callback-secret}
+      CG_MODEL_VERSION: ${CARIES_ANALYSIS_MODEL_VERSION:-caries-v1}
+      CG_AI_DOWNLOAD_IMAGES: "true"
+      CG_MINIO_ENDPOINT: http://minio:9000
+      CG_MINIO_ACCESS_KEY: ${CARIES_MINIO_ACCESS_KEY:-minioadmin}
+      CG_MINIO_SECRET_KEY: ${CARIES_MINIO_SECRET_KEY:-minioadmin}
+      CG_MINIO_BUCKET_VISUAL: ${CARIES_BUCKET_VISUAL:-caries-visual}
+      TZ: Asia/Shanghai
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      backend-java:
+        condition: service_started
+    networks:
+      - caries-net
+
+networks:
+  caries-net:
+    name: caries-net
+
+volumes:
+  caries_mysql_data:
+  caries_minio_data:

@@ -5,13 +5,18 @@ import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
+import com.cariesguard.followup.app.FollowupTriggerService;
 import com.cariesguard.image.app.AttachmentAppService;
+import com.cariesguard.image.domain.model.ObjectStoreCommand;
 import com.cariesguard.image.domain.model.StoredObject;
+import com.cariesguard.image.domain.model.StoredObjectResource;
 import com.cariesguard.image.domain.service.ObjectStorageService;
+import com.cariesguard.image.interfaces.vo.AttachmentAccessVO;
 import com.cariesguard.patient.app.CaseCommandAppService;
 import com.cariesguard.patient.interfaces.command.CaseStatusTransitionCommand;
 import com.cariesguard.report.domain.model.ReportAnalysisSummaryModel;
 import com.cariesguard.report.domain.model.ReportAttachmentCreateModel;
+import com.cariesguard.report.domain.model.ReportAttachmentModel;
 import com.cariesguard.report.domain.model.ReportCaseModel;
 import com.cariesguard.report.domain.model.ReportCorrectionModel;
 import com.cariesguard.report.domain.model.ReportExportLogModel;
@@ -29,12 +34,11 @@ import com.cariesguard.report.infrastructure.service.ReportRenderService;
 import com.cariesguard.report.infrastructure.service.ReportTemplateResolver;
 import com.cariesguard.report.interfaces.command.ExportReportCommand;
 import com.cariesguard.report.interfaces.command.GenerateReportCommand;
-import com.cariesguard.followup.app.FollowupTriggerService;
 import com.cariesguard.report.interfaces.vo.ReportExportResultVO;
-import com.cariesguard.image.interfaces.vo.AttachmentAccessVO;
 import com.cariesguard.report.interfaces.vo.ReportGenerateResultVO;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
@@ -155,7 +159,7 @@ public class ReportAppService {
             String templateContent = reportTemplateResolver.resolveContent(medicalCase.orgId(), reportTypeCode);
             String renderedContent = reportRenderService.render(templateContent, reportNo, renderData);
             byte[] pdfBytes = reportPdfService.generatePdf(renderedContent);
-            storedObject = storeReportPdf(reportNo, pdfBytes);
+            storedObject = storeReportPdf(reportNo, versionNo, pdfBytes);
             long attachmentId = IdWorker.getId();
             reportRecordRepository.createAttachment(new ReportAttachmentCreateModel(
                     attachmentId,
@@ -163,7 +167,7 @@ public class ReportAppService {
                     reportId,
                     "REPORT",
                     storedObject.fileName(),
-                    reportNo + ".pdf",
+                    storedObject.fileName(),
                     storedObject.bucketName(),
                     storedObject.objectKey(),
                     "application/pdf",
@@ -206,33 +210,96 @@ public class ReportAppService {
         if (report.attachmentId() == null) {
             throw new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Report archive does not exist");
         }
-        reportRecordRepository.findAttachment(report.attachmentId())
+        ReportAttachmentModel reportAttachment = reportRecordRepository.findAttachment(report.attachmentId())
                 .filter(attachment -> operator.hasAnyRole("ADMIN", "SYS_ADMIN") || attachment.orgId().equals(operator.getOrgId()))
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Report attachment does not exist"));
-        AttachmentAccessVO downloadAccess = attachmentAppService == null ? new AttachmentAccessVO(null, 0L) : attachmentAppService.createAccessUrl(report.attachmentId(), (String) null);
+
         long exportLogId = IdWorker.getId();
-        reportExportLogRepository.create(new ReportExportLogModel(
-                exportLogId,
-                report.reportId(),
-                report.attachmentId(),
-                reportDomainService.normalizeExportType(command == null ? null : command.exportTypeCode()),
-                reportDomainService.normalizeExportChannel(command == null ? null : command.exportChannelCode()),
-                operator.getUserId(),
-                LocalDateTime.now(),
-                report.orgId()));
-        return new ReportExportResultVO(report.reportId(), true, exportLogId, report.attachmentId(), downloadAccess.accessUrl(), downloadAccess.expireAt());
+        long exportAttachmentId = IdWorker.getId();
+        StoredObject exportedObject = null;
+        try {
+            exportedObject = copyReportToExportBucket(report, reportAttachment, exportLogId);
+            reportRecordRepository.createAttachment(new ReportAttachmentCreateModel(
+                    exportAttachmentId,
+                    "EXPORT",
+                    exportLogId,
+                    "EXPORT",
+                    exportedObject.fileName(),
+                    exportedObject.fileName(),
+                    exportedObject.bucketName(),
+                    exportedObject.objectKey(),
+                    exportedObject.contentType(),
+                    "pdf",
+                    exportedObject.fileSizeBytes(),
+                    exportedObject.md5(),
+                    exportedObject.providerCode(),
+                    "PRIVATE",
+                    operator.getUserId(),
+                    report.orgId(),
+                    "ACTIVE",
+                    "Exported report file",
+                    operator.getUserId()));
+            reportExportLogRepository.create(new ReportExportLogModel(
+                    exportLogId,
+                    report.reportId(),
+                    exportAttachmentId,
+                    reportDomainService.normalizeExportType(command == null ? null : command.exportTypeCode()),
+                    reportDomainService.normalizeExportChannel(command == null ? null : command.exportChannelCode()),
+                    operator.getUserId(),
+                    LocalDateTime.now(),
+                    report.orgId()));
+            AttachmentAccessVO downloadAccess = attachmentAppService == null
+                    ? new AttachmentAccessVO(null, 0L)
+                    : attachmentAppService.createAccessUrl(exportAttachmentId, (String) null);
+            return new ReportExportResultVO(report.reportId(), true, exportLogId, exportAttachmentId, downloadAccess.accessUrl(), downloadAccess.expireAt());
+        } catch (RuntimeException exception) {
+            deleteStoredObjectQuietly(exportedObject);
+            throw exception;
+        }
     }
 
-    private StoredObject storeReportPdf(String reportNo, byte[] pdfBytes) {
+    private StoredObject storeReportPdf(String reportNo, int versionNo, byte[] pdfBytes) {
+        String fileName = "%s_v%d.pdf".formatted(reportNo, versionNo);
         try {
-            return objectStorageService.store(
-                    reportNo + ".pdf",
+            return objectStorageService.store(new ObjectStoreCommand(
+                    "REPORT",
+                    "report",
+                    reportNo,
+                    fileName,
                     "application/pdf",
                     new ByteArrayInputStream(pdfBytes),
                     pdfBytes.length,
-                    md5(pdfBytes));
+                    md5(pdfBytes)));
         } catch (IOException exception) {
             throw new BusinessException(CommonErrorCode.EXTERNAL_SERVICE_ERROR.code(), "Store report file failed");
+        }
+    }
+
+    private StoredObject copyReportToExportBucket(ReportRecordModel report,
+                                                  ReportAttachmentModel attachment,
+                                                  Long exportLogId) {
+        try {
+            StoredObjectResource source = objectStorageService.load(
+                    attachment.bucketName(),
+                    attachment.objectKey(),
+                    attachment.originalName(),
+                    attachment.contentType());
+            byte[] bytes;
+            try (InputStream inputStream = source.resource().getInputStream()) {
+                bytes = inputStream.readAllBytes();
+            }
+            String fileName = "%s_export_%s.pdf".formatted(report.reportNo(), exportLogId);
+            return objectStorageService.store(new ObjectStoreCommand(
+                    "EXPORT",
+                    "export",
+                    String.valueOf(exportLogId),
+                    fileName,
+                    source.contentType(),
+                    new ByteArrayInputStream(bytes),
+                    bytes.length,
+                    md5(bytes)));
+        } catch (IOException exception) {
+            throw new BusinessException(CommonErrorCode.EXTERNAL_SERVICE_ERROR.code(), "Export report file failed");
         }
     }
 
@@ -294,7 +361,3 @@ public class ReportAppService {
         }
     }
 }
-
-
-
-

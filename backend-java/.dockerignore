@@ -1,0 +1,5 @@
+**/target/
+.idea/
+*.log
+verify-app.out.log
+verify-app.err.log

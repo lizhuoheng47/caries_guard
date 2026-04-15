@@ -1,2 +1,15 @@
 /backend-java/**/target/
 *.class
+# Local environment files
+.env
+.env.*
+!.env.docker.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Docker runtime artifacts
+.docker/

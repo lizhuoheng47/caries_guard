@@ -7,6 +7,8 @@ public record AnalysisVisualAssetCreateModel(
         String modelVersion,
         String assetTypeCode,
         Long attachmentId,
+        Long relatedImageId,
+        String toothCode,
         Long orgId,
         Long operatorUserId) {
 }

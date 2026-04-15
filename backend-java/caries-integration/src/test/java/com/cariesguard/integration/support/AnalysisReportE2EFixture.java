@@ -27,6 +27,7 @@ import com.cariesguard.analysis.domain.service.AnalysisTaskDomainService;
 import com.cariesguard.analysis.domain.service.AnalysisTaskEventPublisher;
 import com.cariesguard.analysis.infrastructure.client.AiCallbackSignatureVerifier;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
+import com.cariesguard.image.domain.model.ObjectStoreCommand;
 import com.cariesguard.image.domain.model.StoredObject;
 import com.cariesguard.image.domain.model.StoredObjectResource;
 import com.cariesguard.image.domain.service.ObjectStorageService;
@@ -94,6 +95,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
@@ -588,7 +590,7 @@ public final class AnalysisReportE2EFixture {
         @Override
         public void replaceByTaskId(Long taskId, List<AnalysisVisualAssetCreateModel> models) {
             byTaskId.put(taskId, models.stream()
-                    .map(item -> new AnalysisVisualAssetModel(item.assetTypeCode(), item.attachmentId()))
+                    .map(item -> new AnalysisVisualAssetModel(item.assetTypeCode(), item.attachmentId(), null, null))
                     .toList());
         }
 
@@ -1012,15 +1014,26 @@ public final class AnalysisReportE2EFixture {
         private final Map<String, byte[]> objects = new ConcurrentHashMap<>();
 
         @Override
+        public StoredObject store(ObjectStoreCommand command) throws IOException {
+            byte[] bytes = readAll(command.inputStream());
+            String objectKey = command.keyModule() + "/" + Instant.now().toEpochMilli() + "/" + command.originalFileName();
+            objects.put(objectKey, bytes);
+            String bucketName = switch (command.bucketCode()) {
+                case "REPORT" -> "caries-report";
+                case "EXPORT" -> "caries-export";
+                case "VISUAL" -> "caries-visual";
+                default -> "caries-image";
+            };
+            return new StoredObject(bucketName, objectKey, command.originalFileName(), command.contentType(), command.fileSizeBytes(), command.md5(), "MINIO");
+        }
+
+        @Override
         public StoredObject store(String originalFileName,
                                   String contentType,
                                   InputStream inputStream,
                                   long fileSizeBytes,
                                   String md5) throws IOException {
-            byte[] bytes = readAll(inputStream);
-            String objectKey = "reports/" + Instant.now().toEpochMilli() + "/" + originalFileName;
-            objects.put(objectKey, bytes);
-            return new StoredObject("caries-image", objectKey, originalFileName, contentType, fileSizeBytes, md5, "MINIO");
+            return store(new ObjectStoreCommand("IMAGE", "case-image", "test", originalFileName, contentType, inputStream, fileSizeBytes, md5));
         }
 
         @Override
@@ -1028,12 +1041,35 @@ public final class AnalysisReportE2EFixture {
                                          String objectKey,
                                          String originalFileName,
                                          String contentType) {
-            throw new UnsupportedOperationException();
+            byte[] bytes = objects.get(objectKey);
+            if (bytes == null) {
+                throw new IllegalStateException("Object does not exist: " + objectKey);
+            }
+            return new StoredObjectResource(
+                    new ByteArrayResource(bytes),
+                    StringUtils.hasText(contentType) ? contentType : "application/octet-stream",
+                    StringUtils.hasText(originalFileName) ? originalFileName : objectKey,
+                    bytes.length);
         }
 
         @Override
         public void delete(String bucketName, String objectKey) {
             objects.remove(objectKey);
+        }
+
+        @Override
+        public String presignGetObject(String bucketName, String objectKey) {
+            return "http://minio.test/" + bucketName + "/" + objectKey + "?signature=test";
+        }
+
+        @Override
+        public long defaultPresignExpireSeconds() {
+            return 900L;
+        }
+
+        @Override
+        public String proxyAccessSecret() {
+            return "integration-test-image-secret";
         }
 
         private byte[] readAll(InputStream inputStream) throws IOException {

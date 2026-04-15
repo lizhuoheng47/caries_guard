@@ -15,6 +15,8 @@ public class AnaVisualAssetDO {
     private String modelVersion;
     private String assetTypeCode;
     private Long attachmentId;
+    private Long relatedImageId;
+    private String toothCode;
     private Long orgId;
     private String status;
     private Long deletedFlag;
@@ -35,6 +37,10 @@ public class AnaVisualAssetDO {
     public void setAssetTypeCode(String assetTypeCode) { this.assetTypeCode = assetTypeCode; }
     public Long getAttachmentId() { return attachmentId; }
     public void setAttachmentId(Long attachmentId) { this.attachmentId = attachmentId; }
+    public Long getRelatedImageId() { return relatedImageId; }
+    public void setRelatedImageId(Long relatedImageId) { this.relatedImageId = relatedImageId; }
+    public String getToothCode() { return toothCode; }
+    public void setToothCode(String toothCode) { this.toothCode = toothCode; }
     public Long getOrgId() { return orgId; }
     public void setOrgId(Long orgId) { this.orgId = orgId; }
     public String getStatus() { return status; }

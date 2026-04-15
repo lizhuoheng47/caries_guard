@@ -2,5 +2,7 @@ package com.cariesguard.analysis.domain.model;
 
 public record AnalysisVisualAssetModel(
         String assetTypeCode,
-        Long attachmentId) {
+        Long attachmentId,
+        Long relatedImageId,
+        String toothCode) {
 }

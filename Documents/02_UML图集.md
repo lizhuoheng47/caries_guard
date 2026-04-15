@@ -12,8 +12,8 @@ flowchart TB
   Auth --> Patient[caries-patient]
   Patient --> Image[caries-image]
   Image --> Storage{ObjectStorageService}
-  Storage --> MinIO[MinIO provider\nMinioObjectStorageService]
-  Storage --> LocalFS[LOCAL_FS provider\nLocalObjectStorageService]
+  Storage --> MinIO[MinIO provider\nMinioObjectStorageClient]
+  Storage --> LocalFS[LOCAL_FS provider\nImageObjectStorageServiceAdapter]
   Image --> Analysis[caries-analysis]
   Analysis --> MQ[RabbitMQ]
   MQ --> Python[Python AI Service\n仓库外]
@@ -55,15 +55,15 @@ classDiagram
     +load(bucketName, objectKey, originalFileName, contentType) StoredObjectResource
     +delete(bucketName, objectKey) void
   }
-  class MinioObjectStorageService {
-    -ImageStorageProperties properties
+  class MinioObjectStorageClient {
+    -StorageProperties properties
     -MinioClient minioClient
     +store(...)
     +load(...)
     +delete(...)
   }
-  class LocalObjectStorageService {
-    -ImageStorageProperties properties
+  class ImageObjectStorageServiceAdapter {
+    -StorageProperties properties
     +store(...)
     +load(...)
     +delete(...)
@@ -76,8 +76,8 @@ classDiagram
     +resolveLocalStoragePath(bucketName, objectKey) String
     +loadContent(attachmentId, expireAt, signature) StoredObjectResource
   }
-  ObjectStorageService <|.. MinioObjectStorageService
-  ObjectStorageService <|.. LocalObjectStorageService
+  ObjectStorageService <|.. MinioObjectStorageClient
+  ObjectStorageService <|.. ImageObjectStorageServiceAdapter
   AttachmentAppService --> ObjectStorageService
 ```
 

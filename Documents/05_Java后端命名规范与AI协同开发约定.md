@@ -53,7 +53,7 @@
 | `DTO` | `AiAnalysisRequestDTO` | 跨服务数据载荷 |
 | `VO` | `ModelRuntimeVO` | API 出参 |
 | `DO` | `AnaTaskRecordDO` | 数据库映射对象 |
-| `Properties` | `ImageStorageProperties` | 配置属性 |
+| `Properties` | `StorageProperties` | 配置属性 |
 | `Service` | `ReportPdfService` | 技术服务或领域服务 |
 
 当前重要命名：
@@ -63,8 +63,8 @@
 | `AiAnalysisRequestDTO` | 已实现 | Java 发给 Python 的任务载荷 |
 | `AiAnalysisResultCallbackCommand` | 已实现 | Python 回调 Java 的冻结契约 |
 | `ObjectStorageService` | 已实现 | 对象存储抽象 |
-| `MinioObjectStorageService` | 已实现 | 默认 MinIO provider |
-| `LocalObjectStorageService` | 已实现 | 本地文件兼容 provider |
+| `MinioObjectStorageClient` | 已实现 | 默认 MinIO provider |
+| `ImageObjectStorageServiceAdapter` | 已实现 | 本地文件兼容 provider |
 | `ReportExportResultVO` | 已实现 | 报告导出返回下载信息 |
 | `ModelRuntimeVO` | 已实现 | AI 运行质量看板响应 |
 | `ModelVersionRuntimeVO` | 已实现 | 按模型版本聚合响应 |
@@ -75,8 +75,8 @@ Provider code 必须使用明确枚举式字符串：
 
 | provider code | 实现类 | 使用场景 |
 | --- | --- | --- |
-| `MINIO` | `MinioObjectStorageService` | local 默认、正式联调、需要对象存储服务的环境 |
-| `LOCAL_FS` | `LocalObjectStorageService` | e2e、无 MinIO 的临时本地环境、共享卷联调 |
+| `MINIO` | `MinioObjectStorageClient` | local 默认、正式联调、需要对象存储服务的环境 |
+| `LOCAL_FS` | 不作为当前运行口径 | 历史/测试口径，不建议新增依赖 |
 | `OSS` | 未实现 | 仅作为未来扩展命名，不写成当前能力 |
 
 命名约定：
