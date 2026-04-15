@@ -33,7 +33,7 @@ docker compose down -v
 | 服务 | 容器内地址 | 宿主机访问 |
 | --- | --- | --- |
 | Java 后端 | `http://backend-java:8080` | `http://127.0.0.1:8080` |
-| Python AI | `backend-python` | 无 HTTP 端口，消费 RabbitMQ |
+| Python AI | `http://backend-python:8001` | 默认未映射宿主机端口，主链路消费 RabbitMQ |
 | MySQL | `mysql:3306` | `127.0.0.1:13306` |
 | Redis | `redis:6379` | `127.0.0.1:16379` |
 | RabbitMQ | `rabbitmq:5672` | `127.0.0.1:5672` |
@@ -59,12 +59,14 @@ caries.storage.provider: MINIO
 caries.storage.endpoint: http://minio:9000
 ```
 
-Python 不需要读取 Java 本地目录，也不需要直接访问 MinIO。Python 只消费 Java 消息中的：
+Python 不读取 Java 本地目录。Python 当前优先消费 Java 消息中的 `bucketName + objectKey` 并直接访问 MinIO；`accessUrl` 仅作为过渡兼容路径。
 
 ```json
 {
   "images": [
     {
+      "bucketName": "caries-image",
+      "objectKey": "case-image/2026/04/15/CASE202604150001/pan_01.jpg",
       "accessUrl": "http://backend-java:8080/api/v1/files/.../content?...",
       "storageProviderCode": "MINIO"
     }
@@ -80,10 +82,11 @@ Python 不需要读取 Java 本地目录，也不需要直接访问 MinIO。Pyth
    - queue：`caries.analysis.requested.queue`
    - routing key：`analysis.requested`
 3. Python 消费该队列。
-4. Python 通过 `accessUrl` 下载影像。
-5. Python 回调 Java：
+4. Python 优先通过 MinIO `bucketName + objectKey` 下载影像；缺失时才走 `accessUrl` 兼容路径。
+5. Python 生成 mock mask / overlay / heatmap 并上传到 `caries-visual`。
+6. Python 回调 Java：
    - `POST http://backend-java:8080/api/v1/internal/ai/callbacks/analysis-result`
-6. 回调使用 HMAC header：
+7. 回调使用 HMAC header：
    - `X-AI-Timestamp`
    - `X-AI-Signature`
 
@@ -98,6 +101,8 @@ Python 服务目录：`backend-python`
 | `backend-python/app/main.py` | RabbitMQ 消费、取图、模拟推理、回调 Java |
 | `backend-python/app/config.py` | 环境变量配置 |
 | `backend-python/app/callback_signature.py` | HMAC 签名 |
+| `backend-python/app/infra/storage/minio_client.py` | MinIO 读写 |
+| `backend-python/app/pipelines/inference_pipeline.py` | mock pipeline |
 | `backend-python/requirements.txt` | Python 依赖 |
 | `backend-python/Dockerfile` | Python 服务镜像 |
 
