@@ -1,298 +1,227 @@
 # Java后端开发说明书
 
-本文档按当前 `backend-java` 代码实现编写，适合后端开发、测试联调和 AI 协同开发共同使用。
+更新日期：2026-04-15
+
+本文档用于 Java 后端维护开发和 Python 服务联调。内容以当前代码、Flyway V014 和已通过编译测试的实现为准。
 
 ## 1. 开发基线
 
-### 1.1 技术栈
+| 项 | 当前值 |
+| --- | --- |
+| 工作目录 | `backend-java` |
+| 启动模块 | `caries-boot` |
+| Spring profile | `local`、`e2e` |
+| 数据库迁移 | Flyway V001-V014 |
+| 默认对象存储 | `MINIO` |
+| 默认对象存储实现 | `MinioObjectStorageService` |
+| 本地兼容对象存储 | `LOCAL_FS` / `LocalObjectStorageService` |
+| AI 回调 DTO | `AiAnalysisResultCallbackCommand` |
+| 报告 PDF 生成 | `ReportPdfService` + PDFBox |
+| 报告导出结果 | 审计日志 + `attachmentId` + `downloadUrl` + `expireAt` |
 
-当前真实基线：
-- JDK `17`
-- Spring Boot `3.2.12`
-- Spring Security 6
-- MyBatis-Plus `3.5.7`
-- MySQL + Flyway
-- Redis
-- RabbitMQ
-- SpringDoc OpenAPI
-- BCrypt 密码编码器
+## 2. 常用命令
 
-当前不应写入为已实现基线的内容：
-- MinIO 已落地
-- 独立 Python AI 服务工程已交付
-- 模型治理平台已交付
-- 标注平台已交付
-- 独立 `Risk` 模块已交付
+```powershell
+cd E:\caries_guard\backend-java
+mvn -q -DskipTests compile
+mvn -q test
+mvn -q -pl caries-analysis -am test
+```
 
-### 1.2 工程结构
+`application-local.yml` 默认连接 MinIO：
 
-当前工程采用多模块 Maven：
-- `caries-boot`
-- `caries-common`
-- `caries-framework`
-- `caries-system`
-- `caries-patient`
-- `caries-image`
-- `caries-analysis`
-- `caries-report`
-- `caries-followup`
-- `caries-dashboard`
-- `caries-integration`
+```yaml
+caries:
+  image:
+    storage:
+      provider-code: ${CARIES_IMAGE_STORAGE_PROVIDER:MINIO}
+      bucket-name: ${CARIES_IMAGE_BUCKET:caries-image}
+      public-base-url: ${CARIES_IMAGE_PUBLIC_BASE_URL:http://127.0.0.1:8080}
+      minio:
+        endpoint: ${CARIES_MINIO_ENDPOINT:http://127.0.0.1:9000}
+        access-key: ${CARIES_MINIO_ACCESS_KEY:minioadmin}
+        secret-key: ${CARIES_MINIO_SECRET_KEY:minioadmin}
+```
 
-### 1.3 分层约定
+`application-e2e.yml` 使用 `LOCAL_FS`，避免测试必须启动外部 MinIO。
+
+## 3. 代码分层约定
 
 当前主要分层：
-- `controller`：HTTP 接口层
-- `app`：应用服务层
-- `domain`：领域模型、领域服务、仓储接口
-- `infrastructure`：仓储实现、消息、外部资源适配
-- `interfaces.command / dto / vo / query`：接口模型
 
-## 2. 当前必须遵守的开发原则
+| 层 | 典型包名 | 说明 |
+| --- | --- | --- |
+| Controller | `controller` | REST API 入口，处理权限注解和请求响应 |
+| AppService | `app` | 应用服务，组织事务、调用领域服务和仓储 |
+| Domain Service | `domain.service` | 领域规则和业务处理 |
+| Domain Model | `domain.model` | 领域模型/查询模型/命令模型 |
+| Repository Interface | `domain.repository` | 仓储接口 |
+| Repository Impl | `infrastructure.repository` | MyBatis-Plus / SQL 实现 |
+| Storage/Service Impl | `infrastructure.storage`、`infrastructure.service` | MinIO、本地存储、PDF 生成等技术实现 |
+| Command/DTO/VO | `interfaces.command`、`interfaces.dto`、`interfaces.vo` | 接口入参、跨服务 DTO、出参 |
 
-1. 所有病例状态变更必须走 `CaseCommandAppService`。
-2. 分析模块和报告模块不得旁路直接修改 `med_case`。
-3. 当前对象存储默认 provider 为 `MINIO`，对应 `MinioObjectStorageService`；`LOCAL_FS` 对应 `LocalObjectStorageService`。
-4. `modelVersion` 当前只是留痕基础，不得在没有表、API、管理端的情况下宣称已实现模型治理平台。
-5. 风险评估是能力，不是当前独立模块。
-6. 业务平台数据库与训练数据治理平台必须分开表述。
+## 4. 关键模块开发说明
 
-## 3. 当前模块开发重点
-
-### 3.1 `caries-system`
-
-当前职责：
-- 登录认证
-- 当前用户与权限查询
-- 用户/角色/菜单管理
-- 字典与配置查询
-- 数据权限规则维护
+### 4.1 `caries-image`
 
 关键类：
-- `AuthAppService`
-- `SystemAdminQueryAppService`
-- `SystemUserCommandAppService`
-- `SystemRoleCommandAppService`
-- `SystemMenuCommandAppService`
-- `SystemDataPermissionRuleAppService`
 
-当前问题：
-- `sys_menu` 由 Flyway `V014__14_minio_model_governance_and_permissions.sql` 初始化业务菜单
-- 默认只有 `SYS_ADMIN`
-- 菜单授权和普通角色演示不完整
+| 类名 | 方法 | 说明 |
+| --- | --- | --- |
+| `FileController` | `upload` | 上传附件 |
+| `FileController` | `accessUrl` | 生成短时访问 URL |
+| `FileController` | `content` | 校验签名后返回文件内容 |
+| `AttachmentAppService` | `upload` | 计算 MD5、调用对象存储、写 `med_attachment` |
+| `AttachmentAppService` | `createAccessUrl` | 面向前端生成 URL |
+| `AttachmentAppService` | `createInternalAccessUrl` | 面向 AI 内部服务生成 URL |
+| `AttachmentAppService` | `resolveLocalStoragePath` | LOCAL_FS 场景解析路径 |
+| `ObjectStorageService` | `store`、`load`、`delete` | 对象存储统一接口 |
+| `MinioObjectStorageService` | `store`、`load`、`delete` | MinIO 实现，默认启用 |
+| `LocalObjectStorageService` | `store`、`load`、`delete` | 本地文件兼容实现 |
 
-开发建议：
-- 通过 Flyway 增加角色/菜单种子
-- 先补 `ORG_ADMIN`、`DOCTOR`、`SCREENER`
+开发注意：
 
-### 3.2 `caries-patient`
+1. 新增存储 provider 时必须实现 `ObjectStorageService`。
+2. `med_attachment.storage_provider_code` 必须写入真实 provider：`MINIO` 或 `LOCAL_FS`。
+3. Python 不应依赖 `bucketName + objectKey` 自行猜测文件路径，优先使用 `accessUrl`。
+4. `localStoragePath` 只允许 LOCAL_FS 受控环境使用。
 
-当前职责：
-- 患者、监护人、就诊、病例、诊断、牙位记录
-- 病例状态机与状态日志
-
-关键类：
-- `PatientCommandAppService`
-- `VisitCommandAppService`
-- `CaseCommandAppService`
-- `CaseClinicalRecordAppService`
-- `CaseStatusMachine`
-
-开发要求：
-- 任何新增业务都要围绕病例主线组织
-- `source_image_id` 等追溯字段必须与字典和查询口径保持一致
-
-### 3.3 `caries-image`
-
-当前职责：
-- 文件上传
-- 附件元数据
-- 病例图像
-- 图像质检
-- 本地对象存储
+### 4.2 `caries-analysis`
 
 关键类：
-- `AttachmentAppService`
-- `CaseImageAppService`
-- `LocalObjectStorageService`
-- `ObjectStorageService`
 
-当前问题：
-- provider code 默认值为 `MINIO`
-- 实际实现却是本地文件系统
+| 类名 | 方法 | 说明 |
+| --- | --- | --- |
+| `AnalysisTaskController` | `createAnalysisTask`、`retryAnalysisTask`、`getAnalysisTaskDetail`、`pageAnalysisTasks` | 分析任务 API |
+| `AnalysisTaskAppService` | `createTask`、`retryTask` | 创建任务、构造 `AiAnalysisRequestDTO`、发布事件 |
+| `RabbitAnalysisTaskEventPublisher` | `publish` | 投递分析任务消息 |
+| `AnalysisCallbackController` | `receiveAnalysisResultCallback` | Python 回调入口 |
+| `AnalysisCallbackAppService` | `handleCallback` | 回调幂等、状态更新、结果落库 |
+| `AnalysisCallbackDomainService` | `applyCallback` | 处理 summary、visualAssets、riskAssessment |
+| `CorrectionFeedbackAppService` | `submit` | 医生修正反馈，写训练准入字段 |
 
-必须修正文档和配置口径：
-- `application-local.yml` 默认表达 `MINIO`，`application-e2e.yml` 表达 `LOCAL_FS`
-- 文档中统一把当前存储写成 Local FS
+`AiAnalysisRequestDTO.ImageItem` 字段：
 
-建议补强：
-- 新增分析专用取图接口
-- 或在分析消息中直接下发签名访问地址
+| 字段 | 说明 |
+| --- | --- |
+| `imageId` | 影像记录 ID |
+| `attachmentId` | 附件 ID |
+| `imageTypeCode` | 影像类型 |
+| `bucketName` | 对象 bucket |
+| `objectKey` | 对象 key |
+| `storageProviderCode` | `MINIO` 或 `LOCAL_FS` |
+| `attachmentMd5` | 附件 MD5 |
+| `accessUrl` | 短时 HTTP 访问 URL |
+| `accessExpireAt` | URL 过期时间 |
+| `localStoragePath` | LOCAL_FS 受控环境路径 |
 
-### 3.4 `caries-analysis`
+`AiAnalysisResultCallbackCommand` 字段：
 
-当前职责：
-- 分析任务创建与重试
-- Rabbit/Logging 任务发布
-- AI 回调验签与写回
-- 医生纠偏反馈
+| 字段 | 说明 |
+| --- | --- |
+| `taskNo` | 必填，任务编号 |
+| `taskStatusCode` | 必填，任务状态 |
+| `startedAt` | 推理开始时间 |
+| `completedAt` | 推理完成时间 |
+| `modelVersion` | 实际执行模型版本 |
+| `summary` | 摘要聚合 |
+| `rawResultJson` | 原始结果 |
+| `visualAssets` | 视觉资产列表 |
+| `riskAssessment` | 风险评估 |
+| `errorMessage` | 错误信息 |
+| `traceId` | Python 链路 ID |
+| `inferenceMillis` | 推理耗时 |
+| `uncertaintyScore` | 顶层不确定性分 |
 
-关键类：
-- `AnalysisTaskAppService`
-- `AnalysisCallbackAppService`
-- `AnalysisTaskDomainService`
-- `AnalysisIdempotencyDomainService`
-- `AnalysisCallbackDomainService`
-- `RabbitAnalysisTaskEventPublisher`
-- `AiCallbackSignatureVerifier`
+幂等要求：
 
-当前事实：
-- `local` profile 默认 `rabbit`
-- AI 请求载荷当前只发 `bucketName + objectKey`
-- 回调 DTO 当前是 `AiAnalysisCallbackDTO`
-- 回调已具备重复终态 ACK 和晚到回调保护
+1. 同一终态回调重复到达时只 ACK，不重复写 summary、risk、visual assets。
+2. 旧任务重试后的晚到回调不能覆盖新任务链路。
+3. `PROCESSING -> SUCCESS` 要保留时间链路。
+4. `FAILED` 时病例应回退到 `QC_PENDING`。
 
-建议补强：
-1. `AiAnalysisRequestDTO` 增加可直接取图字段
-2. 回调契约正式冻结，避免只靠示例 JSON 联调
-3. `modelVersion` 从留痕字段升级为可统计、可审计字段
-4. 增强幂等回调测试覆盖
+当前相关测试已经覆盖 analysis 模块主链路，后续新增字段时必须同步测试。
 
-### 3.5 `caries-report`
-
-当前职责：
-- 模板管理
-- 报告生成
-- PDF 附件落盘
-- 导出审计
-
-关键类：
-- `ReportAppService`
-- `ReportTemplateAppService`
-- `ReportDomainService`
-- `ReportTemplateResolver`
-- `ReportRenderService`
-- `ReportPdfService`
-
-当前事实：
-- 支持 `DOCTOR` / `PATIENT` 两类报告类型
-- 默认模板已内置
-- `exportReport` 当前只写 `rpt_export_log`
-- `ReportPdfService` 当前只支持 ASCII
-
-建议补强：
-1. 升级 PDF 生成方案，支持中文、图片、基础表格与更好的版式
-2. 导出接口升级成“审计 + 下载能力”
-
-### 3.6 `caries-followup`
-
-当前职责：
-- 计划、任务、记录管理
-- 报告触发随访
+### 4.3 `caries-report`
 
 关键类：
-- `FollowupPlanAppService`
-- `FollowupTaskAppService`
-- `FollowupRecordAppService`
-- `FollowupTriggerService`
-- `FollowupDomainService`
 
-当前事实：
-- 高风险或建议复查会自动触发随访
-- 幂等键为 `case_id + trigger_source_code + trigger_ref_id`
-- 任务完成或取消后会自动收口计划
+| 类名 | 方法 | 说明 |
+| --- | --- | --- |
+| `ReportController` | `generateReport` | 生成报告 |
+| `ReportController` | `listCaseReports` | 查询病例报告列表 |
+| `ReportController` | `getReport` | 查询报告详情 |
+| `ReportController` | `exportReport` | 导出审计 + 返回下载 URL |
+| `ReportAppService` | `generateReport` | 聚合数据、渲染模板、生成 PDF 附件 |
+| `ReportAppService` | `exportReport` | 写 `rpt_export_log`，返回 `ReportExportResultVO` |
+| `ReportPdfService` | `generatePdf` | PDFBox 生成 PDF |
+| `ReportTemplateAppService` | `createTemplate`、`updateTemplate`、`listTemplates`、`getTemplate` | 模板管理 |
 
-### 3.7 `caries-dashboard`
+`ReportExportResultVO` 字段：`reportId`、`exported`、`exportLogId`、`attachmentId`、`downloadUrl`、`expireAt`。
 
-当前职责：
-- 业务总览、状态分布、风险分布、任务汇总、积压、趋势、模型运行摘要
+PDF 注意：
 
-关键类：
-- `DashboardStatsRepository`
-- `DashboardOverviewAppService`
-- `DashboardTrendAppService`
-- `DashboardOpsMetricsAppService`
+1. 当前 PDF 生成器不再是 ASCII-only 的极简生成器。
+2. 运行环境存在中文字体时可正常编码中文。
+3. 若 Windows 或 Linux 环境没有候选中文字体，会 fallback 到 Helvetica，不可编码字符会变成 `?`。
+4. 赛前正式环境应安装 `NotoSansSC`、`SimHei` 或等价中文字体。
 
-当前不足：
-- AI 治理维度不够丰富
+### 4.4 `caries-system`
 
-建议补强：
-- 按模型版本聚合
-- 平均推理时长
-- 高不确定性占比
-- reviewSuggestedFlag 占比
-- 修正反馈率
+V014 已补：
 
-## 4. AI 协同开发约束
+1. 角色：`ORG_ADMIN`、`DOCTOR`、`SCREENER`。
+2. 菜单：患者、就诊、病例、影像、分析任务、报告、随访、看板、AI 运行看板。
+3. `sys_role_menu` 默认授权。
+4. `sys_data_permission_rule` 默认 ORG/SELF 范围与列脱敏策略。
 
-### 4.1 当前已冻结的最小协同口径
+代码侧仍需要注意：数据权限框架已经有表和管理入口，但业务查询仍以 `org_id` 防线为主。后续若继续增强，应在 `QueryAppService` 或 Repository 查询层进一步下推 `ALL/ORG/DEPT/SELF/CUSTOM`。
 
-Java 已提供：
-- 分析任务 DTO：`AiAnalysisRequestDTO`
-- 分析回调 DTO：`AiAnalysisCallbackDTO`
-- 回调签名校验：`AiCallbackSignatureVerifier`
-- 事件名：`analysis.requested` / `analysis.completed` / `analysis.failed`
+### 4.5 `caries-dashboard`
 
-### 4.2 当前未冻结但建议立刻冻结的内容
+`DashboardOpsController.getModelRuntime` 返回 AI 运行指标：
 
-建议新增或补强：
-- `AiAnalysisResultCallbackCommand` 作为正式回调 command
-- `traceId`
-- `inferenceMillis`
-- 标准错误码/错误分类
-- 标准 visual asset 类型码
+| 字段 | 说明 |
+| --- | --- |
+| `currentModelVersion` | 最近模型版本 |
+| `recentTaskCount` | 近期任务数 |
+| `successTaskCount` | 成功任务数 |
+| `failedTaskCount` | 失败任务数 |
+| `successRate` | 成功率 |
+| `averageInferenceMillis` | 平均推理时长 |
+| `highUncertaintyRate` | 高不确定性占比 |
+| `reviewSuggestedRate` | 建议复核占比 |
+| `correctionFeedbackCount` | 修正反馈数量 |
+| `modelVersions` | 按模型版本聚合的任务数、成功率、平均耗时 |
 
-### 4.3 当前文档必须说清的边界
+## 5. 数据库开发说明
 
-- 当前仓库没有 Python AI 服务实现
-- 当前仓库没有训练数据集治理实现
-- 当前消息载荷还不适合异构部署时直接取图
+新增结构在 Flyway 中完成，不直接手工改库。
 
-## 5. 测试与验证要求
+当前最新迁移：`V014__14_minio_model_governance_and_permissions.sql`
 
-### 5.1 已有关键测试主线
+V014 内容：
 
-已通过的关键测试应继续保留：
-- 主链路 E2E
-- 分析到报告
-- 报告到随访
-- 随访幂等
-- dashboard 总览和趋势
+1. `ana_task_record` 增加 `trace_id`、`inference_millis`。
+2. `ana_correction_feedback` 增加 `training_candidate_flag`、`desensitized_export_flag`、`dataset_snapshot_no`、`review_status_code`、`reviewed_by`、`reviewed_at`。
+3. 新增 `ana_model_version_registry`。
+4. 初始化模型版本 `caries-detector / caries-v1`。
+5. 初始化业务角色、菜单、角色菜单关联和数据权限规则。
 
-### 5.2 必须继续补的测试
+## 6. 与 Python 服务联调要求
 
-#### `caries-analysis`
-- 同一 `SUCCESS` 回调重复两次，不重复写 summary / risk / visualAssets
-- `FAILED -> retry -> old SUCCESS late arrival` 不覆盖新链路
-- `PROCESSING -> SUCCESS` 时间链完整
-- `FAILED` 时病例正确回退到 `QC_PENDING`
+Python 消费任务消息时应：
 
-#### `caries-report`
-- 报告类型 `DOCTOR` / `PATIENT` 都可生成
-- 报告版本递增逻辑正确
-- 导出审计记录正确
+1. 优先使用 `images[].accessUrl` 拉取影像。
+2. 读取 `images[].accessExpireAt`，过期后不得继续请求。
+3. 记录并回传 `modelVersion`、`traceId`、`inferenceMillis`。
+4. 回调时严格使用 `AiAnalysisResultCallbackCommand` 对应 JSON 结构。
+5. 失败时回传 `taskStatusCode=FAILED` 和 `errorMessage`。
+6. 不要把 `bucketName + objectKey` 当成一定可直接访问的本地路径。
 
-#### `caries-system`
-- 普通角色菜单与权限联动
-- 数据权限范围下推查询正确
+## 7. 当前不建议改动的边界
 
-## 6. 数据库与 Flyway 补强建议
-
-建议优先级最高的结构补强：
-1. `ana_model_version_registry`
-2. `ana_correction_feedback` 增加训练准入治理字段
-3. 继续核查牙位记录中的 `source_image_id` 追溯链是否贯通
-
-## 7. 当前交付说明
-
-当前 Java 后端可以被准确描述为：
-- 已完成核心业务闭环
-- 已具备 AI 联调接口和回调承载
-- 已具备风险结果、报告、随访和看板能力
-
-当前 Java 后端不能被准确描述为：
-- 已完成模型治理平台
-- 已完成训练数据治理平台
-- 已完成正式对象存储平台
-- 已完成生产级报告排版系统
-
+1. 不建议为了图好看拆出 `caries-risk`，风险能力已有表和流程承载。
+2. 不建议声称已有独立 ModelAdmin 平台，当前只是最小模型治理落点。
+3. 不建议绕过 `AttachmentAppService` 直接拼下载地址。
+4. 不建议在业务代码中硬编码 MinIO endpoint，应通过 `ImageStorageProperties` 读取配置。

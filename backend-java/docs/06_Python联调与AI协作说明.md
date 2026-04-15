@@ -1,295 +1,157 @@
 # Python联调与AI协作说明
 
-本文档只描述当前 Java 后端已经实现并可供 Python 侧对接的部分。
+更新日期：2026-04-15
 
-## 1. Python 侧在当前架构中的位置
+本文档定义 Java 后端与 Python AI 服务当前真实协作契约。
 
-当前 Java 后端已经承担：
-- 患者/病例/图像业务管理
-- 分析任务入库
-- 分析任务事件发布
-- AI 回调验签与写库
-- 报告生成
-- 随访触发
-- 看板统计
+## 1. 联调结论
 
-Python / AI 服务当前应承担：
-- 消费分析请求事件
-- 读取图像对象
-- 执行分析模型推理
-- 生成摘要、风险评估、可视化产物
-- 回调 Java 后端写回结果
+1. Java 通过 RabbitMQ 发布 `AiAnalysisRequestDTO`。
+2. Python 通过 `images[].accessUrl` 拉取影像，MinIO 场景不需要共享本地卷。
+3. Java 默认对象存储是 MinIO，`LOCAL_FS` 只用于 e2e 或受控本地兼容场景。
+4. Python 回调 Java 使用 `AiAnalysisResultCallbackCommand`。
+5. Python 必须回传 `modelVersion`、`traceId`、`inferenceMillis`，用于审计和看板统计。
+6. 回调接口具备幂等语义，重复终态回调不会重复写结果。
 
-当前仓库中没有 Python 消费端实现，也没有 Python 回调客户端实现。
+## 2. Java -> Python 请求
 
-## 2. 分析请求从哪里来
-
-Java 侧创建任务入口：
-- `AnalysisTaskAppService.createTask`
-- `AnalysisTaskAppService.retryTask`
-
-创建任务后，Java 会发布 `AnalysisRequestedEvent`。
-
-事件结构定义：
-- 类：`AnalysisRequestedEvent`
-- 字段：`taskId` `taskNo` `taskStatusCode` `payloadJson`
-
-## 3. 当前消息模式
-
-### 3.1 本地 local profile
-
-当前真实配置：
-- `caries.analysis.messaging.mode: rabbit`
-
-也就是说：
-- 本地默认不是 logging 模式
-- 任务创建后会真正投到 RabbitMQ
-
-### 3.2 E2E profile
-
-`application-e2e.yml` 中会切到：
-- `caries.analysis.messaging.mode: logging`
-
-用途：
-- 测试场景下不依赖真实 Rabbit 消费端
-
-## 4. RabbitMQ 配置
-
-当前配置来源：
-- `AnalysisMessagingProperties`
-- `application-local.yml`
-
-关键配置：
-- exchange: `caries.analysis.exchange`
-- requested queue: `caries.analysis.requested.queue`
-- completed queue: `caries.analysis.completed.queue`
-- failed queue: `caries.analysis.failed.queue`
-- requested routing key: `analysis.requested`
-- completed routing key: `analysis.completed`
-- failed routing key: `analysis.failed`
-
-当前 Python 消费端至少要订阅：
-- exchange `caries.analysis.exchange`
-- routing key `analysis.requested`
-
-## 5. `analysis.requested` 消息内容
-
-Java 侧发送逻辑：
-- `RabbitAnalysisTaskEventPublisher.publishRequested`
-
-消息头：
-- `eventType = analysis.requested`
-- `taskId`
-- `taskNo`
-- `taskStatusCode`
-
-消息体：
-- `payloadJson`
-- 真实内容来自 `AiAnalysisRequestDTO`
-
-`AiAnalysisRequestDTO` 结构：
+类名：`AiAnalysisRequestDTO`
 
 ```json
 {
-  "taskNo": "ANA...",
-  "taskTypeCode": "INFERENCE",
-  "caseId": 1,
-  "patientId": 1,
+  "taskNo": "ANA202604150001",
+  "taskTypeCode": "CARIES_DETECTION",
+  "caseId": 10001,
+  "patientId": 20001,
   "orgId": 100001,
   "modelVersion": "caries-v1",
   "images": [
     {
-      "imageId": 1,
-      "attachmentId": 1,
-      "imageTypeCode": "PANORAMIC",
+      "imageId": 30001,
+      "attachmentId": 40001,
+      "imageTypeCode": "INTRAORAL",
       "bucketName": "caries-image",
-      "objectKey": "attachments/2026/04/15/xxxxxxxx.jpg",
+      "objectKey": "attachments/2026/04/15/xxxx.jpg",
       "storageProviderCode": "MINIO",
-      "attachmentMd5": "...",
-      "accessUrl": "http://127.0.0.1:8080/api/v1/files/1/content?expireAt=...&signature=...",
-      "accessExpireAt": 1770000000,
+      "attachmentMd5": "f1d2d2f924e986ac86fdf7b36c94bcdf",
+      "accessUrl": "http://127.0.0.1:8080/api/v1/files/40001/content?expireAt=...&signature=...",
+      "accessExpireAt": 1776220000,
       "localStoragePath": null
     }
   ],
   "patientProfile": {
-    "age": 8,
-    "genderCode": "MALE"
+    "age": 12,
+    "genderCode": "FEMALE"
   }
 }
 ```
 
 字段说明：
-- `taskNo` 是 Python 回调时最关键的关联键。
-- `modelVersion` 默认来自 `caries.analysis.default-model-version`，默认为 `caries-v1`。
-- `images` 只包含质检通过的图像。
-- `accessUrl` / `accessExpireAt` 由 Java 通过 `AttachmentAppService.createInternalAccessUrl` 生成，Python 推荐直接 HTTP 拉图。
-- `storageProviderCode` 当前支持 `MINIO` 和 `LOCAL_FS`；`OSS` 只是预留口径，未实现。
-- `attachmentMd5` 用于 Python 校验输入文件。
-- `localStoragePath` 只在 `LOCAL_FS` provider 下生成，用于同机/共享卷调试。
 
-## 6. Python 如何取图
+| 字段 | 说明 |
+| --- | --- |
+| `taskNo` | 任务编号，回调时必须原样返回 |
+| `modelVersion` | Java 请求模型版本 |
+| `images[].storageProviderCode` | `MINIO` 或 `LOCAL_FS` |
+| `images[].attachmentMd5` | 文件 MD5，用于校验 |
+| `images[].accessUrl` | 推荐取图入口 |
+| `images[].accessExpireAt` | URL 过期时间，秒级时间戳 |
+| `images[].localStoragePath` | 只有 LOCAL_FS 受控环境才可能有值 |
 
-推荐方式：
-1. Python 优先使用 `accessUrl` 拉取图片。
-2. 在 `LOCAL_FS` 本地共享卷联调时，可使用 `localStoragePath` 直接读取。
-3. 不建议 Python 自己拼 `bucketName + objectKey` 访问 MinIO，因为 Java 已经冻结了签名 URL 契约。
+## 3. Python 拉图规则
 
-当前对象存储实现：
-- `provider-code=MINIO`：`MinioObjectStorageService`，local profile 默认值。
-- `provider-code=LOCAL_FS`：`LocalObjectStorageService`，E2E profile 使用。
-- `application-local.yml` 已包含 MinIO endpoint、access key、secret key、bucket、public base URL 等配置项。
+1. 优先请求 `accessUrl`。
+2. 若 `accessExpireAt` 已过期，不要继续推理，应返回失败或重新请求任务。
+3. MinIO 场景不要把 `bucketName + objectKey` 拼成本地路径。
+4. LOCAL_FS 场景如 Java 下发 `localStoragePath`，只能在共享卷/本机受控环境使用。
+5. 拉图失败时回调 `taskStatusCode=FAILED` 和 `errorMessage`。
 
-注意：
-- MinIO Java provider 已经实现，但 MinIO 服务实例不在本仓库内，需要运行环境提供。
-- Python 如果通过 `accessUrl` 拉图，需要能访问 `caries.image.storage.public-base-url` 指向的 Java 后端地址。
+## 4. Python -> Java 回调
 
-## 7. Python 回调接口
+接口：`POST /api/v1/internal/ai/callbacks/analysis-result`
 
-回调地址：
-- `POST /api/v1/internal/ai/callbacks/analysis-result`
-
-Java 处理入口：
-- `AnalysisCallbackController.receiveAnalysisResultCallback`
-- `AnalysisCallbackAppService.handleResultCallback`
-
-请求头要求：
-- `timestamp`
-- `signature`
-
-请求体结构：
+请求体：`AiAnalysisResultCallbackCommand`
 
 ```json
 {
-  "taskNo": "ANA...",
+  "taskNo": "ANA202604150001",
   "taskStatusCode": "SUCCESS",
   "startedAt": "2026-04-15T10:00:00",
-  "completedAt": "2026-04-15T10:00:10",
+  "completedAt": "2026-04-15T10:00:03",
   "modelVersion": "caries-v1",
   "summary": {
-    "overallHighestSeverity": "HIGH",
-    "uncertaintyScore": 0.12,
-    "reviewSuggestedFlag": "1",
-    "teethCount": 20
+    "overallHighestSeverity": "C2",
+    "uncertaintyScore": 0.18,
+    "reviewSuggestedFlag": "0",
+    "teethCount": 24
   },
-  "rawResultJson": {},
-  "visualAssets": [
-    {
-      "assetTypeCode": "HEATMAP",
-      "attachmentId": 123
-    }
-  ],
+  "rawResultJson": {
+    "lesions": []
+  },
+  "visualAssets": [],
   "riskAssessment": {
-    "overallRiskLevelCode": "HIGH",
-    "assessmentReportJson": {},
-    "recommendedCycleDays": 30
+    "riskLevelCode": "MEDIUM",
+    "riskScore": 0.62,
+    "riskFactorsJson": "{}",
+    "suggestion": "建议复查",
+    "nextFollowupDays": 90
   },
-  "errorMessage": null
+  "errorMessage": null,
+  "traceId": "py-94f1c9",
+  "inferenceMillis": 3021,
+  "uncertaintyScore": 0.18
 }
 ```
 
-当前支持的 `taskStatusCode`：
-- `PROCESSING`
-- `SUCCESS`
-- `FAILED`
+字段要求：
 
-## 8. 回调签名算法
+| 字段 | 要求 |
+| --- | --- |
+| `taskNo` | 必填 |
+| `taskStatusCode` | 必填，建议 `PROCESSING`、`SUCCESS`、`FAILED` |
+| `modelVersion` | 成功时必须回传实际模型版本 |
+| `summary` | 成功时建议提供 |
+| `rawResultJson` | 成功时建议完整保留 |
+| `visualAssets` | 有可视化结果时提供 |
+| `riskAssessment` | 有风险评估时提供 |
+| `traceId` | 建议必填，便于排查 |
+| `inferenceMillis` | 建议必填，dashboard 统计使用 |
+| `errorMessage` | 失败时必填 |
 
-Java 实现类：
-- `AiCallbackSignatureVerifier`
+## 5. Java 落库结果
 
-算法规则：
-1. 取原始请求体字符串 `rawBody`
-2. 取请求头 `timestamp`
-3. 拼接字符串：`timestamp + "." + rawBody`
-4. 使用共享密钥做 `HmacSHA256`
-5. 对摘要做 `Base64 URL Safe` 编码，且不带 padding
-6. 结果放到请求头 `signature`
+| 回调字段 | 落库位置 |
+| --- | --- |
+| `taskStatusCode` | `ana_task_record.task_status_code` |
+| `modelVersion` | `ana_task_record.model_version` |
+| `traceId` | `ana_task_record.trace_id` |
+| `inferenceMillis` | `ana_task_record.inference_millis` |
+| `summary` | `ana_result_summary.summary_json` 和聚合字段 |
+| `rawResultJson` | `ana_result_summary.raw_result_json` |
+| `visualAssets` | `ana_visual_asset` |
+| `riskAssessment` | `med_risk_assessment_record` |
 
-伪代码：
+## 6. 幂等和重试
 
-```python
-import base64
-import hashlib
-import hmac
+1. 同一个 `SUCCESS` 回调重复发送，Java 不重复写 summary、risk、visualAssets。
+2. 失败任务重试后，旧任务的晚到成功回调不能覆盖新任务。
+3. `FAILED` 回调会保留错误原因。
+4. 需要 Python 侧保证 `taskNo` 不被改写。
 
-payload = f"{timestamp}.{raw_body}".encode("utf-8")
-digest = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).digest()
-signature = base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
+## 7. MinIO 联调配置
+
+Java local 默认：
+
+```yaml
+caries:
+  image:
+    storage:
+      provider-code: MINIO
+      public-base-url: http://127.0.0.1:8080
+      minio:
+        endpoint: http://127.0.0.1:9000
+        access-key: minioadmin
+        secret-key: minioadmin
 ```
 
-额外校验：
-- `timestamp` 必须是 Unix epoch seconds
-- 与 Java 服务器当前时间偏差不能超过 `callbackAllowedClockSkewSeconds`
-- 当前默认允许偏差 `300` 秒
-
-## 9. 不同回调状态的效果
-
-### 9.1 `PROCESSING`
-
-Java 侧行为：
-- 仅更新任务状态为 `PROCESSING`
-- 不写摘要、不写风险、不推动报告链路
-
-### 9.2 `SUCCESS`
-
-Java 侧行为：
-- 更新任务状态为 `SUCCESS`
-- 写 `ana_result_summary`
-- 写 `ana_visual_asset`
-- 写 `med_risk_assessment_record`
-- 推动病例到 `REVIEW_PENDING`
-- 发布 `analysis.completed`
-
-### 9.3 `FAILED`
-
-Java 侧行为：
-- 更新任务状态为 `FAILED`
-- 记录错误信息
-- 推动病例回到 `QC_PENDING`
-- 发布 `analysis.failed`
-
-## 10. 幂等与晚到回调
-
-当前 Java 已实现这两类保护：
-
-1. 重复终态回调
-- 如果同一任务已经是终态，再收到相同终态回调，会直接 ACK
-
-2. 已重试任务的晚到回调
-- 如果原任务已经被重试，旧任务的晚到回调只 ACK，不再写库
-
-这意味着 Python 侧可以安全地做有限次重试，但必须：
-- 始终使用同一个 `taskNo` 回调对应任务
-- 不要把新旧任务的 `taskNo` 混用
-
-## 11. Python 生成可视化资产的要求
-
-如果 Python 想让 Java 记录 `visualAssets`：
-- 必须先确保资产文件已经作为附件存在于 Java 侧
-- 回调里填写的是 `attachmentId`
-- Java 不负责替 Python 上传可视化结果文件
-
-现实落地方式通常有两种：
-1. Python 先调 Java 文件上传接口，把标注图上传成附件，再回调 attachmentId
-2. 后续单独扩展内部上传通道
-
-## 12. Python 侧最小可用联调方案
-
-最小闭环建议：
-
-1. Java 使用本地 profile 启动
-2. Python 监听 Rabbit `analysis.requested`
-3. Python 通过共享文件目录读取图片
-4. Python 做假推理也可以，只要能生成固定结果
-5. Python 回调 `SUCCESS`
-6. Java 生成报告
-7. 风险为 `HIGH` 或 `reviewSuggestedFlag=1` 时观察随访触发
-
-## 13. 当前联调限制总结
-
-1. 当前仓库没有 Python 示例代码。
-2. 当前请求消息不包含签名下载 URL，只包含 bucket/objectKey。
-3. 当前存储是本地文件系统，不是对象存储服务。
-4. 当前报告 PDF 生成是极简实现，只适合闭环验证。
-5. 当前导出接口只写日志，不直接下载文件。
-
+Python 不需要知道 MinIO 密钥也可以通过 `accessUrl` 拉图。若 Python 选择使用 MinIO SDK，应由部署环境单独提供 MinIO 连接信息。

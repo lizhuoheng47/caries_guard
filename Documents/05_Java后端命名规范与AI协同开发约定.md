@@ -1,227 +1,175 @@
 # Java后端命名规范与AI协同开发约定
 
-本文档统一当前数据库、Java 代码、接口、事件、AI 协同对象的命名口径，并补充与当前实现一致的边界说明。
+更新日期：2026-04-15
 
-## 1. 总体原则
+本文档只保留当前项目真实使用的命名和 Java/Python 协作契约。
 
-1. 同一业务语义在数据库、Java、接口和联调文档中保持一致。
-2. 命名优先可读性，避免生造缩写。
-3. 当前已落地的命名必须跟代码一致，不能按理想设计重写历史实现。
-4. 治理类设计名词可以保留，但必须标注“当前未落地”。
+## 1. 模块命名
 
-## 2. 数据库命名规范
-
-### 2.1 表名前缀
-
-当前已使用的域前缀：
-- `sys_`：系统管理
-- `pat_`：患者主档
-- `med_`：病例与医疗业务
-- `ana_`：分析任务与结果
-- `rpt_`：报告
-- `fup_`：随访
-- `msg_`：消息通知
-
-### 2.2 字段命名
-
-当前统一约定：
-- 主键：`id`
-- 编号：`*_no`
-- 外键：`*_id`
-- 类型码：`*_code`
-- 标记位：`*_flag`
-- JSON：`*_json`
-- 时间点：`*_at`
-- 日期：`*_date`
-
-### 2.3 当前应特别强调的字段
-
-| 字段 | 说明 |
+| 模块 | 命名含义 |
 | --- | --- |
-| `org_id` | 机构隔离基础字段 |
-| `deleted_flag` | 逻辑删除 |
-| `case_status_code` | 病例主状态机字段 |
-| `quality_status_code` | 图像质检结果核心状态 |
-| `model_version` | 当前模型版本留痕字段 |
-| `retry_from_task_id` | 分析任务重试链路字段 |
-| `trigger_source_code` / `trigger_ref_id` | 随访触发幂等字段 |
+| `caries-system` | 系统、认证、用户、角色、菜单、权限 |
+| `caries-patient` | 患者、就诊、病例、诊断、牙位 |
+| `caries-image` | 附件、对象存储、病例影像、影像质检 |
+| `caries-analysis` | AI 分析任务、回调、结果、风险、修正反馈 |
+| `caries-report` | 模板、报告、PDF、导出 |
+| `caries-followup` | 随访计划、任务、记录 |
+| `caries-dashboard` | 业务看板、模型运行看板 |
+| `caries-framework` | 权限注解、安全上下文、日志、Trace |
+| `caries-common` | 通用响应、异常、分页、工具 |
 
-## 3. Java 包和类命名规范
+禁止把未实现的独立模块写成当前模块：
 
-### 3.1 模块内包结构
+1. 不写 `caries-risk` 为已实现模块。
+2. 不写 `caries-model-admin` 为已实现模块。
+3. 不写独立标注平台或训练平台为当前 Java 代码模块。
 
-当前建议固定：
-- `controller`
-- `app`
-- `domain.model`
-- `domain.service`
-- `domain.repository`
-- `infrastructure.*`
-- `interfaces.command`
-- `interfaces.dto`
-- `interfaces.vo`
-- `interfaces.query`
+## 2. 包命名
 
-### 3.2 类命名
-
-当前应遵守：
-- Controller：`XxxController`
-- 应用服务：`XxxAppService`
-- 领域服务：`XxxDomainService`
-- Repository 接口：`XxxRepository`
-- Repository 实现：`XxxRepositoryImpl`
-- Command：`CreateXxxCommand` / `UpdateXxxCommand`
-- DTO：`XxxDTO`
-- VO：`XxxVO`
-
-### 3.3 当前真实示例
-
-| 类型 | 示例 |
+| 包名 | 用途 |
 | --- | --- |
-| Controller | `AnalysisTaskController` |
-| AppService | `AnalysisTaskAppService` |
-| DomainService | `AnalysisCallbackDomainService` |
-| DTO | `AiAnalysisRequestDTO` `AiAnalysisCallbackDTO` |
-| VO | `ReportGenerateResultVO` |
-| Command | `CreateAnalysisTaskCommand` |
+| `controller` | REST Controller |
+| `app` | 应用服务 |
+| `domain.model` | 领域模型、查询模型、状态更新模型 |
+| `domain.repository` | 仓储接口 |
+| `domain.service` | 领域服务 |
+| `infrastructure.repository` | 仓储实现 |
+| `infrastructure.storage` | 对象存储实现 |
+| `infrastructure.service` | PDF 等技术服务实现 |
+| `interfaces.command` | 请求命令对象 |
+| `interfaces.dto` | 跨服务 DTO 和嵌套 DTO |
+| `interfaces.vo` | API 响应 VO |
 
-## 4. API 命名规范
+## 3. 类命名
 
-### 4.1 REST 路径
+| 后缀 | 例子 | 说明 |
+| --- | --- | --- |
+| `Controller` | `AnalysisTaskController` | REST API 入口 |
+| `AppService` | `AnalysisTaskAppService` | 应用服务，处理事务和流程编排 |
+| `DomainService` | `AnalysisCallbackDomainService` | 领域规则处理 |
+| `Repository` | `AnaTaskRecordRepository` | 仓储接口 |
+| `RepositoryImpl` | `AnaTaskRecordRepositoryImpl` | 仓储实现 |
+| `Command` | `AiAnalysisResultCallbackCommand` | 请求入参或回调命令 |
+| `DTO` | `AiAnalysisRequestDTO` | 跨服务数据载荷 |
+| `VO` | `ModelRuntimeVO` | API 出参 |
+| `DO` | `AnaTaskRecordDO` | 数据库映射对象 |
+| `Properties` | `ImageStorageProperties` | 配置属性 |
+| `Service` | `ReportPdfService` | 技术服务或领域服务 |
 
-当前统一风格：
-- 版本前缀：`/api/v1`
-- 资源名用复数
-- 病例下游资源使用子资源路径
+当前重要命名：
 
-示例：
-- `/api/v1/patients`
-- `/api/v1/visits`
-- `/api/v1/cases`
-- `/api/v1/cases/{caseId}/images`
-- `/api/v1/analysis/tasks`
-- `/api/v1/reports/{reportId}/export`
+| 类名 | 状态 | 说明 |
+| --- | --- | --- |
+| `AiAnalysisRequestDTO` | 已实现 | Java 发给 Python 的任务载荷 |
+| `AiAnalysisResultCallbackCommand` | 已实现 | Python 回调 Java 的冻结契约 |
+| `ObjectStorageService` | 已实现 | 对象存储抽象 |
+| `MinioObjectStorageService` | 已实现 | 默认 MinIO provider |
+| `LocalObjectStorageService` | 已实现 | 本地文件兼容 provider |
+| `ReportExportResultVO` | 已实现 | 报告导出返回下载信息 |
+| `ModelRuntimeVO` | 已实现 | AI 运行质量看板响应 |
+| `ModelVersionRuntimeVO` | 已实现 | 按模型版本聚合响应 |
 
-### 4.2 当前不应误写的路径
+## 4. 对象存储命名
 
-不要写成：
-- `/api/v1/ai/tasks` 当前并不存在
-- `/api/v1/followups` 当前并不是已实现主路径
+Provider code 必须使用明确枚举式字符串：
 
-## 5. AI 协同命名约定
+| provider code | 实现类 | 使用场景 |
+| --- | --- | --- |
+| `MINIO` | `MinioObjectStorageService` | local 默认、正式联调、需要对象存储服务的环境 |
+| `LOCAL_FS` | `LocalObjectStorageService` | e2e、无 MinIO 的临时本地环境、共享卷联调 |
+| `OSS` | 未实现 | 仅作为未来扩展命名，不写成当前能力 |
 
-### 5.1 当前已存在对象
+命名约定：
 
-| 对象 | 当前状态 |
+1. 数据库字段写 `storage_provider_code`。
+2. Java 字段写 `storageProviderCode`。
+3. DTO 中仍保留 `bucketName`、`objectKey`，但 Python 优先使用 `accessUrl`。
+4. `localStoragePath` 只允许在 `LOCAL_FS` 受控环境下有值。
+
+## 5. AI 协同命名
+
+Java -> Python：`AiAnalysisRequestDTO`
+
+| 字段 | 命名约定 |
 | --- | --- |
-| `AiAnalysisRequestDTO` | 已实现 |
-| `AiAnalysisCallbackDTO` | 已实现 |
-| `AnalysisRequestedEvent` | 已实现 |
-| `AnalysisCompletedEvent` | 已实现 |
-| `AnalysisFailedEvent` | 已实现 |
+| `taskNo` | 任务编号，跨系统幂等主键 |
+| `taskTypeCode` | 任务类型代码 |
+| `modelVersion` | 请求模型版本 |
+| `images[].storageProviderCode` | 存储 provider |
+| `images[].attachmentMd5` | 文件校验值 |
+| `images[].accessUrl` | 推荐拉图入口 |
+| `images[].accessExpireAt` | URL 过期时间 |
+| `images[].localStoragePath` | LOCAL_FS 兼容路径 |
 
-### 5.2 当前建议冻结的命名
+Python -> Java：`AiAnalysisResultCallbackCommand`
 
-建议保持以下命名不再轻易变动：
-- `taskNo`
-- `taskStatusCode`
-- `modelVersion`
-- `summary`
-- `rawResultJson`
-- `visualAssets`
-- `riskAssessment`
-- `errorMessage`
+| 字段 | 命名约定 |
+| --- | --- |
+| `taskNo` | 必须原样回传 |
+| `taskStatusCode` | 使用大写状态码 |
+| `startedAt`、`completedAt` | ISO 时间 |
+| `modelVersion` | 实际推理模型版本 |
+| `summary.overallHighestSeverity` | 最高病变严重程度 |
+| `summary.uncertaintyScore` | 摘要不确定性 |
+| `summary.reviewSuggestedFlag` | `0/1` |
+| `summary.teethCount` | 识别牙齿数量 |
+| `rawResultJson` | 原始结果，不做业务字段散落 |
+| `visualAssets` | 可视化资产列表 |
+| `riskAssessment` | 风险评估 |
+| `traceId` | Python 链路追踪 ID |
+| `inferenceMillis` | 推理耗时 |
 
-建议新增并冻结：
-- `traceId`
-- `inferenceMillis`
+## 6. 数据库命名
 
-### 5.3 事件命名
+| 领域 | 前缀 | 例子 |
+| --- | --- | --- |
+| 系统 | `sys_` | `sys_user`、`sys_role`、`sys_menu` |
+| 患者 | `pat_` | `pat_patient`、`pat_guardian` |
+| 医疗病例 | `med_` | `med_case`、`med_image_file` |
+| AI 分析 | `ana_` | `ana_task_record`、`ana_result_summary` |
+| 报告 | `rpt_` | `rpt_record`、`rpt_export_log` |
+| 随访 | `fup_` | `fup_plan`、`fup_task`、`fup_record` |
+| 消息通知 | `msg_` | `msg_notify_record` |
 
-当前真实事件名：
-- `analysis.requested`
-- `analysis.completed`
-- `analysis.failed`
+V014 新增/增强命名：
 
-对应 routing key：
-- `analysis.requested`
-- `analysis.completed`
-- `analysis.failed`
+| 名称 | 说明 |
+| --- | --- |
+| `ana_model_version_registry` | 模型版本登记表 |
+| `ana_task_record.trace_id` | AI 服务 trace ID |
+| `ana_task_record.inference_millis` | 推理耗时 |
+| `ana_correction_feedback.training_candidate_flag` | 是否进入训练候选 |
+| `ana_correction_feedback.desensitized_export_flag` | 是否脱敏导出 |
+| `ana_correction_feedback.dataset_snapshot_no` | 数据集快照编号 |
+| `ana_correction_feedback.review_status_code` | 训练准入审核状态 |
+| `ana_correction_feedback.reviewed_by` | 审核人 |
+| `ana_correction_feedback.reviewed_at` | 审核时间 |
 
-### 5.4 资源访问字段命名建议
+## 7. API 命名
 
-当前消息里只有：
-- `bucketName`
-- `objectKey`
+REST 约定：
 
-建议后续统一命名增加：
-- `accessUrl`
-- `accessExpireAt`
-- `storageProviderCode`
-- `localStoragePath`
-- `attachmentMd5`
+1. 业务 API 使用 `/api/v1/...`。
+2. 内部 AI 回调使用 `/api/v1/internal/ai/callbacks/...`。
+3. 文件下载内容使用 `/api/v1/files/{attachmentId}/content`，必须带 `expireAt` 和 `signature`。
+4. 模型运行看板使用 `/api/v1/dashboard/model-runtime`。
+5. 操作型接口使用 POST，查询型接口使用 GET。
+6. 批量分页查询返回 `PageResultVO`。
 
-## 6. 对象存储命名修正建议
+## 8. 文档用语约定
 
-当前问题：
-- local 配置默认 provider code 为 `MINIO`
-- `MINIO` 对应 `MinioObjectStorageService`，`LOCAL_FS` 对应 `LocalObjectStorageService`
+正确表述：
 
-建议统一口径：
-- `LOCAL_FS`
-- `MINIO`
-- `OSS`
+1. “当前默认对象存储为 MinIO，`LOCAL_FS` 为兼容实现。”
+2. “ModelAdmin 治理原则保留，但当前未落地为独立业务模块。”
+3. “风险评估是能力，不是独立模块。”
+4. “报告导出包含审计和下载 URL。”
+5. “V014 已补业务角色、菜单和数据权限规则种子。”
 
-文档要求：
-- 当前本地 profile 默认写 `MINIO`；只有 E2E 或共享卷联调才写 `LOCAL_FS`
-- MinIO 已经接入实现；OSS 仍只是预留 provider 口径
+禁止表述：
 
-## 7. ModelAdmin 与 Risk 术语使用规则
-
-### 7.1 ModelAdmin
-
-允许写：
-- 模型治理能力
-- 模型版本治理方向
-- 候选模型 / 审批上线流程
-
-不允许写：
-- 当前已存在独立 `ModelAdmin` 模块
-- 当前已有独立 `ModelAdmin` API / 表 / 管理端
-
-### 7.2 Risk
-
-允许写：
-- 风险评估能力
-- 风险等级结果
-- 风险分布统计
-
-不允许写：
-- 当前已存在独立 `Risk` 模块
-- 当前已有独立 `caries-risk`
-
-## 8. 文档与代码统一规则
-
-文档里必须与当前代码保持一致的事实：
-1. `LOCAL_FS` 本地对象存储实现是 `LocalObjectStorageService`，默认 `MINIO` 实现是 `MinioObjectStorageService`
-2. 风险评估不是独立模块
-3. ModelAdmin 不是当前已实现模块
-4. local profile 分析消息模式是 `rabbit`
-5. 导出接口当前是导出审计，不是完整下载接口
-6. PDF 当前是极简 ASCII 生成
-
-## 9. 建议新增命名对象
-
-为后续治理扩展保留的推荐命名：
-- `ana_model_version_registry`
-- `training_candidate_flag`
-- `desensitized_export_flag`
-- `dataset_snapshot_no`
-- `review_status_code`
-- `reviewed_by`
-- `reviewed_at`
-
-这些名字可以进入设计文档，但必须标注：
-- 当前建议新增
-- 当前数据库未落地
-
+1. 不把本地文件兼容实现写成唯一对象存储实现。
+2. 不把历史回调对象写成当前回调契约。
+3. “报告导出只写日志。”
+4. “sys_menu 为空，无法演示非管理员角色。”
+5. “已经完成完整 ModelAdmin 平台。”
