@@ -301,7 +301,10 @@ class MainlineWorkflowE2ETest extends AnalysisReportE2EBaseTest {
     private Long uploadFile(String originalName, String contentType, byte[] bytes) throws Exception {
         authenticateAsSysAdmin(ORG_ID);
         MockMultipartFile file = new MockMultipartFile("file", originalName, contentType, bytes);
-        MvcResult result = mockMvc.perform(MockMvcRequestBuilders.multipart("/api/v1/files/upload").file(file)).andReturn();
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders.multipart("/api/v1/files/upload")
+                .file(file)
+                .param("caseId", String.valueOf(caseId))
+                .param("imageTypeCode", "PANORAMIC")).andReturn();
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
         assertThat(body.path("code").asText()).isEqualTo("00000");

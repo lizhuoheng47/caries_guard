@@ -1016,7 +1016,7 @@ public final class AnalysisReportE2EFixture {
         @Override
         public StoredObject store(ObjectStoreCommand command) throws IOException {
             byte[] bytes = readAll(command.inputStream());
-            String objectKey = command.keyModule() + "/" + Instant.now().toEpochMilli() + "/" + command.originalFileName();
+            String objectKey = command.objectKindCode() + "/" + Instant.now().toEpochMilli() + "/" + command.originalFileName();
             objects.put(objectKey, bytes);
             String bucketName = switch (command.bucketCode()) {
                 case "REPORT" -> "caries-report";
@@ -1033,7 +1033,7 @@ public final class AnalysisReportE2EFixture {
                                   InputStream inputStream,
                                   long fileSizeBytes,
                                   String md5) throws IOException {
-            return store(new ObjectStoreCommand("IMAGE", "case-image", "test", originalFileName, contentType, inputStream, fileSizeBytes, md5));
+            return store(ObjectStoreCommand.rawImage("IMAGE", 0L, "UNBOUND", "RAW_IMAGE", 0L, originalFileName, contentType, inputStream, fileSizeBytes, md5));
         }
 
         @Override

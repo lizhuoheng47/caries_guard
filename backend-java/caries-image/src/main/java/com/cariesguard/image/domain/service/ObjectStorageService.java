@@ -15,10 +15,12 @@ public interface ObjectStorageService {
                                InputStream inputStream,
                                long fileSizeBytes,
                                String md5) throws IOException {
-        return store(new ObjectStoreCommand(
+        return store(ObjectStoreCommand.rawImage(
                 "IMAGE",
-                "case-image",
-                md5 == null ? "general" : md5,
+                0L,
+                "UNBOUND",
+                "RAW_IMAGE",
+                0L,
                 originalFileName,
                 contentType,
                 inputStream,

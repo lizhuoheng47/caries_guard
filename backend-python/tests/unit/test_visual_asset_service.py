@@ -25,13 +25,24 @@ def test_visual_asset_metadata_and_key(tmp_path) -> None:
     settings = Settings()
     service = VisualAssetService(settings, FakeStorage())
 
-    asset = service.upload_visual("MASK", "CASE202604150001", 90001, path, tooth_code="16")
+    asset = service.upload_visual(
+        "MASK",
+        1001,
+        "CASE202604150001",
+        "ANA202604150001",
+        "caries-v1",
+        90001,
+        path,
+        tooth_code="16",
+    )
     body = asset.model_dump(by_alias=True)
 
     assert body["assetTypeCode"] == "MASK"
     assert body["bucketName"] == "caries-visual"
-    assert body["objectKey"].endswith("/CASE202604150001/mask_90001_16.png")
+    assert body["objectKey"].startswith(
+        "org/1001/case/CASE202604150001/analysis/ANA202604150001/caries-v1/MASK/90001/16/tmp-"
+    )
+    assert body["objectKey"].endswith(".png")
     assert body["contentType"] == "image/png"
     assert body["fileSizeBytes"] == 8
     assert body["md5"]
-

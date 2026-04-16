@@ -3,9 +3,9 @@ package com.cariesguard.report.app;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
+import com.cariesguard.followup.app.FollowupTriggerService;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
-import com.cariesguard.followup.app.FollowupTriggerService;
 import com.cariesguard.image.app.AttachmentAppService;
 import com.cariesguard.image.domain.model.ObjectStoreCommand;
 import com.cariesguard.image.domain.model.StoredObject;
@@ -51,6 +51,11 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class ReportAppService {
+
+    private static final String CATEGORY_REPORT = "REPORT";
+    private static final String CATEGORY_EXPORT = "EXPORT";
+    private static final String RETENTION_LONG_TERM = "LONG_TERM";
+    private static final String RETENTION_EXPORT_TEMPORARY = "EXPORT_7D";
 
     private final ReportSourceQueryRepository reportSourceQueryRepository;
     private final ReportRecordRepository reportRecordRepository;
@@ -159,13 +164,15 @@ public class ReportAppService {
             String templateContent = reportTemplateResolver.resolveContent(medicalCase.orgId(), reportTypeCode);
             String renderedContent = reportRenderService.render(templateContent, reportNo, renderData);
             byte[] pdfBytes = reportPdfService.generatePdf(renderedContent);
-            storedObject = storeReportPdf(reportNo, versionNo, pdfBytes);
+            storedObject = storeReportPdf(medicalCase, reportNo, reportTypeCode, versionNo, pdfBytes);
             long attachmentId = IdWorker.getId();
             reportRecordRepository.createAttachment(new ReportAttachmentCreateModel(
                     attachmentId,
-                    "REPORT",
+                    CATEGORY_REPORT,
                     reportId,
-                    "REPORT",
+                    CATEGORY_REPORT,
+                    reportAssetType(reportTypeCode),
+                    null,
                     storedObject.fileName(),
                     storedObject.fileName(),
                     storedObject.bucketName(),
@@ -176,6 +183,8 @@ public class ReportAppService {
                     storedObject.md5(),
                     storedObject.providerCode(),
                     "PRIVATE",
+                    RETENTION_LONG_TERM,
+                    null,
                     operator.getUserId(),
                     medicalCase.orgId(),
                     "ACTIVE",
@@ -216,14 +225,17 @@ public class ReportAppService {
 
         long exportLogId = IdWorker.getId();
         long exportAttachmentId = IdWorker.getId();
+        LocalDateTime exportedAt = LocalDateTime.now();
         StoredObject exportedObject = null;
         try {
-            exportedObject = copyReportToExportBucket(report, reportAttachment, exportLogId);
+            exportedObject = copyReportToExportBucket(report, reportAttachment, operator.getUserId(), exportLogId);
             reportRecordRepository.createAttachment(new ReportAttachmentCreateModel(
                     exportAttachmentId,
-                    "EXPORT",
+                    CATEGORY_EXPORT,
                     exportLogId,
-                    "EXPORT",
+                    CATEGORY_EXPORT,
+                    "EXPORT_FILE",
+                    report.attachmentId(),
                     exportedObject.fileName(),
                     exportedObject.fileName(),
                     exportedObject.bucketName(),
@@ -234,6 +246,8 @@ public class ReportAppService {
                     exportedObject.md5(),
                     exportedObject.providerCode(),
                     "PRIVATE",
+                    RETENTION_EXPORT_TEMPORARY,
+                    exportedAt.plusDays(7),
                     operator.getUserId(),
                     report.orgId(),
                     "ACTIVE",
@@ -246,7 +260,7 @@ public class ReportAppService {
                     reportDomainService.normalizeExportType(command == null ? null : command.exportTypeCode()),
                     reportDomainService.normalizeExportChannel(command == null ? null : command.exportChannelCode()),
                     operator.getUserId(),
-                    LocalDateTime.now(),
+                    exportedAt,
                     report.orgId()));
             AttachmentAccessVO downloadAccess = attachmentAppService == null
                     ? new AttachmentAccessVO(null, 0L)
@@ -258,12 +272,19 @@ public class ReportAppService {
         }
     }
 
-    private StoredObject storeReportPdf(String reportNo, int versionNo, byte[] pdfBytes) {
-        String fileName = "%s_v%d.pdf".formatted(reportNo, versionNo);
+    private StoredObject storeReportPdf(ReportCaseModel medicalCase,
+                                        String reportNo,
+                                        String reportTypeCode,
+                                        int versionNo,
+                                        byte[] pdfBytes) {
+        String fileName = "%s.pdf".formatted(reportNo);
         try {
-            return objectStorageService.store(new ObjectStoreCommand(
+            return objectStorageService.store(ObjectStoreCommand.reportPdf(
                     "REPORT",
-                    "report",
+                    medicalCase.orgId(),
+                    medicalCase.caseNo(),
+                    reportTypeCode,
+                    versionNo,
                     reportNo,
                     fileName,
                     "application/pdf",
@@ -277,6 +298,7 @@ public class ReportAppService {
 
     private StoredObject copyReportToExportBucket(ReportRecordModel report,
                                                   ReportAttachmentModel attachment,
+                                                  Long operatorId,
                                                   Long exportLogId) {
         try {
             StoredObjectResource source = objectStorageService.load(
@@ -288,11 +310,13 @@ public class ReportAppService {
             try (InputStream inputStream = source.resource().getInputStream()) {
                 bytes = inputStream.readAllBytes();
             }
-            String fileName = "%s_export_%s.pdf".formatted(report.reportNo(), exportLogId);
-            return objectStorageService.store(new ObjectStoreCommand(
+            String fileName = "%s.pdf".formatted(report.reportNo());
+            return objectStorageService.store(ObjectStoreCommand.exportFile(
                     "EXPORT",
-                    "export",
-                    String.valueOf(exportLogId),
+                    report.orgId(),
+                    operatorId,
+                    exportLogId,
+                    report.reportNo(),
                     fileName,
                     source.contentType(),
                     new ByteArrayInputStream(bytes),
@@ -341,6 +365,10 @@ public class ReportAppService {
                 "REPORT_READY",
                 "DOCTOR_CONFIRMED",
                 "Report generated"));
+    }
+
+    private String reportAssetType(String reportTypeCode) {
+        return "PATIENT".equalsIgnoreCase(reportTypeCode) ? "PATIENT_REPORT" : "DOCTOR_REPORT";
     }
 
     private String md5(byte[] bytes) {

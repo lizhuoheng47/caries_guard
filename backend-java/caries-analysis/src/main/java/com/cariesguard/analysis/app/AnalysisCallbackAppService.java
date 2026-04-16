@@ -2,7 +2,9 @@ package com.cariesguard.analysis.app;
 
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.cariesguard.analysis.domain.model.AnalysisCompletedEvent;
+import com.cariesguard.analysis.domain.model.AnalysisCaseModel;
 import com.cariesguard.analysis.domain.model.AnalysisFailedEvent;
+import com.cariesguard.analysis.domain.model.AnalysisImageModel;
 import com.cariesguard.analysis.domain.model.AnalysisResultSummaryModel;
 import com.cariesguard.analysis.domain.model.AnalysisTaskStatusUpdateModel;
 import com.cariesguard.analysis.domain.model.AnalysisTaskViewModel;
@@ -11,6 +13,7 @@ import com.cariesguard.analysis.domain.model.RiskAssessmentCreateModel;
 import com.cariesguard.analysis.domain.repository.AnaResultSummaryRepository;
 import com.cariesguard.analysis.domain.repository.AnaTaskRecordRepository;
 import com.cariesguard.analysis.domain.repository.AnaVisualAssetRepository;
+import com.cariesguard.analysis.domain.repository.AnalysisCommandRepository;
 import com.cariesguard.analysis.domain.repository.MedRiskAssessmentRecordRepository;
 import com.cariesguard.analysis.domain.service.AnalysisCallbackDomainService;
 import com.cariesguard.analysis.domain.service.AnalysisIdempotencyDomainService;
@@ -30,6 +33,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +56,7 @@ public class AnalysisCallbackAppService {
     private final AnalysisTaskEventPublisher analysisTaskEventPublisher;
     private final CaseCommandAppService caseCommandAppService;
     private final AttachmentAppService attachmentAppService;
+    private final AnalysisCommandRepository analysisCommandRepository;
     private final ObjectMapper objectMapper;
 
     @Autowired
@@ -65,6 +70,7 @@ public class AnalysisCallbackAppService {
                                       AnalysisTaskEventPublisher analysisTaskEventPublisher,
                                       CaseCommandAppService caseCommandAppService,
                                       AttachmentAppService attachmentAppService,
+                                      AnalysisCommandRepository analysisCommandRepository,
                                       ObjectMapper objectMapper) {
         this.aiCallbackSignatureVerifier = aiCallbackSignatureVerifier;
         this.anaTaskRecordRepository = anaTaskRecordRepository;
@@ -76,6 +82,7 @@ public class AnalysisCallbackAppService {
         this.analysisTaskEventPublisher = analysisTaskEventPublisher;
         this.caseCommandAppService = caseCommandAppService;
         this.attachmentAppService = attachmentAppService;
+        this.analysisCommandRepository = analysisCommandRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -91,7 +98,7 @@ public class AnalysisCallbackAppService {
                                       ObjectMapper objectMapper) {
         this(aiCallbackSignatureVerifier, anaTaskRecordRepository, anaResultSummaryRepository, anaVisualAssetRepository,
                 medRiskAssessmentRecordRepository, analysisIdempotencyDomainService, analysisCallbackDomainService,
-                analysisTaskEventPublisher, caseCommandAppService, null, objectMapper);
+                analysisTaskEventPublisher, caseCommandAppService, null, null, objectMapper);
     }
 
     @Transactional
@@ -236,20 +243,30 @@ public class AnalysisCallbackAppService {
             return List.of();
         }
         String resolvedModelVersion = StringUtils.hasText(modelVersion) ? modelVersion.trim() : task.modelVersion();
-        return visualAssets.stream().map(item -> new AnalysisVisualAssetCreateModel(
-                IdWorker.getId(),
-                task.taskId(),
-                task.caseId(),
-                resolvedModelVersion,
-                normalizeAssetType(item.assetTypeCode()),
-                resolveVisualAttachmentId(task, item),
-                item.relatedImageId(),
-                trimToNull(item.toothCode()),
-                task.orgId(),
-                0L)).toList();
+        AnalysisCaseModel medicalCase = visualAssets.stream().anyMatch(item -> item.attachmentId() == null)
+                ? loadCaseForVisualAssets(task)
+                : null;
+        return visualAssets.stream().map(item -> {
+            String assetTypeCode = normalizeAssetType(item.assetTypeCode());
+            return new AnalysisVisualAssetCreateModel(
+                    IdWorker.getId(),
+                    task.taskId(),
+                    task.caseId(),
+                    resolvedModelVersion,
+                    assetTypeCode,
+                    resolveVisualAttachmentId(task, medicalCase, item, assetTypeCode, resolvedModelVersion),
+                    item.relatedImageId(),
+                    trimToNull(item.toothCode()),
+                    task.orgId(),
+                    0L);
+        }).toList();
     }
 
-    private Long resolveVisualAttachmentId(AnalysisTaskViewModel task, AiVisualAssetDTO item) {
+    private Long resolveVisualAttachmentId(AnalysisTaskViewModel task,
+                                           AnalysisCaseModel medicalCase,
+                                           AiVisualAssetDTO item,
+                                           String assetTypeCode,
+                                           String modelVersion) {
         if (item.attachmentId() != null) {
             return item.attachmentId();
         }
@@ -263,7 +280,9 @@ public class AnalysisCallbackAppService {
                 null,
                 "ANALYSIS",
                 task.taskId(),
-                "IMAGE",
+                "VISUAL",
+                assetTypeCode,
+                resolveSourceAttachmentId(task, item.relatedImageId()),
                 fileNameFromObjectKey(item.objectKey()),
                 item.bucketName(),
                 item.objectKey(),
@@ -272,10 +291,17 @@ public class AnalysisCallbackAppService {
                 trimToNull(item.md5()),
                 "PRIVATE",
                 null,
+                null,
+                null,
                 task.orgId(),
                 "ACTIVE",
                 "AI visual asset callback for task " + task.taskNo(),
-                0L));
+                0L,
+                medicalCase.caseNo(),
+                task.taskNo(),
+                modelVersion,
+                item.relatedImageId(),
+                trimToNull(item.toothCode())));
         return registered.attachmentId();
     }
 
@@ -283,7 +309,30 @@ public class AnalysisCallbackAppService {
         if (!StringUtils.hasText(assetTypeCode)) {
             throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "visual asset assetTypeCode is required");
         }
-        return assetTypeCode.trim().toUpperCase();
+        return assetTypeCode.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private AnalysisCaseModel loadCaseForVisualAssets(AnalysisTaskViewModel task) {
+        if (analysisCommandRepository == null) {
+            throw new BusinessException(CommonErrorCode.SYSTEM_ERROR.code(), "Analysis case query service is not available");
+        }
+        return analysisCommandRepository.findCase(task.caseId())
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Case does not exist"));
+    }
+
+    private Long resolveSourceAttachmentId(AnalysisTaskViewModel task, Long relatedImageId) {
+        if (relatedImageId == null) {
+            return null;
+        }
+        if (analysisCommandRepository == null) {
+            throw new BusinessException(CommonErrorCode.SYSTEM_ERROR.code(), "Analysis image query service is not available");
+        }
+        AnalysisImageModel image = analysisCommandRepository.findImage(relatedImageId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Related image does not exist"));
+        if (!task.caseId().equals(image.caseId())) {
+            throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "Related image does not belong to analysis case");
+        }
+        return image.attachmentId();
     }
 
     private String fileNameFromObjectKey(String objectKey) {

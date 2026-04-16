@@ -6,6 +6,7 @@ import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
 import com.cariesguard.image.domain.model.AttachmentObjectRegistrationModel;
+import com.cariesguard.image.domain.model.AttachmentOwnerCaseModel;
 import com.cariesguard.image.domain.model.AttachmentUploadModel;
 import com.cariesguard.image.domain.model.AttachmentViewModel;
 import com.cariesguard.image.domain.model.ObjectStoreCommand;
@@ -17,12 +18,16 @@ import com.cariesguard.image.domain.service.ObjectStorageService;
 import com.cariesguard.image.interfaces.vo.AttachmentAccessVO;
 import com.cariesguard.image.interfaces.vo.AttachmentUploadVO;
 import jakarta.servlet.http.HttpServletRequest;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.Locale;
+import java.util.Set;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.stereotype.Service;
@@ -32,6 +37,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class AttachmentAppService {
+
+    private static final String BIZ_CASE = "CASE";
+    private static final String BIZ_ANALYSIS = "ANALYSIS";
+    private static final String CATEGORY_RAW_IMAGE = "RAW_IMAGE";
+    private static final String CATEGORY_VISUAL = "VISUAL";
+    private static final String RETENTION_LONG_TERM = "LONG_TERM";
+    private static final String RETENTION_VISUAL_MID_TERM = "VISUAL_180D";
+    private static final Set<String> VISUAL_ASSET_TYPES = Set.of("HEATMAP", "MASK", "OVERLAY");
 
     private final ImageCommandRepository imageCommandRepository;
     private final ImageQueryRepository imageQueryRepository;
@@ -47,10 +60,22 @@ public class AttachmentAppService {
 
     @Transactional
     public AttachmentUploadVO upload(MultipartFile file) {
+        return upload(file, null, null);
+    }
+
+    @Transactional
+    public AttachmentUploadVO upload(MultipartFile file, Long caseId, String imageTypeCode) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "File is required");
         }
+        if (caseId == null) {
+            throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "caseId is required for raw image upload");
+        }
         AuthenticatedUser operator = SecurityContextUtils.currentUser();
+        AttachmentOwnerCaseModel medicalCase = imageCommandRepository.findCase(caseId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Case does not exist"));
+        ensureOrgAccess(operator, medicalCase.orgId());
+
         byte[] bytes;
         try {
             bytes = file.getBytes();
@@ -58,20 +83,24 @@ public class AttachmentAppService {
             throw new BusinessException(CommonErrorCode.EXTERNAL_SERVICE_ERROR.code(), "Read file failed");
         }
         String md5 = md5(bytes);
-        return imageCommandRepository.findAttachmentByMd5(operator.getOrgId(), md5)
+        String normalizedImageType = normalizeImageType(imageTypeCode);
+        return imageCommandRepository.findAttachmentByMd5(
+                        medicalCase.orgId(), md5, BIZ_CASE, medicalCase.caseId(), CATEGORY_RAW_IMAGE)
                 .map(item -> new AttachmentUploadVO(
                         item.attachmentId(),
                         item.fileName(),
                         item.bucketName(),
                         item.objectKey(),
                         item.md5()))
-                .orElseGet(() -> createCaseImageAttachment(operator, file, bytes.length, md5));
+                .orElseGet(() -> createCaseImageAttachment(operator, medicalCase, normalizedImageType, file, bytes.length, md5));
     }
 
     @Transactional
     public AttachmentUploadVO registerExternalObject(AttachmentObjectRegistrationModel model) {
         validateExternalObject(model);
-        return imageCommandRepository.findAttachmentByObject(model.bucketName().trim(), model.objectKey().trim())
+        String sourceBucketName = model.bucketName().trim();
+        String sourceObjectKey = model.objectKey().trim();
+        return imageCommandRepository.findAttachmentByObject(sourceBucketName, sourceObjectKey)
                 .map(item -> new AttachmentUploadVO(
                         item.attachmentId(),
                         item.fileName(),
@@ -124,16 +153,20 @@ public class AttachmentAppService {
     }
 
     private AttachmentUploadVO createCaseImageAttachment(AuthenticatedUser operator,
+                                                        AttachmentOwnerCaseModel medicalCase,
+                                                        String imageTypeCode,
                                                         MultipartFile file,
                                                         long fileSizeBytes,
                                                         String md5) {
         long attachmentId = IdWorker.getId();
         StoredObject storedObject;
         try (InputStream inputStream = file.getInputStream()) {
-            storedObject = objectStorageService.store(new ObjectStoreCommand(
+            storedObject = objectStorageService.store(ObjectStoreCommand.rawImage(
                     "IMAGE",
-                    "case-image",
-                    String.valueOf(attachmentId),
+                    medicalCase.orgId(),
+                    medicalCase.caseNo(),
+                    imageTypeCode,
+                    attachmentId,
                     file.getOriginalFilename(),
                     defaultContentType(file.getContentType()),
                     inputStream,
@@ -145,9 +178,11 @@ public class AttachmentAppService {
         try {
             imageCommandRepository.createAttachment(new AttachmentUploadModel(
                     attachmentId,
-                    "CASE",
+                    BIZ_CASE,
+                    medicalCase.caseId(),
+                    CATEGORY_RAW_IMAGE,
+                    imageTypeCode,
                     null,
-                    "IMAGE",
                     storedObject.fileName(),
                     file.getOriginalFilename(),
                     storedObject.bucketName(),
@@ -158,8 +193,10 @@ public class AttachmentAppService {
                     storedObject.md5(),
                     storedObject.providerCode(),
                     "PRIVATE",
+                    RETENTION_LONG_TERM,
+                    null,
                     operator.getUserId(),
-                    operator.getOrgId(),
+                    medicalCase.orgId(),
                     "ACTIVE",
                     null,
                     operator.getUserId()));
@@ -177,29 +214,93 @@ public class AttachmentAppService {
 
     private AttachmentUploadVO createExternalAttachment(AttachmentObjectRegistrationModel model) {
         long attachmentId = model.attachmentId() == null ? IdWorker.getId() : model.attachmentId();
+        String fileCategoryCode = normalizeFileCategory(model.fileCategoryCode());
+        String assetTypeCode = normalizeAssetType(fileCategoryCode, model.assetTypeCode());
         String originalName = StringUtils.hasText(model.originalName()) ? model.originalName().trim() : fileNameFromObjectKey(model.objectKey());
-        String fileName = fileNameFromObjectKey(model.objectKey());
-        imageCommandRepository.createAttachment(new AttachmentUploadModel(
-                attachmentId,
-                trimOrDefault(model.bizModuleCode(), "ANALYSIS"),
-                model.bizId(),
-                trimOrDefault(model.fileCategoryCode(), "IMAGE"),
-                fileName,
-                originalName,
-                model.bucketName().trim(),
-                model.objectKey().trim(),
-                defaultContentType(model.contentType()),
-                fileExtension(originalName),
-                model.fileSizeBytes(),
-                trimToNull(model.md5()),
-                "MINIO",
-                trimOrDefault(model.visibilityCode(), "PRIVATE"),
-                model.uploadUserId(),
-                model.orgId(),
-                trimOrDefault(model.status(), "ACTIVE"),
-                trimToNull(model.remark()),
-                model.operatorUserId()));
-        return new AttachmentUploadVO(attachmentId, fileName, model.bucketName().trim(), model.objectKey().trim(), trimToNull(model.md5()));
+        String contentType = defaultContentType(model.contentType());
+        StoredObject storedObject = null;
+        String bucketName = model.bucketName().trim();
+        String objectKey = model.objectKey().trim();
+        String fileName = fileNameFromObjectKey(objectKey);
+        Long fileSizeBytes = model.fileSizeBytes();
+        String md5 = trimToNull(model.md5());
+        String storageProviderCode = "MINIO";
+
+        if (CATEGORY_VISUAL.equals(fileCategoryCode)) {
+            storedObject = storeCanonicalVisualObject(attachmentId, model, assetTypeCode, originalName, contentType);
+            bucketName = storedObject.bucketName();
+            objectKey = storedObject.objectKey();
+            fileName = storedObject.fileName();
+            fileSizeBytes = storedObject.fileSizeBytes();
+            md5 = storedObject.md5();
+            storageProviderCode = storedObject.providerCode();
+        }
+
+        try {
+            imageCommandRepository.createAttachment(new AttachmentUploadModel(
+                    attachmentId,
+                    trimOrDefault(model.bizModuleCode(), BIZ_ANALYSIS),
+                    model.bizId(),
+                    fileCategoryCode,
+                    assetTypeCode,
+                    model.sourceAttachmentId(),
+                    fileName,
+                    originalName,
+                    bucketName,
+                    objectKey,
+                    contentType,
+                    fileExtension(originalName),
+                    fileSizeBytes,
+                    md5,
+                    storageProviderCode,
+                    trimOrDefault(model.visibilityCode(), "PRIVATE"),
+                    defaultRetentionPolicy(fileCategoryCode, model.retentionPolicyCode()),
+                    defaultExpiredAt(fileCategoryCode, model.expiredAt()),
+                    model.uploadUserId(),
+                    model.orgId(),
+                    trimOrDefault(model.status(), "ACTIVE"),
+                    trimToNull(model.remark()),
+                    model.operatorUserId()));
+        } catch (RuntimeException exception) {
+            deleteStoredObjectQuietly(storedObject);
+            throw exception;
+        }
+        return new AttachmentUploadVO(attachmentId, fileName, bucketName, objectKey, md5);
+    }
+
+    private StoredObject storeCanonicalVisualObject(Long attachmentId,
+                                                    AttachmentObjectRegistrationModel model,
+                                                    String assetTypeCode,
+                                                    String originalName,
+                                                    String contentType) {
+        try {
+            StoredObjectResource source = objectStorageService.load(
+                    model.bucketName().trim(),
+                    model.objectKey().trim(),
+                    originalName,
+                    contentType);
+            byte[] bytes;
+            try (InputStream inputStream = source.resource().getInputStream()) {
+                bytes = inputStream.readAllBytes();
+            }
+            return objectStorageService.store(ObjectStoreCommand.visualAsset(
+                    "VISUAL",
+                    model.orgId(),
+                    model.caseNo(),
+                    model.taskNo(),
+                    model.modelVersion(),
+                    assetTypeCode,
+                    model.relatedImageId(),
+                    model.toothCode(),
+                    attachmentId,
+                    originalName,
+                    source.contentType(),
+                    new ByteArrayInputStream(bytes),
+                    bytes.length,
+                    trimOrDefault(model.md5(), md5(bytes))));
+        } catch (IOException exception) {
+            throw new BusinessException(CommonErrorCode.EXTERNAL_SERVICE_ERROR.code(), "Register visual asset object failed");
+        }
     }
 
     private AttachmentAccessVO buildPresignedAccessUrl(AttachmentViewModel attachment) {
@@ -229,6 +330,13 @@ public class AttachmentAppService {
                 || !StringUtils.hasText(model.objectKey())
                 || model.orgId() == null) {
             throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "External object metadata is incomplete");
+        }
+        if (CATEGORY_VISUAL.equals(normalizeFileCategory(model.fileCategoryCode()))
+                && (!StringUtils.hasText(model.caseNo())
+                || !StringUtils.hasText(model.taskNo())
+                || !StringUtils.hasText(model.modelVersion())
+                || !StringUtils.hasText(model.assetTypeCode()))) {
+            throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "Visual object key context is incomplete");
         }
     }
 
@@ -271,6 +379,39 @@ public class AttachmentAppService {
         return index >= 0 ? normalized.substring(index + 1) : normalized;
     }
 
+    private String normalizeFileCategory(String value) {
+        return StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : CATEGORY_VISUAL;
+    }
+
+    private String normalizeImageType(String value) {
+        return StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : "PANORAMIC";
+    }
+
+    private String normalizeAssetType(String fileCategoryCode, String value) {
+        if (CATEGORY_VISUAL.equals(fileCategoryCode)) {
+            String assetType = StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : null;
+            if (!VISUAL_ASSET_TYPES.contains(assetType)) {
+                throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "Visual assetTypeCode is invalid");
+            }
+            return assetType;
+        }
+        return StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : null;
+    }
+
+    private String defaultRetentionPolicy(String fileCategoryCode, String value) {
+        if (StringUtils.hasText(value)) {
+            return value.trim().toUpperCase(Locale.ROOT);
+        }
+        return CATEGORY_VISUAL.equals(fileCategoryCode) ? RETENTION_VISUAL_MID_TERM : RETENTION_LONG_TERM;
+    }
+
+    private LocalDateTime defaultExpiredAt(String fileCategoryCode, LocalDateTime expiredAt) {
+        if (expiredAt != null) {
+            return expiredAt;
+        }
+        return CATEGORY_VISUAL.equals(fileCategoryCode) ? LocalDateTime.now().plusDays(180) : null;
+    }
+
     private String trimOrDefault(String value, String fallback) {
         return StringUtils.hasText(value) ? value.trim() : fallback;
     }
@@ -280,10 +421,13 @@ public class AttachmentAppService {
     }
 
     private void deleteStoredObjectQuietly(StoredObject storedObject) {
+        if (storedObject == null) {
+            return;
+        }
         try {
             objectStorageService.delete(storedObject.bucketName(), storedObject.objectKey());
         } catch (IOException ignored) {
-            // Keep the original failure cause from attachment persistence.
+            // Keep the original failure cause from metadata persistence.
         }
     }
 }

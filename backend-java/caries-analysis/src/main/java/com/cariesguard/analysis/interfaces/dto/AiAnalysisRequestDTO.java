@@ -6,6 +6,7 @@ public record AiAnalysisRequestDTO(
         String taskNo,
         String taskTypeCode,
         Long caseId,
+        String caseNo,
         Long patientId,
         Long orgId,
         String modelVersion,

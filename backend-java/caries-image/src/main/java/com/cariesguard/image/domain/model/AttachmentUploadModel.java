@@ -1,10 +1,14 @@
 package com.cariesguard.image.domain.model;
 
+import java.time.LocalDateTime;
+
 public record AttachmentUploadModel(
         Long attachmentId,
         String bizModuleCode,
         Long bizId,
         String fileCategoryCode,
+        String assetTypeCode,
+        Long sourceAttachmentId,
         String fileName,
         String originalName,
         String bucketName,
@@ -15,6 +19,8 @@ public record AttachmentUploadModel(
         String md5,
         String storageProviderCode,
         String visibilityCode,
+        String retentionPolicyCode,
+        LocalDateTime expiredAt,
         Long uploadUserId,
         Long orgId,
         String status,

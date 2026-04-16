@@ -20,6 +20,7 @@ import com.cariesguard.image.infrastructure.mapper.MedAttachmentMapper;
 import com.cariesguard.image.infrastructure.mapper.MedImageQualityCheckMapper;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
 
 @Repository
 public class ImageCommandRepositoryImpl implements ImageCommandRepository {
@@ -40,13 +41,26 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
     }
 
     @Override
-    public Optional<AttachmentDuplicateModel> findAttachmentByMd5(Long orgId, String md5) {
-        MedAttachmentDO attachment = medAttachmentMapper.selectOne(new LambdaQueryWrapper<MedAttachmentDO>()
+    public Optional<AttachmentDuplicateModel> findAttachmentByMd5(Long orgId,
+                                                                  String md5,
+                                                                  String bizModuleCode,
+                                                                  Long bizId,
+                                                                  String fileCategoryCode) {
+        LambdaQueryWrapper<MedAttachmentDO> wrapper = new LambdaQueryWrapper<MedAttachmentDO>()
                 .eq(MedAttachmentDO::getOrgId, orgId)
                 .eq(MedAttachmentDO::getMd5, md5)
                 .eq(MedAttachmentDO::getDeletedFlag, 0L)
-                .eq(MedAttachmentDO::getStatus, "ACTIVE")
-                .last("LIMIT 1"));
+                .eq(MedAttachmentDO::getStatus, "ACTIVE");
+        if (StringUtils.hasText(bizModuleCode)) {
+            wrapper.eq(MedAttachmentDO::getBizModuleCode, bizModuleCode.trim());
+        }
+        if (bizId != null) {
+            wrapper.eq(MedAttachmentDO::getBizId, bizId);
+        }
+        if (StringUtils.hasText(fileCategoryCode)) {
+            wrapper.eq(MedAttachmentDO::getFileCategoryCode, fileCategoryCode.trim());
+        }
+        MedAttachmentDO attachment = medAttachmentMapper.selectOne(wrapper.last("LIMIT 1"));
         return attachment == null ? Optional.empty() : Optional.of(new AttachmentDuplicateModel(
                 attachment.getId(),
                 attachment.getFileName(),
@@ -65,6 +79,8 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
         entity.setBizModuleCode(model.bizModuleCode());
         entity.setBizId(model.bizId());
         entity.setFileCategoryCode(model.fileCategoryCode());
+        entity.setAssetTypeCode(model.assetTypeCode());
+        entity.setSourceAttachmentId(model.sourceAttachmentId());
         entity.setFileName(model.fileName());
         entity.setOriginalName(model.originalName());
         entity.setBucketName(model.bucketName());
@@ -75,6 +91,8 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
         entity.setMd5(model.md5());
         entity.setStorageProviderCode(model.storageProviderCode());
         entity.setVisibilityCode(model.visibilityCode());
+        entity.setRetentionPolicyCode(model.retentionPolicyCode());
+        entity.setExpiredAt(model.expiredAt());
         entity.setUploadUserId(model.uploadUserId());
         entity.setOrgId(model.orgId());
         entity.setStatus(model.status());
@@ -92,17 +110,7 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
                 .eq(MedAttachmentDO::getDeletedFlag, 0L)
                 .eq(MedAttachmentDO::getStatus, "ACTIVE")
                 .last("LIMIT 1"));
-        return attachment == null ? Optional.empty() : Optional.of(new AttachmentViewModel(
-                attachment.getId(),
-                attachment.getFileName(),
-                attachment.getOriginalName(),
-                attachment.getBucketName(),
-                attachment.getObjectKey(),
-                attachment.getContentType(),
-                attachment.getMd5(),
-                attachment.getFileSizeBytes(),
-                attachment.getStorageProviderCode(),
-                attachment.getOrgId()));
+        return attachment == null ? Optional.empty() : Optional.of(toAttachmentView(attachment));
     }
 
     @Override
@@ -113,18 +121,9 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
                 .eq(MedAttachmentDO::getDeletedFlag, 0L)
                 .eq(MedAttachmentDO::getStatus, "ACTIVE")
                 .last("LIMIT 1"));
-        return attachment == null ? Optional.empty() : Optional.of(new AttachmentViewModel(
-                attachment.getId(),
-                attachment.getFileName(),
-                attachment.getOriginalName(),
-                attachment.getBucketName(),
-                attachment.getObjectKey(),
-                attachment.getContentType(),
-                attachment.getMd5(),
-                attachment.getFileSizeBytes(),
-                attachment.getStorageProviderCode(),
-                attachment.getOrgId()));
+        return attachment == null ? Optional.empty() : Optional.of(toAttachmentView(attachment));
     }
+
     @Override
     public Optional<AttachmentOwnerCaseModel> findCase(Long caseId) {
         MedCaseDO medicalCase = imageCaseMapper.selectOne(new LambdaQueryWrapper<MedCaseDO>()
@@ -238,6 +237,18 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
                 .set(MedImageFileDO::getQualityStatusCode, model.checkResultCode())
                 .set(MedImageFileDO::getUpdatedBy, model.operatorUserId()));
     }
+
+    private AttachmentViewModel toAttachmentView(MedAttachmentDO attachment) {
+        return new AttachmentViewModel(
+                attachment.getId(),
+                attachment.getFileName(),
+                attachment.getOriginalName(),
+                attachment.getBucketName(),
+                attachment.getObjectKey(),
+                attachment.getContentType(),
+                attachment.getMd5(),
+                attachment.getFileSizeBytes(),
+                attachment.getStorageProviderCode(),
+                attachment.getOrgId());
+    }
 }
-
-

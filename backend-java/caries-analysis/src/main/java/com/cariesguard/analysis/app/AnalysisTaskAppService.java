@@ -175,6 +175,7 @@ public class AnalysisTaskAppService {
                 taskNo,
                 taskTypeCode,
                 medicalCase.caseId(),
+                medicalCase.caseNo(),
                 medicalCase.patientId(),
                 medicalCase.orgId(),
                 modelVersion,

@@ -35,8 +35,10 @@ public class FileController {
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RequirePermission("image:upload")
-    public ApiResponse<AttachmentUploadVO> upload(@RequestPart("file") MultipartFile file) {
-        return ApiResponse.success(attachmentAppService.upload(file), TraceIdUtils.currentTraceId());
+    public ApiResponse<AttachmentUploadVO> upload(@RequestPart("file") MultipartFile file,
+                                                  @RequestParam Long caseId,
+                                                  @RequestParam(required = false) String imageTypeCode) {
+        return ApiResponse.success(attachmentAppService.upload(file, caseId, imageTypeCode), TraceIdUtils.currentTraceId());
     }
 
     @GetMapping("/{attachmentId}/access-url")

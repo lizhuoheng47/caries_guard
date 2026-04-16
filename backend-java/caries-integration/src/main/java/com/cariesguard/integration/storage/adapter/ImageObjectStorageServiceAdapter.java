@@ -6,6 +6,7 @@ import com.cariesguard.image.domain.model.StoredObjectResource;
 import com.cariesguard.image.domain.service.ObjectStorageService;
 import com.cariesguard.integration.storage.ObjectContent;
 import com.cariesguard.integration.storage.ObjectKeyGenerator;
+import com.cariesguard.integration.storage.ObjectKeyRequest;
 import com.cariesguard.integration.storage.ObjectStorageClient;
 import com.cariesguard.integration.storage.StorageProperties;
 import com.cariesguard.integration.storage.UploadObjectCommand;
@@ -30,11 +31,7 @@ public class ImageObjectStorageServiceAdapter implements ObjectStorageService {
     @Override
     public StoredObject store(ObjectStoreCommand command) throws IOException {
         String bucketName = storageProperties.bucketName(command.bucketCode());
-        String objectKey = objectKeyGenerator.generate(
-                command.keyModule(),
-                command.bizId(),
-                command.originalFileName(),
-                LocalDate.now());
+        String objectKey = objectKeyGenerator.generate(toKeyRequest(command));
         UploadObjectResult result = objectStorageClient.upload(new UploadObjectCommand(
                 bucketName,
                 objectKey,
@@ -84,6 +81,27 @@ public class ImageObjectStorageServiceAdapter implements ObjectStorageService {
     @Override
     public String proxyAccessSecret() {
         return storageProperties.getProxyAccessSecret();
+    }
+
+    private ObjectKeyRequest toKeyRequest(ObjectStoreCommand command) {
+        return new ObjectKeyRequest(
+                command.objectKindCode(),
+                command.orgId(),
+                command.caseNo(),
+                command.imageTypeCode(),
+                command.attachmentId(),
+                command.taskNo(),
+                command.modelVersion(),
+                command.assetTypeCode(),
+                command.relatedImageId(),
+                command.toothCode(),
+                command.reportTypeCode(),
+                command.versionNo(),
+                command.operatorId(),
+                command.exportLogId(),
+                command.reportNo(),
+                command.originalFileName(),
+                LocalDate.now());
     }
 
     private String fileName(String objectKey) {

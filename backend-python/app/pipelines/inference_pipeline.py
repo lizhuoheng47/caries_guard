@@ -55,7 +55,7 @@ class InferencePipeline:
 
         with TaskWorkspace(self.settings, task.task_no) as workspace:
             fetched_images = self._fetch_images(task, workspace)
-            visual_assets = self._create_visual_assets(task, fetched_images, workspace)
+            visual_assets = self._create_visual_assets(task, fetched_images, workspace, model_version)
             quality_results = [self.quality_service.check(image) for image in task.images]
             risk_assessment = self.risk_service.assess(task.patient_profile)
 
@@ -151,6 +151,7 @@ class InferencePipeline:
         task: AnalyzeRequest,
         fetched_images: list[FetchedImage],
         workspace: Path,
+        model_version: str,
     ) -> list[VisualAsset]:
         if not fetched_images or self.visual_asset_service is None:
             return []
@@ -164,9 +165,9 @@ class InferencePipeline:
         heatmap_path = generated_dir / f"heatmap_{image_id or 'unknown'}.png"
         self._draw_mock_assets(first_image.path, mask_path, overlay_path, heatmap_path)
         return [
-            self.visual_asset_service.upload_visual("MASK", case_no, image_id, mask_path, tooth_code="16"),
-            self.visual_asset_service.upload_visual("OVERLAY", case_no, image_id, overlay_path, tooth_code="16"),
-            self.visual_asset_service.upload_visual("HEATMAP", case_no, image_id, heatmap_path),
+            self.visual_asset_service.upload_visual("MASK", task.org_id, case_no, task.task_no, model_version, image_id, mask_path, tooth_code="16"),
+            self.visual_asset_service.upload_visual("OVERLAY", task.org_id, case_no, task.task_no, model_version, image_id, overlay_path, tooth_code="16"),
+            self.visual_asset_service.upload_visual("HEATMAP", task.org_id, case_no, task.task_no, model_version, image_id, heatmap_path),
         ]
 
     def _callback_visual_assets(self, visual_assets: list[VisualAsset], task_no: str, trace_id: str) -> list[VisualAsset]:

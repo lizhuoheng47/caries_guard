@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
 import com.cariesguard.image.domain.model.AttachmentDuplicateModel;
+import com.cariesguard.image.domain.model.AttachmentOwnerCaseModel;
 import com.cariesguard.image.domain.model.AttachmentViewModel;
 import com.cariesguard.image.domain.model.ObjectStoreCommand;
 import com.cariesguard.image.domain.model.StoredObject;
@@ -58,26 +59,30 @@ class AttachmentAppServiceTests {
     void uploadShouldReuseAttachmentByMd5() {
         AttachmentAppService appService = createService();
         setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
-        when(imageCommandRepository.findAttachmentByMd5(any(), any())).thenReturn(Optional.of(
+        when(imageCommandRepository.findCase(3001L)).thenReturn(Optional.of(
+                new AttachmentOwnerCaseModel(3001L, "CASE202604160001", 5001L, 4001L, 2001L, "CREATED")));
+        when(imageCommandRepository.findAttachmentByMd5(any(), any(), any(), any(), any())).thenReturn(Optional.of(
                 new AttachmentDuplicateModel(3001L, "abc.jpg", "a.jpg", "caries-image", "case-image/1", "md5", "image/jpeg", 10L)));
 
         AttachmentUploadVO result = appService.upload(new MockMultipartFile(
-                "file", "a.jpg", "image/jpeg", "abc".getBytes(StandardCharsets.UTF_8)));
+                "file", "a.jpg", "image/jpeg", "abc".getBytes(StandardCharsets.UTF_8)), 3001L, "PANORAMIC");
 
         assertThat(result.attachmentId()).isEqualTo(3001L);
-        verify(imageCommandRepository).findAttachmentByMd5(any(), any());
+        verify(imageCommandRepository).findAttachmentByMd5(any(), any(), any(), any(), any());
     }
 
     @Test
     void uploadShouldStoreAndPersistNewAttachment() throws Exception {
         AttachmentAppService appService = createService();
         setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
-        when(imageCommandRepository.findAttachmentByMd5(any(), any())).thenReturn(Optional.empty());
+        when(imageCommandRepository.findCase(3001L)).thenReturn(Optional.of(
+                new AttachmentOwnerCaseModel(3001L, "CASE202604160001", 5001L, 4001L, 2001L, "CREATED")));
+        when(imageCommandRepository.findAttachmentByMd5(any(), any(), any(), any(), any())).thenReturn(Optional.empty());
         when(objectStorageService.store(any(ObjectStoreCommand.class))).thenReturn(
                 new StoredObject("caries-image", "case-image/2026/04/12/3001/x.jpg", "x.jpg", "image/jpeg", 3L, "md5", "MINIO"));
 
         AttachmentUploadVO result = appService.upload(new MockMultipartFile(
-                "file", "a.jpg", "image/jpeg", "abc".getBytes(StandardCharsets.UTF_8)));
+                "file", "a.jpg", "image/jpeg", "abc".getBytes(StandardCharsets.UTF_8)), 3001L, "PANORAMIC");
 
         assertThat(result.bucketName()).isEqualTo("caries-image");
         verify(imageCommandRepository).createAttachment(any());
@@ -87,13 +92,15 @@ class AttachmentAppServiceTests {
     void uploadShouldDeleteStoredObjectWhenPersistenceFails() throws Exception {
         AttachmentAppService appService = createService();
         setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
-        when(imageCommandRepository.findAttachmentByMd5(any(), any())).thenReturn(Optional.empty());
+        when(imageCommandRepository.findCase(3001L)).thenReturn(Optional.of(
+                new AttachmentOwnerCaseModel(3001L, "CASE202604160001", 5001L, 4001L, 2001L, "CREATED")));
+        when(imageCommandRepository.findAttachmentByMd5(any(), any(), any(), any(), any())).thenReturn(Optional.empty());
         when(objectStorageService.store(any(ObjectStoreCommand.class))).thenReturn(
                 new StoredObject("caries-image", "case-image/2026/04/12/3001/x.jpg", "x.jpg", "image/jpeg", 3L, "md5", "MINIO"));
         doThrow(new IllegalStateException("db failed")).when(imageCommandRepository).createAttachment(any());
 
         assertThatThrownBy(() -> appService.upload(new MockMultipartFile(
-                "file", "a.jpg", "image/jpeg", "abc".getBytes(StandardCharsets.UTF_8))))
+                "file", "a.jpg", "image/jpeg", "abc".getBytes(StandardCharsets.UTF_8)), 3001L, "PANORAMIC"))
                 .isInstanceOf(IllegalStateException.class);
 
         verify(objectStorageService).delete("caries-image", "case-image/2026/04/12/3001/x.jpg");

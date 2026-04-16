@@ -13,6 +13,8 @@ public class ReportAttachmentDO {
     private String bizModuleCode;
     private Long bizId;
     private String fileCategoryCode;
+    private String assetTypeCode;
+    private Long sourceAttachmentId;
     private String fileName;
     private String originalName;
     private String bucketName;
@@ -23,6 +25,8 @@ public class ReportAttachmentDO {
     private String md5;
     private String storageProviderCode;
     private String visibilityCode;
+    private String retentionPolicyCode;
+    private LocalDateTime expiredAt;
     private Long uploadUserId;
     private LocalDateTime uploadTime;
     private Long orgId;
@@ -42,6 +46,10 @@ public class ReportAttachmentDO {
     public void setBizId(Long bizId) { this.bizId = bizId; }
     public String getFileCategoryCode() { return fileCategoryCode; }
     public void setFileCategoryCode(String fileCategoryCode) { this.fileCategoryCode = fileCategoryCode; }
+    public String getAssetTypeCode() { return assetTypeCode; }
+    public void setAssetTypeCode(String assetTypeCode) { this.assetTypeCode = assetTypeCode; }
+    public Long getSourceAttachmentId() { return sourceAttachmentId; }
+    public void setSourceAttachmentId(Long sourceAttachmentId) { this.sourceAttachmentId = sourceAttachmentId; }
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
     public String getOriginalName() { return originalName; }
@@ -62,6 +70,10 @@ public class ReportAttachmentDO {
     public void setStorageProviderCode(String storageProviderCode) { this.storageProviderCode = storageProviderCode; }
     public String getVisibilityCode() { return visibilityCode; }
     public void setVisibilityCode(String visibilityCode) { this.visibilityCode = visibilityCode; }
+    public String getRetentionPolicyCode() { return retentionPolicyCode; }
+    public void setRetentionPolicyCode(String retentionPolicyCode) { this.retentionPolicyCode = retentionPolicyCode; }
+    public LocalDateTime getExpiredAt() { return expiredAt; }
+    public void setExpiredAt(LocalDateTime expiredAt) { this.expiredAt = expiredAt; }
     public Long getUploadUserId() { return uploadUserId; }
     public void setUploadUserId(Long uploadUserId) { this.uploadUserId = uploadUserId; }
     public LocalDateTime getUploadTime() { return uploadTime; }
@@ -83,4 +95,3 @@ public class ReportAttachmentDO {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
-

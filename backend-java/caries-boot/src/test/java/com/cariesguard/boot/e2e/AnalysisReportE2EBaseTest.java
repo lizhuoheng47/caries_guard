@@ -77,7 +77,7 @@ abstract class AnalysisReportE2EBaseTest {
                 .willAnswer(invocation -> {
                     ObjectStoreCommand command = invocation.getArgument(0, ObjectStoreCommand.class);
                     String safeName = command.originalFileName() == null ? "object.bin" : command.originalFileName();
-                    String objectKey = command.keyModule() + "/" + UUID.randomUUID() + "/" + safeName;
+                    String objectKey = command.objectKindCode() + "/" + UUID.randomUUID() + "/" + safeName;
                     byte[] bytes = command.inputStream().readAllBytes();
                     objects.put(objectKey, bytes);
                     String bucketName = switch (command.bucketCode()) {

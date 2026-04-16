@@ -67,6 +67,41 @@ services:
     networks:
       - caries-net
 
+  minio-init:
+    image: minio/mc:latest
+    container_name: caries-minio-init
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      MINIO_ROOT_USER: ${CARIES_MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${CARIES_MINIO_SECRET_KEY:-minioadmin}
+      CARIES_BUCKET_IMAGE: ${CARIES_BUCKET_IMAGE:-caries-image}
+      CARIES_BUCKET_VISUAL: ${CARIES_BUCKET_VISUAL:-caries-visual}
+      CARIES_BUCKET_REPORT: ${CARIES_BUCKET_REPORT:-caries-report}
+      CARIES_BUCKET_EXPORT: ${CARIES_BUCKET_EXPORT:-caries-export}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        until mc alias set caries http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"; do
+          sleep 2
+        done
+        mc mb -p "caries/$${CARIES_BUCKET_IMAGE}"
+        mc mb -p "caries/$${CARIES_BUCKET_VISUAL}"
+        mc mb -p "caries/$${CARIES_BUCKET_REPORT}"
+        mc mb -p "caries/$${CARIES_BUCKET_EXPORT}"
+        mc anonymous set none "caries/$${CARIES_BUCKET_IMAGE}"
+        mc anonymous set none "caries/$${CARIES_BUCKET_VISUAL}"
+        mc anonymous set none "caries/$${CARIES_BUCKET_REPORT}"
+        mc anonymous set none "caries/$${CARIES_BUCKET_EXPORT}"
+        printf '%s\n' '{"Rules":[{"ID":"expire-caries-export-after-7-days","Status":"Enabled","Filter":{"Prefix":""},"Expiration":{"Days":7}}]}' > /tmp/caries-export-lifecycle.json
+        mc ilm import "caries/$${CARIES_BUCKET_EXPORT}" < /tmp/caries-export-lifecycle.json
+    restart: "no"
+    networks:
+      - caries-net
+
   backend-java:
     build:
       context: ./backend-java
@@ -105,8 +140,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      minio:
-        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
     networks:
       caries-net:
         aliases:
@@ -127,17 +162,22 @@ services:
       CG_ANALYSIS_REQUESTED_ROUTING_KEY: ${CARIES_ANALYSIS_REQUESTED_ROUTING_KEY:-analysis.requested}
       CG_JAVA_CALLBACK_URL: http://backend-java:8080/api/v1/internal/ai/callbacks/analysis-result
       CG_ANALYSIS_CALLBACK_SECRET: ${CARIES_ANALYSIS_CALLBACK_SECRET:-docker-change-me-to-a-strong-analysis-callback-secret}
-      CG_CALLBACK_VISUAL_ASSET_MODE: ${CG_CALLBACK_VISUAL_ASSET_MODE:-legacy-empty}
+      CG_CALLBACK_VISUAL_ASSET_MODE: ${CG_CALLBACK_VISUAL_ASSET_MODE:-metadata}
       CG_MODEL_VERSION: ${CARIES_ANALYSIS_MODEL_VERSION:-caries-v1}
       CG_AI_DOWNLOAD_IMAGES: "true"
       CG_MINIO_ENDPOINT: http://minio:9000
       CG_MINIO_ACCESS_KEY: ${CARIES_MINIO_ACCESS_KEY:-minioadmin}
       CG_MINIO_SECRET_KEY: ${CARIES_MINIO_SECRET_KEY:-minioadmin}
+      CG_MINIO_BUCKET_IMAGE: ${CARIES_BUCKET_IMAGE:-caries-image}
       CG_MINIO_BUCKET_VISUAL: ${CARIES_BUCKET_VISUAL:-caries-visual}
+      CG_BUCKET_REPORT: ${CARIES_BUCKET_REPORT:-caries-report}
+      CG_BUCKET_EXPORT: ${CARIES_BUCKET_EXPORT:-caries-export}
       TZ: Asia/Shanghai
     depends_on:
       rabbitmq:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
       backend-java:
         condition: service_started
     networks:

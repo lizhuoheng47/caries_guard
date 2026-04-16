@@ -11,7 +11,15 @@ import java.util.Optional;
 
 public interface ImageCommandRepository {
 
-    Optional<AttachmentDuplicateModel> findAttachmentByMd5(Long orgId, String md5);
+    Optional<AttachmentDuplicateModel> findAttachmentByMd5(Long orgId,
+                                                           String md5,
+                                                           String bizModuleCode,
+                                                           Long bizId,
+                                                           String fileCategoryCode);
+
+    default Optional<AttachmentDuplicateModel> findAttachmentByMd5(Long orgId, String md5) {
+        return findAttachmentByMd5(orgId, md5, null, null, null);
+    }
 
     void createAttachment(AttachmentUploadModel model);
 
@@ -31,4 +39,3 @@ public interface ImageCommandRepository {
 
     void saveQualityCheck(ImageQualityCheckCreateModel model);
 }
-

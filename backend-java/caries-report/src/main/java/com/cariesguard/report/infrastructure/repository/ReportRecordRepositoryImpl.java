@@ -106,6 +106,8 @@ public class ReportRecordRepositoryImpl implements ReportRecordRepository {
         entity.setBizModuleCode(model.bizModuleCode());
         entity.setBizId(model.bizId());
         entity.setFileCategoryCode(model.fileCategoryCode());
+        entity.setAssetTypeCode(model.assetTypeCode());
+        entity.setSourceAttachmentId(model.sourceAttachmentId());
         entity.setFileName(model.fileName());
         entity.setOriginalName(model.originalName());
         entity.setBucketName(model.bucketName());
@@ -116,6 +118,8 @@ public class ReportRecordRepositoryImpl implements ReportRecordRepository {
         entity.setMd5(model.md5());
         entity.setStorageProviderCode(model.storageProviderCode());
         entity.setVisibilityCode(model.visibilityCode());
+        entity.setRetentionPolicyCode(model.retentionPolicyCode());
+        entity.setExpiredAt(model.expiredAt());
         entity.setUploadUserId(model.uploadUserId());
         entity.setOrgId(model.orgId());
         entity.setStatus(model.status());
@@ -160,4 +164,3 @@ public class ReportRecordRepositoryImpl implements ReportRecordRepository {
                 entity.getCreatedAt());
     }
 }
-
