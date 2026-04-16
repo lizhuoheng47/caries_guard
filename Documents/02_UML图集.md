@@ -273,7 +273,7 @@ erDiagram
   sys_role ||--o{ sys_data_permission_rule : owns
 ```
 
-当前 V014 已初始化：
+当前数据库基线已初始化：
 
 1. `ORG_ADMIN`
 2. `DOCTOR`

@@ -28,6 +28,8 @@ docker compose down
 docker compose down -v
 ```
 
+当前数据库迁移已合并为单基线 `V001__baseline_schema.sql`。如果本机 Docker volume 里已经存在旧的 `flyway_schema_history`，需要先执行 `docker compose down -v` 后再启动；不要在有业务数据的库上直接清理。
+
 ## 2. 服务地址
 
 | 服务 | 容器内地址 | 宿主机访问 |

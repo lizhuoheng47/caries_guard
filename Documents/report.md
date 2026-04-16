@@ -14,7 +14,7 @@
 6. 模型版本治理已有最小数据库落点 `ana_model_version_registry`。
 7. 看板已有模型运行质量指标。
 8. 报告导出返回审计记录和可下载 URL。
-9. V014 已补角色、菜单、权限和数据权限规则种子。
+9. 数据库基线已补角色、菜单、权限和数据权限规则种子。
 
 ## 2. 已实现模块
 
@@ -41,7 +41,7 @@
 | 修正反馈治理 | `training_candidate_flag` 等字段已入 `ana_correction_feedback` |
 | 报告 PDF | `ReportPdfService` 已改为 PDFBox，支持中文字体候选 |
 | 报告导出 | `ReportExportResultVO` 已返回 `downloadUrl` |
-| 权限种子 | V014 已补 ORG_ADMIN、DOCTOR、SCREENER、菜单、数据权限 |
+| 权限种子 | 数据库基线已补 ORG_ADMIN、DOCTOR、SCREENER、菜单、数据权限 |
 
 ## 4. 当前仍不是独立模块的内容
 

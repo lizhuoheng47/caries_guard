@@ -16,6 +16,8 @@
   flyway:
     enabled: true
     locations: classpath:db/migration
+    clean-disabled: ${CARIES_FLYWAY_CLEAN_DISABLED:true}
+    clean-on-validation-error: ${CARIES_FLYWAY_CLEAN_ON_VALIDATION_ERROR:false}
   mvc:
     problemdetails:
       enabled: false

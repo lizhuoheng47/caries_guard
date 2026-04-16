@@ -131,7 +131,7 @@ Python -> Java：`AiAnalysisResultCallbackCommand`
 | 随访 | `fup_` | `fup_plan`、`fup_task`、`fup_record` |
 | 消息通知 | `msg_` | `msg_notify_record` |
 
-V014 新增/增强命名：
+数据库基线包含的新增/增强命名：
 
 | 名称 | 说明 |
 | --- | --- |
@@ -164,7 +164,7 @@ REST 约定：
 2. “ModelAdmin 治理原则保留，但当前未落地为独立业务模块。”
 3. “风险评估是能力，不是独立模块。”
 4. “报告导出包含审计和下载 URL。”
-5. “V014 已补业务角色、菜单和数据权限规则种子。”
+5. “数据库基线已补业务角色、菜单和数据权限规则种子。”
 
 禁止表述：
 

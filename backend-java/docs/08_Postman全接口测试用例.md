@@ -2,7 +2,7 @@
 
 更新日期：2026-04-15
 
-本文档用于通过 Postman 验证 Java 后端当前所有 REST 接口是否可用。接口基于当前 `backend-java` 代码、Flyway V017、Docker profile 和 `ApiResponse<T>` 响应结构整理。
+本文档用于通过 Postman 验证 Java 后端当前所有 REST 接口是否可用。接口基于当前 `backend-java` 代码、单基线 Flyway、Docker profile 和 `ApiResponse<T>` 响应结构整理。
 
 ## 1. 测试基准
 
@@ -94,8 +94,8 @@ pm.test("business success", function () {
 | `planId` | 空 | 创建/查询随访计划后写入 |
 | `followupTaskId` | 空 | 创建/查询随访任务后写入 |
 | `recordId` | 空 | 新增随访记录后写入 |
-| `roleId` | `100101` | V014 种子 ORG_ADMIN |
-| `menuId` | `200001` | V014 种子患者管理菜单 |
+| `roleId` | `100101` | 基线种子 ORG_ADMIN |
+| `menuId` | `200001` | 基线种子患者管理菜单 |
 | `ruleId` | 空 | 创建数据权限规则后写入 |
 | `callbackSecret` | `docker-change-me-to-a-strong-analysis-callback-secret` | Docker profile 默认回调密钥 |
 
@@ -1487,7 +1487,7 @@ pm.environment.set("createdRoleId", json.data.roleId);
 | Auth | Bearer Token |
 | Body | 无 |
 
-预期输出：包含 V014 初始化菜单，例如 `patient:view`、`analysis:view`、`dashboard:view`。
+预期输出：包含基线初始化菜单，例如 `patient:view`、`analysis:view`、`dashboard:view`。
 
 ### 15.10 查询菜单详情
 
@@ -1557,11 +1557,11 @@ pm.environment.set("createdMenuId", json.data.menuId);
 | Auth | Bearer Token |
 | Body | 无 |
 
-可选参数：`moduleCode`。预期输出：`data` 为数组，V014 种子角色应有规则。
+可选参数：`moduleCode`。预期输出：`data` 为数组，基线种子角色应有规则。
 
 ### 15.14 创建数据权限规则
 
-建议使用新创建的 `createdRoleId`，避免和 V014 种子规则唯一键冲突。
+建议使用新创建的 `createdRoleId`，避免和基线种子规则唯一键冲突。
 
 | 项 | 内容 |
 | --- | --- |
@@ -1707,4 +1707,4 @@ pm.environment.set("ruleId", json.data.ruleId);
 7. 报告能生成，导出返回 `downloadUrl`。
 8. 随访计划、任务、记录能创建或查询。
 9. Dashboard 接口能返回统计值。
-10. 系统管理接口能查询 V014 角色、菜单、数据权限种子。
+10. 系统管理接口能查询基线角色、菜单、数据权限种子。

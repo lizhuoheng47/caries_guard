@@ -2,7 +2,7 @@
 
 更新日期：2026-04-15
 
-本文档用于 Java 后端维护开发和 Python 服务联调。内容以当前代码、Flyway V017 和已通过编译测试的实现为准。
+本文档用于 Java 后端维护开发和 Python 服务联调。内容以当前代码、Flyway 单基线和已通过编译测试的实现为准。
 
 ## 1. 开发基线
 
@@ -11,7 +11,7 @@
 | 工作目录 | `backend-java` |
 | 启动模块 | `caries-boot` |
 | Spring profile | `local`、`e2e` |
-| 数据库迁移 | Flyway V001-V017 |
+| 数据库迁移 | 单基线 `V001__baseline_schema.sql` |
 | 默认对象存储 | `MINIO` |
 | 默认对象存储实现 | `MinioObjectStorageClient` |
 | 本地兼容对象存储 | 不作为当前运行口径 |
@@ -173,7 +173,7 @@ PDF 注意：
 
 ### 4.4 `caries-system`
 
-V014 已补：
+数据库基线已补：
 
 1. 角色：`ORG_ADMIN`、`DOCTOR`、`SCREENER`。
 2. 菜单：患者、就诊、病例、影像、分析任务、报告、随访、看板、AI 运行看板。
@@ -203,21 +203,20 @@ V014 已补：
 
 新增结构在 Flyway 中完成，不直接手工改库。
 
-当前最新迁移：`V017__17_freeze_analysis_data_dictionary_v2.sql`
+当前迁移：`V001__baseline_schema.sql`
 
-V014 内容：
+基线内容：
 
 1. `ana_task_record` 增加 `trace_id`、`inference_millis`。
 2. `ana_correction_feedback` 增加 `training_candidate_flag`、`desensitized_export_flag`、`dataset_snapshot_no`、`review_status_code`、`reviewed_by`、`reviewed_at`。
 3. 新增 `ana_model_version_registry`。
 4. 初始化模型版本 `caries-detector / caries-v1`。
 5. 初始化业务角色、菜单、角色菜单关联和数据权限规则。
+6. `ana_visual_asset` 包含 `related_image_id`、`source_attachment_id`、`tooth_code`、`sort_order`。
+7. `med_attachment` 包含 object key 治理、retention、integrity、metadata 字段。
+8. analysis 数据字典 v2 已冻结在基线内。
 
-V015-V017 内容：
-
-1. V015 为 `ana_visual_asset` 增加 `related_image_id` 和 `tooth_code`。
-2. V016 固化 attachment object key 治理。
-3. V017 冻结 analysis 数据字典 v2。
+已有旧 `flyway_schema_history` 的本地库需要清库重建；仅在确认可丢弃数据后使用 `CARIES_FLYWAY_CLEAN_ON_VALIDATION_ERROR=true`。
 
 ## 6. 与 Python 服务联调要求
 
