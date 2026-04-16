@@ -8,6 +8,7 @@ public record AnalysisTaskVO(
         String taskStatusCode,
         String taskTypeCode,
         String modelVersion,
+        String errorCode,
         String errorMessage,
         LocalDateTime createdAt,
         LocalDateTime startedAt,
@@ -23,8 +24,23 @@ public record AnalysisTaskVO(
                           String errorMessage,
                           LocalDateTime createdAt,
                           LocalDateTime startedAt,
+                          LocalDateTime completedAt,
+                          String traceId,
+                          Long inferenceMillis) {
+        this(taskId, taskNo, taskStatusCode, taskTypeCode, modelVersion, null, errorMessage,
+                createdAt, startedAt, completedAt, traceId, inferenceMillis);
+    }
+
+    public AnalysisTaskVO(Long taskId,
+                          String taskNo,
+                          String taskStatusCode,
+                          String taskTypeCode,
+                          String modelVersion,
+                          String errorMessage,
+                          LocalDateTime createdAt,
+                          LocalDateTime startedAt,
                           LocalDateTime completedAt) {
-        this(taskId, taskNo, taskStatusCode, taskTypeCode, modelVersion, errorMessage,
+        this(taskId, taskNo, taskStatusCode, taskTypeCode, modelVersion, null, errorMessage,
                 createdAt, startedAt, completedAt, null, null);
     }
 }

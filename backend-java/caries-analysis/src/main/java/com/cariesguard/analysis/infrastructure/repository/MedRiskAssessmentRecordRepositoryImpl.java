@@ -21,9 +21,12 @@ public class MedRiskAssessmentRecordRepositoryImpl implements MedRiskAssessmentR
         entity.setId(model.recordId());
         entity.setCaseId(model.caseId());
         entity.setPatientId(model.patientId());
+        entity.setTaskId(model.taskId());
         entity.setOverallRiskLevelCode(model.overallRiskLevelCode());
+        entity.setRiskScore(model.riskScore());
         entity.setAssessmentReportJson(model.assessmentReportJson());
         entity.setRecommendedCycleDays(model.recommendedCycleDays());
+        entity.setVersionNo(model.versionNo());
         entity.setAssessedAt(model.assessedAt());
         entity.setOrgId(model.orgId());
         entity.setStatus("ACTIVE");

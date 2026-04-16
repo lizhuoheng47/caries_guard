@@ -63,9 +63,11 @@ public class AnalysisQueryRepositoryImpl implements AnalysisQueryRepository {
                 entity.getTaskNo(),
                 entity.getCaseId(),
                 entity.getPatientId(),
+                entity.getRequestBatchNo(),
                 entity.getModelVersion(),
                 entity.getTaskTypeCode(),
                 entity.getTaskStatusCode(),
+                entity.getErrorCode(),
                 entity.getErrorMessage(),
                 entity.getCreatedAt(),
                 entity.getStartedAt(),
@@ -73,6 +75,6 @@ public class AnalysisQueryRepositoryImpl implements AnalysisQueryRepository {
                 entity.getOrgId(),
                 entity.getRetryFromTaskId(),
                 entity.getTraceId(),
-                entity.getInferenceMillis());
+                entity.getInferenceMillis() == null ? null : entity.getInferenceMillis().longValue());
     }
 }

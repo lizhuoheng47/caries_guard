@@ -27,6 +27,8 @@ public class ReportAttachmentDO {
     private String visibilityCode;
     private String retentionPolicyCode;
     private LocalDateTime expiredAt;
+    private String integrityStatusCode;
+    private String metadataJson;
     private Long uploadUserId;
     private LocalDateTime uploadTime;
     private Long orgId;
@@ -74,6 +76,10 @@ public class ReportAttachmentDO {
     public void setRetentionPolicyCode(String retentionPolicyCode) { this.retentionPolicyCode = retentionPolicyCode; }
     public LocalDateTime getExpiredAt() { return expiredAt; }
     public void setExpiredAt(LocalDateTime expiredAt) { this.expiredAt = expiredAt; }
+    public String getIntegrityStatusCode() { return integrityStatusCode; }
+    public void setIntegrityStatusCode(String integrityStatusCode) { this.integrityStatusCode = integrityStatusCode; }
+    public String getMetadataJson() { return metadataJson; }
+    public void setMetadataJson(String metadataJson) { this.metadataJson = metadataJson; }
     public Long getUploadUserId() { return uploadUserId; }
     public void setUploadUserId(Long uploadUserId) { this.uploadUserId = uploadUserId; }
     public LocalDateTime getUploadTime() { return uploadTime; }

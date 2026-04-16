@@ -4,5 +4,14 @@ public record AnalysisVisualAssetModel(
         String assetTypeCode,
         Long attachmentId,
         Long relatedImageId,
-        String toothCode) {
+        Long sourceAttachmentId,
+        String toothCode,
+        Integer sortOrder) {
+
+    public AnalysisVisualAssetModel(String assetTypeCode,
+                                    Long attachmentId,
+                                    Long relatedImageId,
+                                    String toothCode) {
+        this(assetTypeCode, attachmentId, relatedImageId, null, toothCode, 0);
+    }
 }

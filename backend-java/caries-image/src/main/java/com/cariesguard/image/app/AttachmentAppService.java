@@ -43,7 +43,7 @@ public class AttachmentAppService {
     private static final String CATEGORY_RAW_IMAGE = "RAW_IMAGE";
     private static final String CATEGORY_VISUAL = "VISUAL";
     private static final String RETENTION_LONG_TERM = "LONG_TERM";
-    private static final String RETENTION_VISUAL_MID_TERM = "VISUAL_180D";
+    private static final String RETENTION_VISUAL_TEMPORARY = "TEMP_30D";
     private static final Set<String> VISUAL_ASSET_TYPES = Set.of("HEATMAP", "MASK", "OVERLAY");
 
     private final ImageCommandRepository imageCommandRepository;
@@ -256,6 +256,8 @@ public class AttachmentAppService {
                     trimOrDefault(model.visibilityCode(), "PRIVATE"),
                     defaultRetentionPolicy(fileCategoryCode, model.retentionPolicyCode()),
                     defaultExpiredAt(fileCategoryCode, model.expiredAt()),
+                    defaultIntegrityStatus(model.integrityStatusCode()),
+                    trimToNull(model.metadataJson()),
                     model.uploadUserId(),
                     model.orgId(),
                     trimOrDefault(model.status(), "ACTIVE"),
@@ -402,14 +404,18 @@ public class AttachmentAppService {
         if (StringUtils.hasText(value)) {
             return value.trim().toUpperCase(Locale.ROOT);
         }
-        return CATEGORY_VISUAL.equals(fileCategoryCode) ? RETENTION_VISUAL_MID_TERM : RETENTION_LONG_TERM;
+        return CATEGORY_VISUAL.equals(fileCategoryCode) ? RETENTION_VISUAL_TEMPORARY : RETENTION_LONG_TERM;
     }
 
     private LocalDateTime defaultExpiredAt(String fileCategoryCode, LocalDateTime expiredAt) {
         if (expiredAt != null) {
             return expiredAt;
         }
-        return CATEGORY_VISUAL.equals(fileCategoryCode) ? LocalDateTime.now().plusDays(180) : null;
+        return CATEGORY_VISUAL.equals(fileCategoryCode) ? LocalDateTime.now().plusDays(30) : null;
+    }
+
+    private String defaultIntegrityStatus(String value) {
+        return StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : "NORMAL";
     }
 
     private String trimOrDefault(String value, String fallback) {

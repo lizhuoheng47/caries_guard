@@ -95,6 +95,7 @@ class AnalysisCallbackPayload(CamelModel):
     raw_result_json: dict[str, Any] | None = None
     visual_assets: list[VisualAsset] = []
     risk_assessment: RiskAssessment | None = None
+    error_code: str | None = None
     error_message: str | None = None
     trace_id: str | None = None
     inference_millis: int | None = None
@@ -111,8 +112,8 @@ class FailureCallbackPayload(CamelModel):
     raw_result_json: dict[str, Any] | None = None
     visual_assets: list[VisualAsset] = []
     risk_assessment: None = None
+    error_code: str | None = None
     error_message: str
     trace_id: str | None = None
     inference_millis: int = 0
     uncertainty_score: None = None
-

@@ -55,7 +55,7 @@ public class ReportAppService {
     private static final String CATEGORY_REPORT = "REPORT";
     private static final String CATEGORY_EXPORT = "EXPORT";
     private static final String RETENTION_LONG_TERM = "LONG_TERM";
-    private static final String RETENTION_EXPORT_TEMPORARY = "EXPORT_7D";
+    private static final String RETENTION_EXPORT_TEMPORARY = "TEMP_7D";
 
     private final ReportSourceQueryRepository reportSourceQueryRepository;
     private final ReportRecordRepository reportRecordRepository;
@@ -148,6 +148,9 @@ public class ReportAppService {
                 reportNo,
                 caseId,
                 medicalCase.patientId(),
+                summary.summaryId(),
+                riskAssessment.map(ReportRiskAssessmentModel::riskAssessmentId).orElse(null),
+                correction.map(ReportCorrectionModel::correctionId).orElse(null),
                 reportTypeCode,
                 versionNo,
                 reportDomainService.draftStatus(),

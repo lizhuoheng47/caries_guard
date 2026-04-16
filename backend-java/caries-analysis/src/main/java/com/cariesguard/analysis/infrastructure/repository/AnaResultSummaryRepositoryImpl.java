@@ -27,6 +27,9 @@ public class AnaResultSummaryRepositoryImpl implements AnaResultSummaryRepositor
         entity.setOverallHighestSeverity(model.overallHighestSeverity());
         entity.setUncertaintyScore(model.uncertaintyScore());
         entity.setReviewSuggestedFlag(model.reviewSuggestedFlag());
+        entity.setLesionCount(model.lesionCount());
+        entity.setAbnormalToothCount(model.abnormalToothCount());
+        entity.setSummaryVersionNo(model.summaryVersionNo());
         entity.setOrgId(model.orgId());
         entity.setStatus("ACTIVE");
         entity.setDeletedFlag(0L);
@@ -64,6 +67,9 @@ public class AnaResultSummaryRepositoryImpl implements AnaResultSummaryRepositor
                 entity.getOverallHighestSeverity(),
                 entity.getUncertaintyScore(),
                 entity.getReviewSuggestedFlag(),
+                entity.getLesionCount(),
+                entity.getAbnormalToothCount(),
+                entity.getSummaryVersionNo(),
                 entity.getOrgId(),
                 entity.getCreatedBy()));
     }

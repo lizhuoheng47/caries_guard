@@ -3,6 +3,7 @@ package com.cariesguard.analysis.infrastructure.dataobject;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @TableName("ana_result_summary")
@@ -14,8 +15,11 @@ public class AnaResultSummaryDO {
     private Long caseId;
     private String rawResultJson;
     private String overallHighestSeverity;
-    private java.math.BigDecimal uncertaintyScore;
+    private BigDecimal uncertaintyScore;
     private String reviewSuggestedFlag;
+    private Integer lesionCount;
+    private Integer abnormalToothCount;
+    private Integer summaryVersionNo;
     private Long orgId;
     private String status;
     private Long deletedFlag;
@@ -33,10 +37,16 @@ public class AnaResultSummaryDO {
     public void setRawResultJson(String rawResultJson) { this.rawResultJson = rawResultJson; }
     public String getOverallHighestSeverity() { return overallHighestSeverity; }
     public void setOverallHighestSeverity(String overallHighestSeverity) { this.overallHighestSeverity = overallHighestSeverity; }
-    public java.math.BigDecimal getUncertaintyScore() { return uncertaintyScore; }
-    public void setUncertaintyScore(java.math.BigDecimal uncertaintyScore) { this.uncertaintyScore = uncertaintyScore; }
+    public BigDecimal getUncertaintyScore() { return uncertaintyScore; }
+    public void setUncertaintyScore(BigDecimal uncertaintyScore) { this.uncertaintyScore = uncertaintyScore; }
     public String getReviewSuggestedFlag() { return reviewSuggestedFlag; }
     public void setReviewSuggestedFlag(String reviewSuggestedFlag) { this.reviewSuggestedFlag = reviewSuggestedFlag; }
+    public Integer getLesionCount() { return lesionCount; }
+    public void setLesionCount(Integer lesionCount) { this.lesionCount = lesionCount; }
+    public Integer getAbnormalToothCount() { return abnormalToothCount; }
+    public void setAbnormalToothCount(Integer abnormalToothCount) { this.abnormalToothCount = abnormalToothCount; }
+    public Integer getSummaryVersionNo() { return summaryVersionNo; }
+    public void setSummaryVersionNo(Integer summaryVersionNo) { this.summaryVersionNo = summaryVersionNo; }
     public Long getOrgId() { return orgId; }
     public void setOrgId(Long orgId) { this.orgId = orgId; }
     public String getStatus() { return status; }

@@ -18,6 +18,7 @@ public record AiAnalysisResultCallbackCommand(
         JsonNode rawResultJson,
         @Valid List<AiVisualAssetDTO> visualAssets,
         @Valid RiskAssessmentDTO riskAssessment,
+        String errorCode,
         String errorMessage,
         String traceId,
         Long inferenceMillis,

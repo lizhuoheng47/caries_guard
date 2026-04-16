@@ -16,6 +16,9 @@ public class ReportResultSummaryDO {
     private String overallHighestSeverity;
     private BigDecimal uncertaintyScore;
     private String reviewSuggestedFlag;
+    private Integer lesionCount;
+    private Integer abnormalToothCount;
+    private Integer summaryVersionNo;
     private Long orgId;
     private String status;
     private Long deletedFlag;
@@ -33,6 +36,12 @@ public class ReportResultSummaryDO {
     public void setUncertaintyScore(BigDecimal uncertaintyScore) { this.uncertaintyScore = uncertaintyScore; }
     public String getReviewSuggestedFlag() { return reviewSuggestedFlag; }
     public void setReviewSuggestedFlag(String reviewSuggestedFlag) { this.reviewSuggestedFlag = reviewSuggestedFlag; }
+    public Integer getLesionCount() { return lesionCount; }
+    public void setLesionCount(Integer lesionCount) { this.lesionCount = lesionCount; }
+    public Integer getAbnormalToothCount() { return abnormalToothCount; }
+    public void setAbnormalToothCount(Integer abnormalToothCount) { this.abnormalToothCount = abnormalToothCount; }
+    public Integer getSummaryVersionNo() { return summaryVersionNo; }
+    public void setSummaryVersionNo(Integer summaryVersionNo) { this.summaryVersionNo = summaryVersionNo; }
     public Long getOrgId() { return orgId; }
     public void setOrgId(Long orgId) { this.orgId = orgId; }
     public String getStatus() { return status; }
@@ -42,4 +51,3 @@ public class ReportResultSummaryDO {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }
-

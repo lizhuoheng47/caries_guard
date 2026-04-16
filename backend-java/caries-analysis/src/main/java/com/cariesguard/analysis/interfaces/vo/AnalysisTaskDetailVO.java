@@ -10,6 +10,7 @@ public record AnalysisTaskDetailVO(
         String taskStatusCode,
         String taskTypeCode,
         String modelVersion,
+        String errorCode,
         String errorMessage,
         LocalDateTime createdAt,
         LocalDateTime startedAt,

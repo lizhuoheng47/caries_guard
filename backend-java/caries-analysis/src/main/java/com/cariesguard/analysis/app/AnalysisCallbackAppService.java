@@ -30,10 +30,14 @@ import com.cariesguard.image.interfaces.vo.AttachmentUploadVO;
 import com.cariesguard.patient.app.CaseCommandAppService;
 import com.cariesguard.patient.interfaces.command.CaseStatusTransitionCommand;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -121,17 +125,21 @@ public class AnalysisCallbackAppService {
         }
 
         return switch (incomingStatus) {
-            case "PROCESSING" -> processProcessing(task, callback);
-            case "SUCCESS" -> processSuccess(task, callback);
-            case "FAILED" -> processFailure(task, callback);
+            case "PROCESSING" -> processProcessing(task, callback, rawBody);
+            case "SUCCESS" -> processSuccess(task, callback, rawBody);
+            case "FAILED" -> processFailure(task, callback, rawBody);
             default -> throw new BusinessException(CommonErrorCode.SYSTEM_ERROR);
         };
     }
 
-    private AnalysisCallbackAckVO processProcessing(AnalysisTaskViewModel task, AiAnalysisResultCallbackCommand callback) {
+    private AnalysisCallbackAckVO processProcessing(AnalysisTaskViewModel task,
+                                                   AiAnalysisResultCallbackCommand callback,
+                                                   String rawBody) {
         anaTaskRecordRepository.updateStatus(new AnalysisTaskStatusUpdateModel(
                 task.taskNo(),
                 "PROCESSING",
+                rawBody,
+                null,
                 null,
                 defaultStartedAt(callback.startedAt()),
                 null,
@@ -141,7 +149,9 @@ public class AnalysisCallbackAppService {
         return new AnalysisCallbackAckVO(task.taskNo(), "PROCESSING", false);
     }
 
-    private AnalysisCallbackAckVO processSuccess(AnalysisTaskViewModel task, AiAnalysisResultCallbackCommand callback) {
+    private AnalysisCallbackAckVO processSuccess(AnalysisTaskViewModel task,
+                                                AiAnalysisResultCallbackCommand callback,
+                                                String rawBody) {
         analysisCallbackDomainService.validateSuccessCallbackCompleteness(callback);
         AnalysisCallbackDomainService.SummaryAggregates aggregates =
                 analysisCallbackDomainService.extractSummaryAggregates(callback.summary(), callback.rawResultJson(), callback.uncertaintyScore());
@@ -151,6 +161,8 @@ public class AnalysisCallbackAppService {
         anaTaskRecordRepository.updateStatus(new AnalysisTaskStatusUpdateModel(
                 task.taskNo(),
                 "SUCCESS",
+                rawBody,
+                null,
                 null,
                 defaultStartedAt(callback.startedAt()),
                 defaultCompletedAt(callback.completedAt()),
@@ -165,6 +177,9 @@ public class AnalysisCallbackAppService {
                 aggregates.overallHighestSeverity(),
                 aggregates.uncertaintyScore(),
                 aggregates.reviewSuggestedFlag(),
+                extractLesionCount(callback.rawResultJson()),
+                extractAbnormalToothCount(callback.rawResultJson()),
+                1,
                 task.orgId(),
                 0L));
         anaVisualAssetRepository.replaceByTaskId(task.taskId(), buildVisualAssets(task, callback.visualAssets(), resolvedModelVersion));
@@ -173,9 +188,12 @@ public class AnalysisCallbackAppService {
                     IdWorker.getId(),
                     task.caseId(),
                     task.patientId(),
+                    task.taskId(),
                     callback.riskAssessment().overallRiskLevelCode().trim(),
+                    callback.riskAssessment().riskScore(),
                     toJson(callback.riskAssessment().assessmentReportJson()),
                     callback.riskAssessment().recommendedCycleDays(),
+                    1,
                     defaultCompletedAt(callback.completedAt()),
                     task.orgId(),
                     0L));
@@ -193,10 +211,15 @@ public class AnalysisCallbackAppService {
         return new AnalysisCallbackAckVO(task.taskNo(), "SUCCESS", false);
     }
 
-    private AnalysisCallbackAckVO processFailure(AnalysisTaskViewModel task, AiAnalysisResultCallbackCommand callback) {
+    private AnalysisCallbackAckVO processFailure(AnalysisTaskViewModel task,
+                                                AiAnalysisResultCallbackCommand callback,
+                                                String rawBody) {
+        String errorCode = resolveErrorCode(callback);
         anaTaskRecordRepository.updateStatus(new AnalysisTaskStatusUpdateModel(
                 task.taskNo(),
                 "FAILED",
+                rawBody,
+                errorCode,
                 trimToNull(callback.errorMessage()),
                 defaultStartedAt(callback.startedAt()),
                 defaultCompletedAt(callback.completedAt()),
@@ -246,27 +269,35 @@ public class AnalysisCallbackAppService {
         AnalysisCaseModel medicalCase = visualAssets.stream().anyMatch(item -> item.attachmentId() == null)
                 ? loadCaseForVisualAssets(task)
                 : null;
-        return visualAssets.stream().map(item -> {
+        List<AnalysisVisualAssetCreateModel> models = new ArrayList<>();
+        for (int index = 0; index < visualAssets.size(); index++) {
+            AiVisualAssetDTO item = visualAssets.get(index);
             String assetTypeCode = normalizeAssetType(item.assetTypeCode());
-            return new AnalysisVisualAssetCreateModel(
+            Long sourceAttachmentId = resolveSourceAttachmentId(task, item.relatedImageId());
+            Long attachmentId = resolveVisualAttachmentId(task, medicalCase, item, assetTypeCode, resolvedModelVersion, sourceAttachmentId);
+            models.add(new AnalysisVisualAssetCreateModel(
                     IdWorker.getId(),
                     task.taskId(),
                     task.caseId(),
                     resolvedModelVersion,
                     assetTypeCode,
-                    resolveVisualAttachmentId(task, medicalCase, item, assetTypeCode, resolvedModelVersion),
+                    attachmentId,
                     item.relatedImageId(),
+                    sourceAttachmentId,
                     trimToNull(item.toothCode()),
+                    index,
                     task.orgId(),
-                    0L);
-        }).toList();
+                    0L));
+        }
+        return models;
     }
 
     private Long resolveVisualAttachmentId(AnalysisTaskViewModel task,
                                            AnalysisCaseModel medicalCase,
                                            AiVisualAssetDTO item,
                                            String assetTypeCode,
-                                           String modelVersion) {
+                                           String modelVersion,
+                                           Long sourceAttachmentId) {
         if (item.attachmentId() != null) {
             return item.attachmentId();
         }
@@ -282,7 +313,7 @@ public class AnalysisCallbackAppService {
                 task.taskId(),
                 "VISUAL",
                 assetTypeCode,
-                resolveSourceAttachmentId(task, item.relatedImageId()),
+                sourceAttachmentId,
                 fileNameFromObjectKey(item.objectKey()),
                 item.bucketName(),
                 item.objectKey(),
@@ -333,6 +364,81 @@ public class AnalysisCallbackAppService {
             throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "Related image does not belong to analysis case");
         }
         return image.attachmentId();
+    }
+
+    private Integer extractLesionCount(JsonNode rawResultJson) {
+        Integer directValue = intValue(rawResultJson, "lesionCount", "lesion_count");
+        if (directValue != null) {
+            return directValue;
+        }
+        JsonNode lesionResults = arrayValue(rawResultJson, "lesionResults", "lesion_results");
+        return lesionResults == null ? null : lesionResults.size();
+    }
+
+    private Integer extractAbnormalToothCount(JsonNode rawResultJson) {
+        Integer directValue = intValue(rawResultJson, "abnormalToothCount", "abnormal_tooth_count");
+        if (directValue != null) {
+            return directValue;
+        }
+        JsonNode lesionResults = arrayValue(rawResultJson, "lesionResults", "lesion_results");
+        if (lesionResults == null) {
+            return null;
+        }
+        Set<String> toothCodes = new LinkedHashSet<>();
+        for (JsonNode lesion : lesionResults) {
+            String toothCode = textValue(lesion, "toothCode", "tooth_code");
+            if (StringUtils.hasText(toothCode)) {
+                toothCodes.add(toothCode.trim());
+            }
+        }
+        return toothCodes.size();
+    }
+
+    private String resolveErrorCode(AiAnalysisResultCallbackCommand callback) {
+        String errorCode = trimToNull(callback.errorCode());
+        if (errorCode != null) {
+            return errorCode;
+        }
+        return textValue(callback.rawResultJson(), "errorCode", "error_code");
+    }
+
+    private JsonNode arrayValue(JsonNode root, String... fields) {
+        if (root == null || root.isNull()) {
+            return null;
+        }
+        for (String field : fields) {
+            JsonNode value = root.get(field);
+            if (value != null && value.isArray()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private Integer intValue(JsonNode root, String... fields) {
+        if (root == null || root.isNull()) {
+            return null;
+        }
+        for (String field : fields) {
+            JsonNode value = root.get(field);
+            if (value != null && value.isInt()) {
+                return value.asInt();
+            }
+        }
+        return null;
+    }
+
+    private String textValue(JsonNode root, String... fields) {
+        if (root == null || root.isNull()) {
+            return null;
+        }
+        for (String field : fields) {
+            JsonNode value = root.get(field);
+            if (value != null && !value.isNull() && StringUtils.hasText(value.asText())) {
+                return value.asText().trim();
+            }
+        }
+        return null;
     }
 
     private String fileNameFromObjectKey(String objectKey) {

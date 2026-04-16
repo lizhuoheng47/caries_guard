@@ -93,6 +93,8 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
         entity.setVisibilityCode(model.visibilityCode());
         entity.setRetentionPolicyCode(model.retentionPolicyCode());
         entity.setExpiredAt(model.expiredAt());
+        entity.setIntegrityStatusCode(model.integrityStatusCode());
+        entity.setMetadataJson(model.metadataJson());
         entity.setUploadUserId(model.uploadUserId());
         entity.setOrgId(model.orgId());
         entity.setStatus(model.status());
@@ -163,6 +165,8 @@ public class ImageCommandRepositoryImpl implements ImageCommandRepository {
         entity.setBodyPositionCode(model.bodyPositionCode());
         entity.setImageIndexNo(model.imageIndexNo());
         entity.setQualityStatusCode(model.qualityStatusCode());
+        entity.setSourceDeviceCode(model.sourceDeviceCode());
+        entity.setCaptureBatchNo(model.captureBatchNo());
         entity.setIsPrimary(model.primaryFlag());
         entity.setOrgId(model.orgId());
         entity.setStatus(model.status());

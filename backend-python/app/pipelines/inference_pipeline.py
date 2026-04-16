@@ -124,6 +124,7 @@ class InferencePipeline:
             completed_at=now,
             model_version=str(raw_task.get("modelVersion") or self.settings.model_version),
             raw_result_json={"errorCode": code, "errorType": exc.__class__.__name__},
+            error_code=code,
             error_message=str(exc),
             trace_id=trace_id,
             inference_millis=0,

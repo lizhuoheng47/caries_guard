@@ -10,8 +10,8 @@ import com.cariesguard.analysis.infrastructure.dataobject.AnaTaskRecordDO;
 import com.cariesguard.analysis.infrastructure.mapper.AnalysisTaskRecordMapper;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
 
 @Repository
 public class AnaTaskRecordRepositoryImpl implements AnaTaskRecordRepository {
@@ -29,6 +29,7 @@ public class AnaTaskRecordRepositoryImpl implements AnaTaskRecordRepository {
         entity.setTaskNo(model.taskNo());
         entity.setCaseId(model.caseId());
         entity.setPatientId(model.patientId());
+        entity.setRequestBatchNo(model.requestBatchNo());
         entity.setModelVersion(model.modelVersion());
         entity.setTaskTypeCode(model.taskTypeCode());
         entity.setTaskStatusCode(model.taskStatusCode());
@@ -74,6 +75,8 @@ public class AnaTaskRecordRepositoryImpl implements AnaTaskRecordRepository {
                 .eq(AnaTaskRecordDO::getTaskNo, model.taskNo())
                 .eq(AnaTaskRecordDO::getDeletedFlag, 0L)
                 .set(AnaTaskRecordDO::getTaskStatusCode, model.taskStatusCode())
+                .set(AnaTaskRecordDO::getCallbackPayloadJson, model.callbackPayloadJson())
+                .set(AnaTaskRecordDO::getErrorCode, model.errorCode())
                 .set(AnaTaskRecordDO::getErrorMessage, model.errorMessage())
                 .set(AnaTaskRecordDO::getStartedAt, model.startedAt())
                 .set(AnaTaskRecordDO::getCompletedAt, model.completedAt());
@@ -81,7 +84,7 @@ public class AnaTaskRecordRepositoryImpl implements AnaTaskRecordRepository {
             update.set(AnaTaskRecordDO::getTraceId, model.traceId());
         }
         if (model.inferenceMillis() != null) {
-            update.set(AnaTaskRecordDO::getInferenceMillis, model.inferenceMillis());
+            update.set(AnaTaskRecordDO::getInferenceMillis, Math.toIntExact(model.inferenceMillis()));
         }
         if (StringUtils.hasText(model.modelVersion())) {
             update.set(AnaTaskRecordDO::getModelVersion, model.modelVersion().trim());
@@ -144,9 +147,11 @@ public class AnaTaskRecordRepositoryImpl implements AnaTaskRecordRepository {
                 entity.getTaskNo(),
                 entity.getCaseId(),
                 entity.getPatientId(),
+                entity.getRequestBatchNo(),
                 entity.getModelVersion(),
                 entity.getTaskTypeCode(),
                 entity.getTaskStatusCode(),
+                entity.getErrorCode(),
                 entity.getErrorMessage(),
                 entity.getCreatedAt(),
                 entity.getStartedAt(),
@@ -154,9 +159,6 @@ public class AnaTaskRecordRepositoryImpl implements AnaTaskRecordRepository {
                 entity.getOrgId(),
                 entity.getRetryFromTaskId(),
                 entity.getTraceId(),
-                entity.getInferenceMillis());
+                entity.getInferenceMillis() == null ? null : entity.getInferenceMillis().longValue());
     }
 }
-
-
-

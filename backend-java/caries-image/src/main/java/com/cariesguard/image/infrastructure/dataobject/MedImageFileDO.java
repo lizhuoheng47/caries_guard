@@ -20,6 +20,8 @@ public class MedImageFileDO {
     private String bodyPositionCode;
     private Integer imageIndexNo;
     private String qualityStatusCode;
+    private String sourceDeviceCode;
+    private String captureBatchNo;
     private String isPrimary;
     private Long orgId;
     private String status;
@@ -52,6 +54,10 @@ public class MedImageFileDO {
     public void setImageIndexNo(Integer imageIndexNo) { this.imageIndexNo = imageIndexNo; }
     public String getQualityStatusCode() { return qualityStatusCode; }
     public void setQualityStatusCode(String qualityStatusCode) { this.qualityStatusCode = qualityStatusCode; }
+    public String getSourceDeviceCode() { return sourceDeviceCode; }
+    public void setSourceDeviceCode(String sourceDeviceCode) { this.sourceDeviceCode = sourceDeviceCode; }
+    public String getCaptureBatchNo() { return captureBatchNo; }
+    public void setCaptureBatchNo(String captureBatchNo) { this.captureBatchNo = captureBatchNo; }
     public String getIsPrimary() { return isPrimary; }
     public void setIsPrimary(String isPrimary) { this.isPrimary = isPrimary; }
     public Long getOrgId() { return orgId; }

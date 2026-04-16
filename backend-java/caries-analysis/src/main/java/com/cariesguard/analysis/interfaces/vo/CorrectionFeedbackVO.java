@@ -4,9 +4,9 @@ public record CorrectionFeedbackVO(
         Long feedbackId,
         Long caseId,
         String feedbackTypeCode,
-        String exportedForTrainFlag,
+        String exportCandidateFlag,
+        String exportedSnapshotNo,
         String trainingCandidateFlag,
         String desensitizedExportFlag,
-        String datasetSnapshotNo,
         String reviewStatusCode) {
 }

@@ -46,7 +46,13 @@ public class AnalysisQueryAppService {
         ensureOrgAccess(operator, task.orgId());
         AnalysisSummaryVO summary = anaResultSummaryRepository.findByTaskId(taskId).map(this::toSummaryVO).orElse(null);
         List<AnalysisVisualAssetVO> visualAssets = anaVisualAssetRepository.listByTaskId(taskId).stream()
-                .map(item -> new AnalysisVisualAssetVO(item.assetTypeCode(), item.attachmentId(), item.relatedImageId(), item.toothCode()))
+                .map(item -> new AnalysisVisualAssetVO(
+                        item.assetTypeCode(),
+                        item.attachmentId(),
+                        item.relatedImageId(),
+                        item.sourceAttachmentId(),
+                        item.toothCode(),
+                        item.sortOrder()))
                 .toList();
         return new AnalysisTaskDetailVO(
                 task.taskId(),
@@ -55,6 +61,7 @@ public class AnalysisQueryAppService {
                 task.taskStatusCode(),
                 task.taskTypeCode(),
                 task.modelVersion(),
+                task.errorCode(),
                 task.errorMessage(),
                 task.createdAt(),
                 task.startedAt(),
@@ -79,6 +86,7 @@ public class AnalysisQueryAppService {
                         item.taskStatusCode(),
                         item.taskTypeCode(),
                         item.modelVersion(),
+                        item.errorCode(),
                         item.errorMessage(),
                         item.createdAt(),
                         item.startedAt(),
@@ -99,9 +107,12 @@ public class AnalysisQueryAppService {
         String severity = summary.overallHighestSeverity();
         Double uncertainty = summary.uncertaintyScore() == null ? null : summary.uncertaintyScore().doubleValue();
         String reviewFlag = summary.reviewSuggestedFlag();
+        Integer lesionCount = summary.lesionCount();
+        Integer abnormalToothCount = summary.abnormalToothCount();
+        Integer summaryVersionNo = summary.summaryVersionNo();
         Integer teethCount = null;
         if (!StringUtils.hasText(summary.rawResultJson())) {
-            return new AnalysisSummaryVO(severity, uncertainty, reviewFlag, null);
+            return new AnalysisSummaryVO(severity, uncertainty, reviewFlag, lesionCount, abnormalToothCount, summaryVersionNo, null);
         }
         try {
             JsonNode root = objectMapper.readTree(summary.rawResultJson());
@@ -114,15 +125,24 @@ public class AnalysisQueryAppService {
             if (!StringUtils.hasText(reviewFlag)) {
                 reviewFlag = textValue(root, "reviewSuggestedFlag", "review_suggested_flag");
             }
+            if (lesionCount == null) {
+                lesionCount = intValue(root, "lesionCount", "lesion_count");
+            }
+            if (abnormalToothCount == null) {
+                abnormalToothCount = intValue(root, "abnormalToothCount", "abnormal_tooth_count");
+            }
             teethCount = intValue(root, "teethCount", "teeth_count");
             return new AnalysisSummaryVO(
                     severity,
                     uncertainty,
                     reviewFlag,
+                    lesionCount,
+                    abnormalToothCount,
+                    summaryVersionNo,
                     teethCount);
         } catch (Exception exception) {
             if (StringUtils.hasText(severity) || uncertainty != null || StringUtils.hasText(reviewFlag)) {
-                return new AnalysisSummaryVO(severity, uncertainty, reviewFlag, null);
+                return new AnalysisSummaryVO(severity, uncertainty, reviewFlag, lesionCount, abnormalToothCount, summaryVersionNo, null);
             }
             throw new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "AI summary payload is invalid");
         }

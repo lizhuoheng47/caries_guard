@@ -9,6 +9,8 @@ public class MedImageFileDO {
     private Long caseId;
     private String imageTypeCode;
     private String qualityStatusCode;
+    private String sourceDeviceCode;
+    private String captureBatchNo;
     private String isPrimary;
     private String status;
     private Long deletedFlag;
@@ -21,6 +23,10 @@ public class MedImageFileDO {
     public void setImageTypeCode(String imageTypeCode) { this.imageTypeCode = imageTypeCode; }
     public String getQualityStatusCode() { return qualityStatusCode; }
     public void setQualityStatusCode(String qualityStatusCode) { this.qualityStatusCode = qualityStatusCode; }
+    public String getSourceDeviceCode() { return sourceDeviceCode; }
+    public void setSourceDeviceCode(String sourceDeviceCode) { this.sourceDeviceCode = sourceDeviceCode; }
+    public String getCaptureBatchNo() { return captureBatchNo; }
+    public void setCaptureBatchNo(String captureBatchNo) { this.captureBatchNo = captureBatchNo; }
     public String getIsPrimary() { return isPrimary; }
     public void setIsPrimary(String isPrimary) { this.isPrimary = isPrimary; }
     public String getStatus() { return status; }

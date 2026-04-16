@@ -14,6 +14,9 @@ public class RptRecordDO {
     private Long caseId;
     private Long patientId;
     private Long attachmentId;
+    private Long sourceSummaryId;
+    private Long sourceRiskAssessmentId;
+    private Long sourceCorrectionId;
     private String reportTypeCode;
     private String reportStatusCode;
     private Integer versionNo;
@@ -39,6 +42,12 @@ public class RptRecordDO {
     public void setPatientId(Long patientId) { this.patientId = patientId; }
     public Long getAttachmentId() { return attachmentId; }
     public void setAttachmentId(Long attachmentId) { this.attachmentId = attachmentId; }
+    public Long getSourceSummaryId() { return sourceSummaryId; }
+    public void setSourceSummaryId(Long sourceSummaryId) { this.sourceSummaryId = sourceSummaryId; }
+    public Long getSourceRiskAssessmentId() { return sourceRiskAssessmentId; }
+    public void setSourceRiskAssessmentId(Long sourceRiskAssessmentId) { this.sourceRiskAssessmentId = sourceRiskAssessmentId; }
+    public Long getSourceCorrectionId() { return sourceCorrectionId; }
+    public void setSourceCorrectionId(Long sourceCorrectionId) { this.sourceCorrectionId = sourceCorrectionId; }
     public String getReportTypeCode() { return reportTypeCode; }
     public void setReportTypeCode(String reportTypeCode) { this.reportTypeCode = reportTypeCode; }
     public String getReportStatusCode() { return reportStatusCode; }
@@ -68,4 +77,3 @@ public class RptRecordDO {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
-

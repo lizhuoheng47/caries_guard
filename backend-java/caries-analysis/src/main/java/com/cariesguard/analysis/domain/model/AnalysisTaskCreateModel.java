@@ -5,6 +5,7 @@ public record AnalysisTaskCreateModel(
         String taskNo,
         Long caseId,
         Long patientId,
+        String requestBatchNo,
         String modelVersion,
         String taskTypeCode,
         String taskStatusCode,
@@ -13,4 +14,20 @@ public record AnalysisTaskCreateModel(
         String status,
         Long operatorUserId,
         Long retryFromTaskId) {
+
+    public AnalysisTaskCreateModel(Long taskId,
+                                   String taskNo,
+                                   Long caseId,
+                                   Long patientId,
+                                   String modelVersion,
+                                   String taskTypeCode,
+                                   String taskStatusCode,
+                                   String requestPayloadJson,
+                                   Long orgId,
+                                   String status,
+                                   Long operatorUserId,
+                                   Long retryFromTaskId) {
+        this(taskId, taskNo, caseId, patientId, null, modelVersion, taskTypeCode, taskStatusCode,
+                requestPayloadJson, orgId, status, operatorUserId, retryFromTaskId);
+    }
 }

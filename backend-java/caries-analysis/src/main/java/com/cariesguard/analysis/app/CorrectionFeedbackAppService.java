@@ -2,6 +2,7 @@ package com.cariesguard.analysis.app;
 
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.cariesguard.analysis.domain.model.AnalysisCaseModel;
+import com.cariesguard.analysis.domain.model.AnalysisImageModel;
 import com.cariesguard.analysis.domain.model.CorrectionFeedbackCreateModel;
 import com.cariesguard.analysis.domain.repository.AnaCorrectionFeedbackRepository;
 import com.cariesguard.analysis.domain.repository.AnalysisCommandRepository;
@@ -46,10 +47,12 @@ public class CorrectionFeedbackAppService {
         correctionFeedbackDomainService.ensureCaseAllowsCorrection(medicalCase.caseStatusCode());
         correctionFeedbackDomainService.validateFeedbackTypeCode(command.feedbackTypeCode());
 
+        Long sourceAttachmentId = null;
         if (command.sourceImageId() != null) {
-            analysisCommandRepository.findImage(command.sourceImageId())
+            AnalysisImageModel sourceImage = analysisCommandRepository.findImage(command.sourceImageId())
                     .filter(item -> item.caseId().equals(medicalCase.caseId()))
                     .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Source image does not exist"));
+            sourceAttachmentId = sourceImage.attachmentId();
         }
         long feedbackId = IdWorker.getId();
         anaCorrectionFeedbackRepository.save(new CorrectionFeedbackCreateModel(
@@ -57,19 +60,20 @@ public class CorrectionFeedbackAppService {
                 medicalCase.caseId(),
                 command.diagnosisId(),
                 command.sourceImageId(),
+                sourceAttachmentId,
                 operator.getUserId(),
                 toJson(command.originalInferenceJson()),
                 toJson(command.correctedTruthJson()),
                 command.feedbackTypeCode().trim(),
-                "0",
+                "1",
+                null,
                 "1",
                 "0",
-                null,
                 "PENDING",
                 null,
                 null,
                 medicalCase.orgId()));
-        return new CorrectionFeedbackVO(feedbackId, medicalCase.caseId(), command.feedbackTypeCode().trim(), "0", "1", "0", null, "PENDING");
+        return new CorrectionFeedbackVO(feedbackId, medicalCase.caseId(), command.feedbackTypeCode().trim(), "1", null, "1", "0", "PENDING");
     }
 
     private void ensureOrgAccess(AuthenticatedUser operator, Long recordOrgId) {

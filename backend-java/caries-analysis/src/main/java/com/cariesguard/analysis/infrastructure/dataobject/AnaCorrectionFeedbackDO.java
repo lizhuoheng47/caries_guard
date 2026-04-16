@@ -13,14 +13,15 @@ public class AnaCorrectionFeedbackDO {
     private Long caseId;
     private Long diagnosisId;
     private Long sourceImageId;
+    private Long sourceAttachmentId;
     private Long doctorUserId;
     private String originalInferenceJson;
     private String correctedTruthJson;
     private String feedbackTypeCode;
-    private String isExportedForTrain;
+    private String exportCandidateFlag;
+    private String exportedSnapshotNo;
     private String trainingCandidateFlag;
     private String desensitizedExportFlag;
-    private String datasetSnapshotNo;
     private String reviewStatusCode;
     private Long reviewedBy;
     private LocalDateTime reviewedAt;
@@ -39,6 +40,8 @@ public class AnaCorrectionFeedbackDO {
     public void setDiagnosisId(Long diagnosisId) { this.diagnosisId = diagnosisId; }
     public Long getSourceImageId() { return sourceImageId; }
     public void setSourceImageId(Long sourceImageId) { this.sourceImageId = sourceImageId; }
+    public Long getSourceAttachmentId() { return sourceAttachmentId; }
+    public void setSourceAttachmentId(Long sourceAttachmentId) { this.sourceAttachmentId = sourceAttachmentId; }
     public Long getDoctorUserId() { return doctorUserId; }
     public void setDoctorUserId(Long doctorUserId) { this.doctorUserId = doctorUserId; }
     public String getOriginalInferenceJson() { return originalInferenceJson; }
@@ -47,14 +50,14 @@ public class AnaCorrectionFeedbackDO {
     public void setCorrectedTruthJson(String correctedTruthJson) { this.correctedTruthJson = correctedTruthJson; }
     public String getFeedbackTypeCode() { return feedbackTypeCode; }
     public void setFeedbackTypeCode(String feedbackTypeCode) { this.feedbackTypeCode = feedbackTypeCode; }
-    public String getIsExportedForTrain() { return isExportedForTrain; }
-    public void setIsExportedForTrain(String isExportedForTrain) { this.isExportedForTrain = isExportedForTrain; }
+    public String getExportCandidateFlag() { return exportCandidateFlag; }
+    public void setExportCandidateFlag(String exportCandidateFlag) { this.exportCandidateFlag = exportCandidateFlag; }
+    public String getExportedSnapshotNo() { return exportedSnapshotNo; }
+    public void setExportedSnapshotNo(String exportedSnapshotNo) { this.exportedSnapshotNo = exportedSnapshotNo; }
     public String getTrainingCandidateFlag() { return trainingCandidateFlag; }
     public void setTrainingCandidateFlag(String trainingCandidateFlag) { this.trainingCandidateFlag = trainingCandidateFlag; }
     public String getDesensitizedExportFlag() { return desensitizedExportFlag; }
     public void setDesensitizedExportFlag(String desensitizedExportFlag) { this.desensitizedExportFlag = desensitizedExportFlag; }
-    public String getDatasetSnapshotNo() { return datasetSnapshotNo; }
-    public void setDatasetSnapshotNo(String datasetSnapshotNo) { this.datasetSnapshotNo = datasetSnapshotNo; }
     public String getReviewStatusCode() { return reviewStatusCode; }
     public void setReviewStatusCode(String reviewStatusCode) { this.reviewStatusCode = reviewStatusCode; }
     public Long getReviewedBy() { return reviewedBy; }

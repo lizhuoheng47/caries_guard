@@ -47,6 +47,9 @@ public class ReportRecordRepositoryImpl implements ReportRecordRepository {
         entity.setReportNo(model.reportNo());
         entity.setCaseId(model.caseId());
         entity.setPatientId(model.patientId());
+        entity.setSourceSummaryId(model.sourceSummaryId());
+        entity.setSourceRiskAssessmentId(model.sourceRiskAssessmentId());
+        entity.setSourceCorrectionId(model.sourceCorrectionId());
         entity.setReportTypeCode(model.reportTypeCode());
         entity.setReportStatusCode(model.reportStatusCode());
         entity.setVersionNo(model.versionNo());
@@ -120,6 +123,8 @@ public class ReportRecordRepositoryImpl implements ReportRecordRepository {
         entity.setVisibilityCode(model.visibilityCode());
         entity.setRetentionPolicyCode(model.retentionPolicyCode());
         entity.setExpiredAt(model.expiredAt());
+        entity.setIntegrityStatusCode(model.integrityStatusCode());
+        entity.setMetadataJson(model.metadataJson());
         entity.setUploadUserId(model.uploadUserId());
         entity.setOrgId(model.orgId());
         entity.setStatus(model.status());
@@ -154,6 +159,9 @@ public class ReportRecordRepositoryImpl implements ReportRecordRepository {
                 entity.getCaseId(),
                 entity.getPatientId(),
                 entity.getAttachmentId(),
+                entity.getSourceSummaryId(),
+                entity.getSourceRiskAssessmentId(),
+                entity.getSourceCorrectionId(),
                 entity.getReportTypeCode(),
                 entity.getReportStatusCode(),
                 entity.getVersionNo(),
