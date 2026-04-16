@@ -48,7 +48,7 @@
 - `caries-framework`：Security、JWT、OpenAPI、敏感数据处理
 - `caries-system`：认证、后台管理、字典/配置/权限
 - `caries-patient`：患者、就诊、病例、状态机
-- `caries-image`：附件、影像、质检、本地对象存储
+- `caries-image`：附件、影像、质检、对象存储业务端口
 - `caries-analysis`：AI 任务、回调、纠偏反馈、事件发布
 - `caries-report`：模板、报告、导出审计
 - `caries-followup`：计划、任务、记录、通知、自动触发
@@ -64,7 +64,7 @@
 - `org_id` 是主要机构隔离锚点
 - 患者/用户等敏感字段使用 `AES-GCM + HMAC-SHA256 + 脱敏串`
 - 病例主状态机已经落在 `CaseStatusMachine`
-- 文件访问使用签名 URL，`/api/v1/files/{attachmentId}/content` 为签名保护的公开入口
+- 文件访问主模式为 presigned URL，`/api/v1/files/{attachmentId}/content` 仅作为受控代理兜底入口保留
 - AI 回调使用 `X-AI-Timestamp` 和 `X-AI-Signature` 进行 HMAC 验签
 - 本地 profile 下 AI 事件发布模式为 `rabbit`
 - E2E profile 下 AI 事件发布模式为 `logging`
@@ -81,8 +81,27 @@
 注意：
 
 - Redis 在配置中存在，但当前业务代码没有形成显式依赖链路
-- 对象存储当前实现为本地文件系统，默认目录为 `${user.dir}/var/image-storage`
-- 对象存储统一使用 `caries.storage`，当前长期实现为 `caries-integration` 的 `MinioObjectStorageClient`
+- 对象存储能力统一由 `caries.storage` 提供，当前默认使用 MinIO
+- 如需本地文件系统调试，可显式切换到 `LOCAL_FS` 实现或单独调试 profile
+
+## 当前对象存储约定
+
+- buckets: `caries-image` / `caries-visual` / `caries-report` / `caries-export`
+- 原始影像、分析可视化、报告、导出文件使用不同 object key 规则
+- `caries-export` 默认 7 天自动清理
+- `caries-visual` 默认 30 天自动清理
+- `caries-image` 和 `caries-report` 长期保留
+- 文件访问主模式为 presigned URL
+- `/api/v1/files/{attachmentId}/content` 仅作为受控代理兜底入口保留，不作为前端常规访问主路径
+
+Object key 规则：
+
+```text
+org/{orgId}/case/{caseNo}/image/{imageTypeCode}/{yyyy}/{MM}/{dd}/{attachmentId}/{filename}
+org/{orgId}/case/{caseNo}/analysis/{taskNo}/{modelVersion}/{assetTypeCode}/{relatedImageId}/{toothCode}/{attachmentId}.{ext}
+org/{orgId}/case/{caseNo}/report/{reportTypeCode}/v{versionNo}/{reportNo}.pdf
+org/{orgId}/export/{yyyy}/{MM}/{dd}/{operatorId}/{exportLogId}/{reportNo}.{ext}
+```
 
 ## 启动方式
 

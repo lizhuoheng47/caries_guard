@@ -49,6 +49,7 @@ caries:
     secret-key: ${CARIES_MINIO_SECRET_KEY:minioadmin}
     secure: ${CARIES_MINIO_SECURE:false}
     default-presign-expire-seconds: ${CARIES_STORAGE_PRESIGN_EXPIRE_SECONDS:900}
+    auto-create-buckets: ${CARIES_STORAGE_AUTO_CREATE_BUCKETS:false}
     proxy-access-secret: ${CARIES_IMAGE_ACCESS_SECRET:docker-change-me-to-a-strong-image-access-secret}
     buckets:
       image: ${CARIES_BUCKET_IMAGE:caries-image}

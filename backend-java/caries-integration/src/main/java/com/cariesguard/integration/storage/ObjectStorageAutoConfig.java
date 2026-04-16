@@ -36,8 +36,8 @@ public class ObjectStorageAutoConfig {
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnProperty(prefix = "caries.storage", name = "provider", havingValue = "MINIO", matchIfMissing = true)
-    public ObjectStorageClient objectStorageClient(MinioClient minioClient) {
-        return new MinioObjectStorageClient(minioClient);
+    public ObjectStorageClient objectStorageClient(MinioClient minioClient, StorageProperties storageProperties) {
+        return new MinioObjectStorageClient(minioClient, storageProperties);
     }
 
     @Bean

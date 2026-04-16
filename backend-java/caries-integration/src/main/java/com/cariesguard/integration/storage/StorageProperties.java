@@ -14,6 +14,7 @@ public class StorageProperties {
     private String region;
     private boolean secure = false;
     private long defaultPresignExpireSeconds = 900;
+    private boolean autoCreateBuckets = true;
     private String proxyAccessSecret = "change-me-to-a-strong-image-access-secret";
     private final Buckets buckets = new Buckets();
 
@@ -71,6 +72,14 @@ public class StorageProperties {
 
     public void setDefaultPresignExpireSeconds(long defaultPresignExpireSeconds) {
         this.defaultPresignExpireSeconds = defaultPresignExpireSeconds;
+    }
+
+    public boolean isAutoCreateBuckets() {
+        return autoCreateBuckets;
+    }
+
+    public void setAutoCreateBuckets(boolean autoCreateBuckets) {
+        this.autoCreateBuckets = autoCreateBuckets;
     }
 
     public String getProxyAccessSecret() {

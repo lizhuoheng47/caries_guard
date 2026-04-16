@@ -98,6 +98,8 @@ services:
         mc anonymous set none "caries/$${CARIES_BUCKET_EXPORT}"
         printf '%s\n' '{"Rules":[{"ID":"expire-caries-export-after-7-days","Status":"Enabled","Filter":{"Prefix":""},"Expiration":{"Days":7}}]}' > /tmp/caries-export-lifecycle.json
         mc ilm import "caries/$${CARIES_BUCKET_EXPORT}" < /tmp/caries-export-lifecycle.json
+        printf '%s\n' '{"Rules":[{"ID":"expire-caries-visual-after-30-days","Status":"Enabled","Filter":{"Prefix":""},"Expiration":{"Days":30}}]}' > /tmp/caries-visual-lifecycle.json
+        mc ilm import "caries/$${CARIES_BUCKET_VISUAL}" < /tmp/caries-visual-lifecycle.json
     restart: "no"
     networks:
       - caries-net
@@ -124,6 +126,8 @@ services:
       CARIES_MINIO_ENDPOINT: http://minio:9000
       CARIES_MINIO_ACCESS_KEY: ${CARIES_MINIO_ACCESS_KEY:-minioadmin}
       CARIES_MINIO_SECRET_KEY: ${CARIES_MINIO_SECRET_KEY:-minioadmin}
+      CARIES_STORAGE_AUTO_CREATE_BUCKETS: ${CARIES_STORAGE_AUTO_CREATE_BUCKETS:-false}
+      CARIES_IMAGE_ACCESS_SECRET: ${CARIES_IMAGE_ACCESS_SECRET:-docker-change-me-to-a-strong-image-access-secret}
       CARIES_BUCKET_IMAGE: ${CARIES_BUCKET_IMAGE:-caries-image}
       CARIES_BUCKET_VISUAL: ${CARIES_BUCKET_VISUAL:-caries-visual}
       CARIES_BUCKET_REPORT: ${CARIES_BUCKET_REPORT:-caries-report}

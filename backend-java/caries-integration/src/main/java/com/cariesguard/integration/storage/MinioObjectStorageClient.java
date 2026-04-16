@@ -23,10 +23,12 @@ public class MinioObjectStorageClient implements ObjectStorageClient {
     private static final long DEFAULT_PART_SIZE = 10L * 1024L * 1024L;
 
     private final MinioClient minioClient;
+    private final StorageProperties storageProperties;
     private final Set<String> checkedBuckets = ConcurrentHashMap.newKeySet();
 
-    public MinioObjectStorageClient(MinioClient minioClient) {
+    public MinioObjectStorageClient(MinioClient minioClient, StorageProperties storageProperties) {
         this.minioClient = minioClient;
+        this.storageProperties = storageProperties;
     }
 
     @Override
@@ -126,6 +128,9 @@ public class MinioObjectStorageClient implements ObjectStorageClient {
                     .bucket(bucketName)
                     .build());
             if (!exists) {
+                if (!storageProperties.isAutoCreateBuckets()) {
+                    throw new IOException("Bucket does not exist: " + bucketName);
+                }
                 minioClient.makeBucket(MakeBucketArgs.builder()
                         .bucket(bucketName)
                         .build());
