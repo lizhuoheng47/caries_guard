@@ -83,9 +83,9 @@
   - 统一上传到 `caries-visual`。
   - 返回完整 metadata：`bucketName`、`objectKey`、`fileName`、`contentType`、`fileSizeBytes`。
 - visual objectKey 固定规则：
-  - `visual/{yyyy}/{MM}/{dd}/{caseNo}/mask_{imageId}_{toothCode}.png`
-  - `visual/{yyyy}/{MM}/{dd}/{caseNo}/overlay_{imageId}_{toothCode}.png`
-  - `visual/{yyyy}/{MM}/{dd}/{caseNo}/heatmap_{imageId}.png`
+  - `org/{orgId}/case/{caseNo}/analysis/{taskNo}/{modelVersion}/{assetTypeCode}/{relatedImageId}/{toothCode}/{attachmentId}.{ext}`
+  - `assetTypeCode` 使用 `MASK`、`OVERLAY`、`HEATMAP` 等枚举
+  - `caries-visual` 默认 30 天自动清理
 - contentType 固定规则：
   - PNG：`image/png`
   - JPG/JPEG：`image/jpeg`

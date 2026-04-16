@@ -111,35 +111,45 @@ Java Spring Boot
 统一规则：
 
 ```text
-{biz-module}/{yyyy}/{MM}/{dd}/{biz-no}/{filename}
+RAW_IMAGE:
+org/{orgId}/case/{caseNo}/image/{imageTypeCode}/{yyyy}/{MM}/{dd}/{attachmentId}/{filename}
+
+VISUAL:
+org/{orgId}/case/{caseNo}/analysis/{taskNo}/{modelVersion}/{assetTypeCode}/{relatedImageId}/{toothCode}/{attachmentId}.{ext}
+
+REPORT:
+org/{orgId}/case/{caseNo}/report/{reportTypeCode}/v{versionNo}/{reportNo}.pdf
+
+EXPORT:
+org/{orgId}/export/{yyyy}/{MM}/{dd}/{operatorId}/{exportLogId}/{reportNo}.{ext}
 ```
 
 ## 5.1 原始影像
 
 ```text
-case-image/2026/04/15/CASE202604150001/pan_01.jpg
-case-image/2026/04/15/CASE202604150001/intra_01.jpg
+org/1001/case/CASE202604150001/image/PANORAMIC/2026/04/15/90001/pan_01.jpg
+org/1001/case/CASE202604150001/image/INTRAORAL/2026/04/15/90002/intra_01.jpg
 ```
 
 ## 5.2 可视化产物
 
 ```text
-visual/2026/04/15/CASE202604150001/mask_90001_16.png
-visual/2026/04/15/CASE202604150001/overlay_90001_16.png
-visual/2026/04/15/CASE202604150001/heatmap_90001.png
+org/1001/case/CASE202604150001/analysis/TASK202604150001/caries-v1/MASK/90001/16/91001.png
+org/1001/case/CASE202604150001/analysis/TASK202604150001/caries-v1/OVERLAY/90001/16/91002.png
+org/1001/case/CASE202604150001/analysis/TASK202604150001/caries-v1/HEATMAP/90001/NA/91003.png
 ```
 
 ## 5.3 报告 PDF
 
 ```text
-report/2026/04/15/RPT202604150001/doctor_v1.pdf
-report/2026/04/15/RPT202604150002/patient_v1.pdf
+org/1001/case/CASE202604150001/report/DOCTOR/v1/RPT202604150001.pdf
+org/1001/case/CASE202604150001/report/PATIENT/v1/RPT202604150002.pdf
 ```
 
 ## 5.4 导出文件
 
 ```text
-export/2026/04/15/EXP202604150001/report_zip_01.zip
+org/1001/export/2026/04/15/20001/EXP202604150001/report_zip_01.zip
 ```
 
 ## 5.5 命名要求
@@ -449,7 +459,7 @@ ai-python/
 {
   "assetTypeCode": "MASK",
   "bucketName": "caries-visual",
-  "objectKey": "visual/2026/04/15/CASE202604150001/mask_90001_16.png",
+  "objectKey": "org/1001/case/CASE202604150001/analysis/TASK202604150001/caries-v1/MASK/90001/16/91001.png",
   "fileName": "mask_90001_16.png",
   "contentType": "image/png",
   "fileSizeBytes": 18342,
@@ -646,7 +656,7 @@ def upload_mask(storage: MinioStorageClient, case_no: str, local_mask_path: str)
       "imageId": 90001,
       "imageTypeCode": "PANORAMIC",
       "bucketName": "caries-image",
-      "objectKey": "case-image/2026/04/15/CASE202604150001/pan_01.jpg",
+      "objectKey": "org/1001/case/CASE202604150001/image/PANORAMIC/2026/04/15/90001/pan_01.jpg",
       "originalFilename": "pan_01.jpg",
       "contentType": "image/jpeg"
     },
@@ -654,7 +664,7 @@ def upload_mask(storage: MinioStorageClient, case_no: str, local_mask_path: str)
       "imageId": 90002,
       "imageTypeCode": "INTRAORAL",
       "bucketName": "caries-image",
-      "objectKey": "case-image/2026/04/15/CASE202604150001/intra_01.jpg",
+      "objectKey": "org/1001/case/CASE202604150001/image/INTRAORAL/2026/04/15/90002/intra_01.jpg",
       "originalFilename": "intra_01.jpg",
       "contentType": "image/jpeg"
     }
@@ -687,7 +697,7 @@ def upload_mask(storage: MinioStorageClient, case_no: str, local_mask_path: str)
       "imageId": 90001,
       "toothCode": "16",
       "bucketName": "caries-visual",
-      "objectKey": "visual/2026/04/15/CASE202604150001/mask_90001_16.png",
+      "objectKey": "org/1001/case/CASE202604150001/analysis/TASK202604150001/caries-v1/MASK/90001/16/91001.png",
       "fileName": "mask_90001_16.png",
       "contentType": "image/png",
       "fileSizeBytes": 18342
@@ -697,7 +707,7 @@ def upload_mask(storage: MinioStorageClient, case_no: str, local_mask_path: str)
       "imageId": 90001,
       "toothCode": "16",
       "bucketName": "caries-visual",
-      "objectKey": "visual/2026/04/15/CASE202604150001/overlay_90001_16.png",
+      "objectKey": "org/1001/case/CASE202604150001/analysis/TASK202604150001/caries-v1/OVERLAY/90001/16/91002.png",
       "fileName": "overlay_90001_16.png",
       "contentType": "image/png",
       "fileSizeBytes": 25492
@@ -929,4 +939,3 @@ Console 是管理界面，不是对象访问 API。
 - 这不仅是工程优化，更是答辩可信度优化。
 
 如果按本文档执行，你可以把“当前文档里写 MinIO、实际却不是”的矛盾，正式消掉。
-

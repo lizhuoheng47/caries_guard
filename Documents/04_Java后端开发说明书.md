@@ -2,7 +2,7 @@
 
 更新日期：2026-04-15
 
-本文档用于 Java 后端维护开发和 Python 服务联调。内容以当前代码、Flyway V014 和已通过编译测试的实现为准。
+本文档用于 Java 后端维护开发和 Python 服务联调。内容以当前代码、Flyway V017 和已通过编译测试的实现为准。
 
 ## 1. 开发基线
 
@@ -11,7 +11,7 @@
 | 工作目录 | `backend-java` |
 | 启动模块 | `caries-boot` |
 | Spring profile | `local`、`e2e` |
-| 数据库迁移 | Flyway V001-V014 |
+| 数据库迁移 | Flyway V001-V017 |
 | 默认对象存储 | `MINIO` |
 | 默认对象存储实现 | `MinioObjectStorageClient` |
 | 本地兼容对象存储 | 不作为当前运行口径 |
@@ -32,15 +32,20 @@ mvn -q -pl caries-analysis -am test
 
 ```yaml
 caries:
-  image:
-    storage:
-      provider: ${CARIES_STORAGE_PROVIDER:MINIO}
-      bucket-name: ${CARIES_IMAGE_BUCKET:caries-image}
-      endpoint: ${CARIES_MINIO_ENDPOINT:http://127.0.0.1:9000}
-      minio:
-        endpoint: ${CARIES_MINIO_ENDPOINT:http://127.0.0.1:9000}
-        access-key: ${CARIES_MINIO_ACCESS_KEY:minioadmin}
-        secret-key: ${CARIES_MINIO_SECRET_KEY:minioadmin}
+  storage:
+    provider: ${CARIES_STORAGE_PROVIDER:MINIO}
+    endpoint: ${CARIES_MINIO_ENDPOINT:http://127.0.0.1:9000}
+    access-key: ${CARIES_MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${CARIES_MINIO_SECRET_KEY:minioadmin}
+    secure: ${CARIES_MINIO_SECURE:false}
+    default-presign-expire-seconds: ${CARIES_STORAGE_PRESIGN_EXPIRE_SECONDS:900}
+    auto-create-buckets: ${CARIES_STORAGE_AUTO_CREATE_BUCKETS:true}
+    proxy-access-secret: ${CARIES_IMAGE_ACCESS_SECRET:change-me-to-a-strong-image-access-secret}
+    buckets:
+      image: ${CARIES_BUCKET_IMAGE:caries-image}
+      visual: ${CARIES_BUCKET_VISUAL:caries-visual}
+      report: ${CARIES_BUCKET_REPORT:caries-report}
+      export: ${CARIES_BUCKET_EXPORT:caries-export}
 ```
 
 `application-e2e.yml` 使用 `LOCAL_FS`，避免测试必须启动外部 MinIO。
@@ -70,7 +75,7 @@ caries:
 | --- | --- | --- |
 | `FileController` | `upload` | 上传附件 |
 | `FileController` | `accessUrl` | 生成短时访问 URL |
-| `FileController` | `content` | 校验签名后返回文件内容 |
+| `FileController` | `content` | 受控代理兜底入口，校验签名后返回文件内容 |
 | `AttachmentAppService` | `upload` | 计算 MD5、调用对象存储、写 `med_attachment` |
 | `AttachmentAppService` | `createAccessUrl` | 面向前端生成 URL |
 | `AttachmentAppService` | `createInternalAccessUrl` | 面向 AI 内部服务生成 URL |
@@ -198,7 +203,7 @@ V014 已补：
 
 新增结构在 Flyway 中完成，不直接手工改库。
 
-当前最新迁移：`V014__14_minio_model_governance_and_permissions.sql`
+当前最新迁移：`V017__17_freeze_analysis_data_dictionary_v2.sql`
 
 V014 内容：
 
@@ -207,6 +212,12 @@ V014 内容：
 3. 新增 `ana_model_version_registry`。
 4. 初始化模型版本 `caries-detector / caries-v1`。
 5. 初始化业务角色、菜单、角色菜单关联和数据权限规则。
+
+V015-V017 内容：
+
+1. V015 为 `ana_visual_asset` 增加 `related_image_id` 和 `tooth_code`。
+2. V016 固化 attachment object key 治理。
+3. V017 冻结 analysis 数据字典 v2。
 
 ## 6. 与 Python 服务联调要求
 

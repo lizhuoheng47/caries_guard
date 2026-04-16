@@ -151,7 +151,7 @@ REST 约定：
 
 1. 业务 API 使用 `/api/v1/...`。
 2. 内部 AI 回调使用 `/api/v1/internal/ai/callbacks/...`。
-3. 文件下载内容使用 `/api/v1/files/{attachmentId}/content`，必须带 `expireAt` 和 `signature`。
+3. 文件访问主路径使用 `/api/v1/files/{attachmentId}/access-url` 获取 MinIO presigned URL；`/api/v1/files/{attachmentId}/content` 仅作为受控代理兜底入口保留，必须带 `expireAt` 和 `signature`。
 4. 模型运行看板使用 `/api/v1/dashboard/model-runtime`。
 5. 操作型接口使用 POST，查询型接口使用 GET。
 6. 批量分页查询返回 `PageResultVO`。

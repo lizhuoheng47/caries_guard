@@ -195,9 +195,10 @@ sequenceDiagram
   Image-->>App: downloadUrl + expireAt
   App-->>Report: ReportExportResultVO
   Report-->>User: attachmentId + downloadUrl + expireAt
-  User->>File: GET /api/v1/files/{attachmentId}/content?expireAt=...&signature=...
-  File->>Store: load(bucketName, objectKey)
-  Store-->>File: PDF resource
+  User->>File: GET /api/v1/files/{attachmentId}/access-url
+  File-->>User: MinIO presigned URL + expireAt
+  User->>Store: GET presigned URL
+  Store-->>User: PDF resource
 ```
 
 ## 8. 看板模型运行统计类图

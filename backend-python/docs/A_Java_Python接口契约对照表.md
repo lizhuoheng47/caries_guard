@@ -80,21 +80,24 @@
 ### Object Key 规则
 
 ```text
-{biz-module}/{yyyy}/{MM}/{dd}/{biz-id}/{filename}
-```
+RAW_IMAGE:
+org/{orgId}/case/{caseNo}/image/{imageTypeCode}/{yyyy}/{MM}/{dd}/{attachmentId}/{filename}
 
-**Python 端新增约束**：
+VISUAL:
+org/{orgId}/case/{caseNo}/analysis/{taskNo}/{modelVersion}/{assetTypeCode}/{relatedImageId}/{toothCode}/{attachmentId}.{ext}
 
-```text
-visual/{yyyy}/{MM}/{dd}/{caseNo}/mask_{imageId}_{toothCode}.png
-visual/{yyyy}/{MM}/{dd}/{caseNo}/overlay_{imageId}_{toothCode}.png
-visual/{yyyy}/{MM}/{dd}/{caseNo}/heatmap_{imageId}.png
+REPORT:
+org/{orgId}/case/{caseNo}/report/{reportTypeCode}/v{versionNo}/{reportNo}.pdf
+
+EXPORT:
+org/{orgId}/export/{yyyy}/{MM}/{dd}/{operatorId}/{exportLogId}/{reportNo}.{ext}
 ```
 
 规则要点：
 - `caseNo` 不是 `caseId`，是 Java 端生成的对外病例号（如 `CASE202604130001`）
-- 同一病例的所有可视化产物落在同一个目录下，便于清理和归档
+- Python 端回调可视化产物时使用 `VISUAL` 语义，必须带 `bucketName + objectKey`
 - Python 端 **禁止** 写入 `caries-image` 和 `caries-report` 两个 bucket
+- `caries-visual` 默认 30 天自动清理，`caries-export` 默认 7 天自动清理
 
 ---
 
@@ -249,7 +252,7 @@ INTRAORAL  -- 口内照
   "orgId": 1001,
   "imageTypeCode": "PANORAMIC",
   "bucketName": "caries-image",
-  "objectKey": "case-image/2026/04/13/CASE202604130001/original_01.jpg"
+  "objectKey": "org/1001/case/CASE202604130001/image/PANORAMIC/2026/04/13/90001/original_01.jpg"
 }
 ```
 
@@ -330,7 +333,7 @@ LOW_RESOLUTION -- 分辨率不足
       "imageId": 90001,
       "imageTypeCode": "PANORAMIC",
       "bucketName": "caries-image",
-      "objectKey": "case-image/2026/04/13/CASE202604130001/pan_01.jpg",
+      "objectKey": "org/1001/case/CASE202604130001/image/PANORAMIC/2026/04/13/90001/pan_01.jpg",
       "originalFilename": "pan_01.jpg",
       "widthPx": 2880,
       "heightPx": 1504
@@ -339,7 +342,7 @@ LOW_RESOLUTION -- 分辨率不足
       "imageId": 90002,
       "imageTypeCode": "INTRAORAL",
       "bucketName": "caries-image",
-      "objectKey": "case-image/2026/04/13/CASE202604130001/intra_01.jpg",
+      "objectKey": "org/1001/case/CASE202604130001/image/INTRAORAL/2026/04/13/90002/intra_01.jpg",
       "originalFilename": "intra_01.jpg",
       "widthPx": 1920,
       "heightPx": 1080
@@ -598,13 +601,13 @@ X-Trace-Id: trace-002
       "lesionAreaRatio": 0.009,
       "maskAsset": {
         "bucketName": "caries-visual",
-        "objectKey": "visual/2026/04/13/CASE202604130001/mask_90001_16.png",
+        "objectKey": "org/1001/case/CASE202604130001/analysis/TASK202604130001/caries-v1/MASK/90001/16/91001.png",
         "widthPx": 2880,
         "heightPx": 1504
       },
       "overlayAsset": {
         "bucketName": "caries-visual",
-        "objectKey": "visual/2026/04/13/CASE202604130001/overlay_90001_16.png"
+        "objectKey": "org/1001/case/CASE202604130001/analysis/TASK202604130001/caries-v1/OVERLAY/90001/16/91002.png"
       }
     }
   ],

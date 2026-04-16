@@ -32,10 +32,10 @@
       "attachmentId": 40001,
       "imageTypeCode": "INTRAORAL",
       "bucketName": "caries-image",
-      "objectKey": "case-image/2026/04/15/40001/image.jpg",
+      "objectKey": "org/1001/case/CASE202604150001/image/INTRAORAL/2026/04/15/40001/image.jpg",
       "storageProviderCode": "MINIO",
       "attachmentMd5": "f1d2d2f924e986ac86fdf7b36c94bcdf",
-      "accessUrl": "http://127.0.0.1:9000/caries-image/case-image/2026/04/15/40001/image.jpg?X-Amz-Algorithm=...",
+      "accessUrl": "http://127.0.0.1:9000/caries-image/org/1001/case/CASE202604150001/image/INTRAORAL/2026/04/15/40001/image.jpg?X-Amz-Algorithm=...",
       "accessExpireAt": 1776220000,
       "localStoragePath": null
     }
@@ -95,7 +95,7 @@
     {
       "assetTypeCode": "HEATMAP",
       "bucketName": "caries-visual",
-      "objectKey": "visual/2026/04/15/TASK202604151000000001/heatmap.png",
+      "objectKey": "org/1001/case/CASE202604150001/analysis/TASK202604151000000001/caries-v1/HEATMAP/30001/16/91001.png",
       "contentType": "image/png",
       "relatedImageId": 30001,
       "toothCode": "16",

@@ -59,15 +59,15 @@ caries.storage.provider: MINIO
 caries.storage.endpoint: http://minio:9000
 ```
 
-Python 不读取 Java 本地目录。Python 当前优先消费 Java 消息中的 `bucketName + objectKey` 并直接访问 MinIO；`accessUrl` 仅作为过渡兼容路径。
+Python 不读取 Java 本地目录。Python 当前优先消费 Java 消息中的 `bucketName + objectKey` 并直接访问 MinIO；`accessUrl` 为 Java 生成的 MinIO presigned GET URL，作为受控兼容路径。
 
 ```json
 {
   "images": [
     {
       "bucketName": "caries-image",
-      "objectKey": "case-image/2026/04/15/CASE202604150001/pan_01.jpg",
-      "accessUrl": "http://backend-java:8080/api/v1/files/.../content?...",
+      "objectKey": "org/1001/case/CASE202604150001/image/PANORAMIC/2026/04/15/40001/pan_01.jpg",
+      "accessUrl": "http://minio:9000/caries-image/org/1001/case/CASE202604150001/image/PANORAMIC/2026/04/15/40001/pan_01.jpg?X-Amz-Algorithm=...",
       "storageProviderCode": "MINIO"
     }
   ]
@@ -90,7 +90,7 @@ Python 不读取 Java 本地目录。Python 当前优先消费 Java 消息中的
    - `X-AI-Timestamp`
    - `X-AI-Signature`
 
-当前 Docker Compose 默认给 Python 设置 `CG_CALLBACK_VISUAL_ASSET_MODE=legacy-empty`，仅用于兼容当前旧 Java Docker 镜像：Python 仍生成并上传 visual assets 到 MinIO，完整 metadata 保留在 `rawResultJson.visualAssets`，但顶层 `visualAssets` 置空，避免旧镜像要求 `attachmentId` 导致回调失败。Java 镜像升级到支持 `bucketName + objectKey` 自动登记 attachment 后，将该变量改为 `metadata`。
+当前 Docker Compose 默认给 Python 设置 `CG_CALLBACK_VISUAL_ASSET_MODE=metadata`。Python 生成并上传 visual assets 到 `caries-visual` 后，在顶层 `visualAssets` 回调 `bucketName + objectKey`，Java 会登记为 `med_attachment` 并写入 `ana_visual_asset`。
 
 ## 5. Python 开发入口
 

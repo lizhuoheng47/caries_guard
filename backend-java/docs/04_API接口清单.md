@@ -52,8 +52,8 @@
 | Method | Path | 方法 | 权限 |
 | --- | --- | --- | --- |
 | POST | `/api/v1/files/upload` | `FileController.upload` | `image:upload` |
-| GET | `/api/v1/files/{attachmentId}/access-url` | `accessUrl` | `image:read` |
-| GET | `/api/v1/files/{attachmentId}/content` | `content` | 签名校验 |
+| GET | `/api/v1/files/{attachmentId}/access-url` | `accessUrl`，返回 MinIO presigned URL，常规访问主路径 | `image:read` |
+| GET | `/api/v1/files/{attachmentId}/content` | `content`，受控代理兜底入口 | 签名校验 |
 | POST | `/api/v1/cases/{caseId}/images` | `CaseImageController.create` | `image:create` |
 | GET | `/api/v1/cases/{caseId}/images` | `list` | `image:list` |
 | GET | `/api/v1/cases/{caseId}/images/detail/{imageId}` | `detail` | `image:view` |

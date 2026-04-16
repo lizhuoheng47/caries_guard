@@ -179,33 +179,32 @@
 
 ### 测试结果
 
-- MinIO 测试原图已上传：`caries-image/case-image/2026/04/15/CASEE2E0001/pan_01.jpg`。
+- MinIO 测试原图已上传：`caries-image/org/1001/case/CASEE2E0001/image/PANORAMIC/2026/04/15/990001/pan_01.jpg`。
 - MySQL 已写入限定测试数据：`taskNo=TASKE2E0001`、`caseNo=CASEE2E0001`。
 - RabbitMQ 消息已发送到 `caries.analysis.exchange`，routing key 为 `analysis.requested`。
 - Python worker 已消费任务，并完成 mock pipeline。
 - Python 已生成并上传 3 个 visual assets：
-  - `visual/2026/04/15/CASEE2E0001/mask_990001_16.png`
-  - `visual/2026/04/15/CASEE2E0001/overlay_990001_16.png`
-  - `visual/2026/04/15/CASEE2E0001/heatmap_990001.png`
+  - `org/1001/case/CASEE2E0001/analysis/TASKE2E0001/caries-v1/MASK/990001/16/910001.png`
+  - `org/1001/case/CASEE2E0001/analysis/TASKE2E0001/caries-v1/OVERLAY/990001/16/910002.png`
+  - `org/1001/case/CASEE2E0001/analysis/TASKE2E0001/caries-v1/HEATMAP/990001/NA/910003.png`
 - Java success callback 返回 HTTP 500；Python 重试 3 次后发送 FAILED callback，FAILED callback 被 Java 接收。
 
-### 已知问题
+### 历史已知问题
 
-- 当前运行的 Java Docker 镜像保存 `ana_visual_asset` 时仍要求 `visualAssets[].attachmentId` 非空，未使用当前源码中已存在的 `bucketName + objectKey` 自动登记 attachment 逻辑。
-- Java 日志中的失败 SQL 为：`INSERT INTO ana_visual_asset (...)` 未包含 `attachment_id`，触发 MySQL `Field 'attachment_id' doesn't have a default value`。
-- 这与本轮 Python 冻结计划不一致：Python 新逻辑按 MinIO 契约回传 `bucketName + objectKey + contentType + fileSizeBytes + md5`，不应直接连接业务 MySQL 生成或写入 Java attachmentId。
-- 因此，本次联调结论为：Python MQ -> MinIO -> mock pipeline -> visual upload 已通过；Java success callback 入库链路被当前运行 Java 镜像的旧 visual asset 契约阻塞。
+- 2026-04-15 的旧 Java Docker 镜像保存 `ana_visual_asset` 时仍要求 `visualAssets[].attachmentId` 非空，未使用 `bucketName + objectKey` 自动登记 attachment 逻辑。
+- 当前冻结口径已经要求 Java 支持 `visualAssets[].bucketName + objectKey` 自动登记 attachment，并写入 `ana_visual_asset`。
+- 如果回放旧镜像，仍可能看到 `Field 'attachment_id' doesn't have a default value`；当前目标态不再以该旧镜像行为为准。
 
 ### 回滚方式
 
-- 删除本次测试数据时，仅按固定测试范围清理：`taskNo=TASKE2E0001`、`caseNo=CASEE2E0001`、`visual/2026/04/15/CASEE2E0001/`。
+- 删除本次测试数据时，仅按固定测试范围清理：`taskNo=TASKE2E0001`、`caseNo=CASEE2E0001`、`org/1001/case/CASEE2E0001/analysis/TASKE2E0001/`。
 - MinIO 测试对象可删除，不影响 Python 运行逻辑。
 - Python 代码无需回滚。
 
 ### 下一步
 
 - 不修改 Python MinIO 主契约。
-- 待 Java Docker 镜像升级到支持 `visualAssets[].bucketName + objectKey` 自动登记 attachment 后，重新执行同一条 Docker 全链路用例。
+- Docker 全链路复测必须使用支持 `visualAssets[].bucketName + objectKey` 自动登记 attachment 的 Java 镜像。
 
 ## Docker 全链路兼容复测记录（2026-04-15）
 
@@ -214,13 +213,13 @@
 - `app/core/config.py`：新增 `CG_CALLBACK_VISUAL_ASSET_MODE`。
 - `app/pipelines/inference_pipeline.py`：新增顶层 `visualAssets` 兼容输出策略。
 - `tests/unit/test_callback_visual_asset_mode.py`：新增 callback visual asset 模式测试。
-- `docker-compose.yml`：仅调整 Python 容器环境变量，默认设置 `CG_CALLBACK_VISUAL_ASSET_MODE=legacy-empty`，未修改 Java 环境。
+- `docker-compose.yml`：Python 容器环境变量默认设置 `CG_CALLBACK_VISUAL_ASSET_MODE=metadata`，顶层 `visualAssets` 按 MinIO metadata 回传。
 - `README.md`、`DOCKER.md`：补充兼容模式说明。
 
 ### 影响范围
 
 - 默认代码契约仍为 `metadata`：顶层 `visualAssets` 按 MinIO metadata 回传。
-- 当前 Docker Compose 使用 `legacy-empty` 兼容旧 Java 镜像：顶层 `visualAssets` 置空，完整 visual metadata 保留在 `rawResultJson.visualAssets`。
+- 当前 Docker Compose 使用 `metadata` 目标态：顶层 `visualAssets` 回传 `bucketName + objectKey`，Java 自动登记 attachment。
 - Python 不直接连接业务 MySQL，不生成 Java `attachmentId`，不改 Java 镜像、源码、配置。
 
 ### 测试结果
@@ -230,21 +229,21 @@
 - Docker 全链路复测任务：`taskNo=TASKE2E0002`、`caseNo=CASEE2E0002`。
 - Python worker 已消费 RabbitMQ 消息并完成 mock pipeline。
 - Python 已上传 3 个 visual assets：
-  - `visual/2026/04/15/CASEE2E0002/mask_990002_16.png`
-  - `visual/2026/04/15/CASEE2E0002/overlay_990002_16.png`
-  - `visual/2026/04/15/CASEE2E0002/heatmap_990002.png`
+  - `org/1001/case/CASEE2E0002/analysis/TASKE2E0002/caries-v1/MASK/990002/16/910002.png`
+  - `org/1001/case/CASEE2E0002/analysis/TASKE2E0002/caries-v1/OVERLAY/990002/16/910003.png`
+  - `org/1001/case/CASEE2E0002/analysis/TASKE2E0002/caries-v1/HEATMAP/990002/NA/910004.png`
 - Java success callback 已接收，`ana_task_record.task_status_code=SUCCESS`。
 - 病例状态已流转为 `REVIEW_PENDING`。
 - `ana_result_summary` 已落库 1 条，`med_risk_assessment_record` 已落库 1 条。
-- 因旧 Java 镜像兼容模式顶层 `visualAssets` 置空，`ana_visual_asset` 本轮复测为 0 条；visual metadata 可在 `ana_result_summary.raw_result_json.visualAssets` 查询。
+- 目标态顶层 `visualAssets` 不置空；Java 会写入 `ana_visual_asset`，原始 metadata 仍可在 `ana_result_summary.raw_result_json.visualAssets` 查询。
 
 ### 已知问题
 
-- `legacy-empty` 仅用于当前旧 Java Docker 镜像联调，不是目标态。
-- 目标态仍要求 Java 支持 `visualAssets[].bucketName + objectKey` 自动登记 attachment，并写入 `ana_visual_asset`。
-- Java 镜像升级后需要将 `CG_CALLBACK_VISUAL_ASSET_MODE` 切回 `metadata` 并复测。
+- `legacy-empty` 仅作为历史兼容模式保留，不是当前 Docker 默认口径。
+- 当前目标态要求 Java 支持 `visualAssets[].bucketName + objectKey` 自动登记 attachment，并写入 `ana_visual_asset`。
+- 修改 `CG_CALLBACK_VISUAL_ASSET_MODE` 后必须重新跑 Docker 全链路复测。
 
 ### 回滚方式
 
 - 删除 `CG_CALLBACK_VISUAL_ASSET_MODE` compose 覆盖后，Python 代码默认回到 `metadata`。
-- 删除本次测试数据时，仅按固定测试范围清理：`taskNo=TASKE2E0002`、`caseNo=CASEE2E0002`、`visual/2026/04/15/CASEE2E0002/`。
+- 删除本次测试数据时，仅按固定测试范围清理：`taskNo=TASKE2E0002`、`caseNo=CASEE2E0002`、`org/1001/case/CASEE2E0002/analysis/TASKE2E0002/`。

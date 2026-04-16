@@ -2,7 +2,7 @@
 
 更新日期：2026-04-15
 
-本文档用于通过 Postman 验证 Java 后端当前所有 REST 接口是否可用。接口基于当前 `backend-java` 代码、Flyway V014、Docker profile 和 `ApiResponse<T>` 响应结构整理。
+本文档用于通过 Postman 验证 Java 后端当前所有 REST 接口是否可用。接口基于当前 `backend-java` 代码、Flyway V017、Docker profile 和 `ApiResponse<T>` 响应结构整理。
 
 ## 1. 测试基准
 
@@ -852,7 +852,7 @@ pm.environment.set("aiSignature", signature);
     {
       "assetTypeCode": "HEATMAP",
       "bucketName": "caries-visual",
-      "objectKey": "visual/2026/04/15/{{taskNo}}/heatmap.png",
+      "objectKey": "org/1001/case/CASE202604150001/analysis/{{taskNo}}/caries-v1/HEATMAP/{{imageId}}/16/91001.png",
       "contentType": "image/png",
       "relatedImageId": {{imageId}},
       "toothCode": "16",

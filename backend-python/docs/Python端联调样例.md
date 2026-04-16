@@ -16,7 +16,7 @@
       "imageId": 90001,
       "imageTypeCode": "PANORAMIC",
       "bucketName": "caries-image",
-      "objectKey": "case-image/2026/04/15/CASE202604150001/pan_01.jpg",
+      "objectKey": "org/1001/case/CASE202604150001/image/PANORAMIC/2026/04/15/90001/pan_01.jpg",
       "originalFilename": "pan_01.jpg"
     }
   ],
@@ -53,7 +53,7 @@
     {
       "assetTypeCode": "MASK",
       "bucketName": "caries-visual",
-      "objectKey": "visual/2026/04/15/CASE202604150001/mask_90001_16.png",
+      "objectKey": "org/1001/case/CASE202604150001/analysis/TASK202604150001/caries-v1/MASK/90001/16/91001.png",
       "contentType": "image/png",
       "relatedImageId": 90001,
       "toothCode": "16",
@@ -97,4 +97,3 @@
   "uncertaintyScore": null
 }
 ```
-

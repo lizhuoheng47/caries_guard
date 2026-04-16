@@ -2152,10 +2152,10 @@ def rule_based_risk(features: dict) -> dict:
 ### 14.2 可视化资产的 MinIO 命名
 
 ```text
-visual/{yyyy}/{MM}/{dd}/{caseNo}/mask_{imageId}_{toothCode}.png
-visual/{yyyy}/{MM}/{dd}/{caseNo}/overlay_{imageId}_{toothCode}.png
-visual/{yyyy}/{MM}/{dd}/{caseNo}/heatmap_{imageId}.png
+org/{orgId}/case/{caseNo}/analysis/{taskNo}/{modelVersion}/{assetTypeCode}/{relatedImageId}/{toothCode}/{attachmentId}.{ext}
 ```
+
+`assetTypeCode` 使用 `MASK`、`OVERLAY`、`HEATMAP` 等枚举。可视化资产写入 `caries-visual`，默认 30 天自动清理。
 
 ### 14.3 Overlay 绘制伪代码
 
