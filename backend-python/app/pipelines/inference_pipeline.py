@@ -102,7 +102,7 @@ class InferencePipeline:
             model_version=model_version,
             summary=summary,
             raw_result_json=raw_result_json,
-            visual_assets=visual_assets,
+            visual_assets=self._callback_visual_assets(visual_assets, task.task_no, trace_id),
             risk_assessment=risk_assessment,
             error_message=None,
             trace_id=trace_id,
@@ -169,6 +169,20 @@ class InferencePipeline:
             self.visual_asset_service.upload_visual("HEATMAP", case_no, image_id, heatmap_path),
         ]
 
+    def _callback_visual_assets(self, visual_assets: list[VisualAsset], task_no: str, trace_id: str) -> list[VisualAsset]:
+        mode = (self.settings.callback_visual_asset_mode or "metadata").strip().lower()
+        if mode == "metadata":
+            return visual_assets
+        if mode in {"legacy-empty", "empty"}:
+            if visual_assets:
+                log.warning(
+                    "top-level visualAssets suppressed for legacy Java compatibility taskNo=%s traceId=%s",
+                    task_no,
+                    trace_id,
+                )
+            return []
+        raise BusinessException(f"unsupported CG_CALLBACK_VISUAL_ASSET_MODE={self.settings.callback_visual_asset_mode}")
+
     def _draw_mock_assets(self, image_path: Path, mask_path: Path, overlay_path: Path, heatmap_path: Path) -> None:
         try:
             base = Image.open(image_path).convert("RGB")
@@ -208,4 +222,3 @@ class InferencePipeline:
             if asset.asset_type_code == asset_type_code:
                 return AssetRef(bucket_name=asset.bucket_name, object_key=asset.object_key)
         return None
-

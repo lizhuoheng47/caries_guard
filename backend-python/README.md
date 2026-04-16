@@ -82,6 +82,7 @@ http://backend-python:8001
 | `CG_ANALYSIS_REQUESTED_QUEUE` | `caries.analysis.requested.queue` | 分析请求队列 |
 | `CG_JAVA_CALLBACK_URL` | `http://backend-java:8080/api/v1/internal/ai/callbacks/analysis-result` | Java 回调地址 |
 | `CG_ANALYSIS_CALLBACK_SECRET` | `docker-change-me-to-a-strong-analysis-callback-secret` | HMAC 回调密钥 |
+| `CG_CALLBACK_VISUAL_ASSET_MODE` | `metadata` | visual 回调模式。`metadata` 按冻结契约回传顶层 `visualAssets`；`legacy-empty` 仅用于当前旧 Java Docker 镜像兼容，顶层 `visualAssets` 置空，完整 metadata 保留在 `rawResultJson.visualAssets` |
 | `CG_MODEL_VERSION` | `caries-v1` | mock 模型版本 |
 | `CG_MINIO_ENDPOINT` | `http://minio:9000` | MinIO S3 API endpoint |
 | `CG_MINIO_ACCESS_KEY` | `minioadmin` | MinIO access key |

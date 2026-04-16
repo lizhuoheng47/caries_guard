@@ -90,6 +90,8 @@ Python 不读取 Java 本地目录。Python 当前优先消费 Java 消息中的
    - `X-AI-Timestamp`
    - `X-AI-Signature`
 
+当前 Docker Compose 默认给 Python 设置 `CG_CALLBACK_VISUAL_ASSET_MODE=legacy-empty`，仅用于兼容当前旧 Java Docker 镜像：Python 仍生成并上传 visual assets 到 MinIO，完整 metadata 保留在 `rawResultJson.visualAssets`，但顶层 `visualAssets` 置空，避免旧镜像要求 `attachmentId` 导致回调失败。Java 镜像升级到支持 `bucketName + objectKey` 自动登记 attachment 后，将该变量改为 `metadata`。
+
 ## 5. Python 开发入口
 
 Python 服务目录：`backend-python`

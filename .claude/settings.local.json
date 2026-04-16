@@ -7,7 +7,8 @@
       "Bash(mvn test:*)",
       "Bash(ls ~/.m2/repository/org/apache/maven/surefire/surefire-api/3.1.2/*.jar)",
       "Bash(mvn test-compile:*)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Skill(update-config)"
     ]
   }
 }

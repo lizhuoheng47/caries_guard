@@ -43,6 +43,7 @@ class Settings:
         "docker-change-me-to-a-strong-analysis-callback-secret",
     )
     callback_retry_count: int = int_env("CG_CALLBACK_RETRY_COUNT", 3)
+    callback_visual_asset_mode: str = os.getenv("CG_CALLBACK_VISUAL_ASSET_MODE", "metadata")
     request_timeout_seconds: int = int_env("CG_REQUEST_TIMEOUT_SECONDS", 30)
 
     model_version: str = os.getenv("CG_MODEL_VERSION", "caries-v1")
@@ -62,4 +63,3 @@ class Settings:
     temp_dir: str = os.getenv("CG_TEMP_DIR", "/tmp/cariesguard")
 
     allow_bucket_create: bool = bool_env("CG_MINIO_ALLOW_BUCKET_CREATE", False)
-

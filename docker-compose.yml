@@ -127,6 +127,7 @@ services:
       CG_ANALYSIS_REQUESTED_ROUTING_KEY: ${CARIES_ANALYSIS_REQUESTED_ROUTING_KEY:-analysis.requested}
       CG_JAVA_CALLBACK_URL: http://backend-java:8080/api/v1/internal/ai/callbacks/analysis-result
       CG_ANALYSIS_CALLBACK_SECRET: ${CARIES_ANALYSIS_CALLBACK_SECRET:-docker-change-me-to-a-strong-analysis-callback-secret}
+      CG_CALLBACK_VISUAL_ASSET_MODE: ${CG_CALLBACK_VISUAL_ASSET_MODE:-legacy-empty}
       CG_MODEL_VERSION: ${CARIES_ANALYSIS_MODEL_VERSION:-caries-v1}
       CG_AI_DOWNLOAD_IMAGES: "true"
       CG_MINIO_ENDPOINT: http://minio:9000
