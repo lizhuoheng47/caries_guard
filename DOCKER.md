@@ -30,6 +30,13 @@ docker compose down -v
 
 当前数据库迁移已合并为单基线 `V001__baseline_schema.sql`。如果本机 Docker volume 里已经存在旧的 `flyway_schema_history`，需要先执行 `docker compose down -v` 后再启动；不要在有业务数据的库上直接清理。
 
+MySQL 容器首次启动时会自动执行 `infra/mysql/init/01_init_databases.sql`，同时建立两个库：
+
+- `caries_biz`：Java 业务平台库（系统 / 患者 / 病例 / 影像 / analysis 业务快照 / 报告 / 随访）
+- `caries_ai` ：Python AI / RAG / 模型治理库（推理运行、知识库、检索日志、模型版本）
+
+两库共享同一个 MySQL 实例，但归属、迁移工具、跨界协议在 `Documents/10_数据库归属矩阵_Java_Python.md` 锁定，禁止跨库 join 或 Python 直接写 Java 业务表。
+
 ## 2. 服务地址
 
 | 服务 | 容器内地址 | 宿主机访问 |

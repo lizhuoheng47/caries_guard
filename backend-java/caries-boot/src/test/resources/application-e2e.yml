@@ -1,6 +1,6 @@
 ﻿spring:
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/cg_e2e?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC&createDatabaseIfNotExist=true
+    url: jdbc:mysql://127.0.0.1:3306/caries_biz_e2e?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC&createDatabaseIfNotExist=true
     username: ${CARIES_E2E_DB_USER:root}
     password: ${CARIES_E2E_DB_PASS:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver

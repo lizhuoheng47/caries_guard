@@ -66,7 +66,7 @@ class Settings:
 
     mysql_host: str = os.getenv("CG_MYSQL_HOST", os.getenv("CARIES_MYSQL_HOST", "mysql"))
     mysql_port: int = int_env("CG_MYSQL_PORT", int_env("CARIES_MYSQL_PORT", 3306))
-    mysql_database: str = os.getenv("CG_MYSQL_DATABASE", os.getenv("CARIES_MYSQL_DATABASE", "cg"))
+    mysql_database: str = os.getenv("CG_MYSQL_DATABASE", "caries_ai")
     mysql_username: str = os.getenv("CG_MYSQL_USERNAME", os.getenv("CARIES_MYSQL_USERNAME", "root"))
     mysql_password: str = os.getenv("CG_MYSQL_PASSWORD", os.getenv("CARIES_MYSQL_PASSWORD", "1234"))
     mysql_connect_timeout_seconds: int = int_env("CG_MYSQL_CONNECT_TIMEOUT_SECONDS", 5)

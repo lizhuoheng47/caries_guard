@@ -113,7 +113,7 @@ http://backend-python:8001
 | `CG_TEMP_DIR` | `/tmp/cariesguard` | 临时目录 |
 | `CG_MYSQL_HOST` | `mysql` | Python AI/RAG 元数据 MySQL 主机 |
 | `CG_MYSQL_PORT` | `3306` | Python AI/RAG 元数据 MySQL 端口 |
-| `CG_MYSQL_DATABASE` | `cg` | Python AI/RAG 元数据 MySQL 数据库 |
+| `CG_MYSQL_DATABASE` | `caries_ai` | Python AI/RAG 元数据 MySQL 数据库（与 Java `caries_biz` 严格分离） |
 | `CG_MYSQL_USERNAME` | `root` | Python AI/RAG 元数据 MySQL 用户名 |
 | `CG_MYSQL_PASSWORD` | `1234` | Python AI/RAG 元数据 MySQL 密码 |
 | `CG_MYSQL_CONNECT_TIMEOUT_SECONDS` | `5` | MySQL 连接超时 |

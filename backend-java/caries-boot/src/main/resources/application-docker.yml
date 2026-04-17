@@ -1,6 +1,6 @@
 ﻿spring:
   datasource:
-    url: jdbc:mysql://${CARIES_MYSQL_HOST:mysql}:${CARIES_MYSQL_PORT:3306}/${CARIES_MYSQL_DATABASE:cg}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+    url: jdbc:mysql://${CARIES_MYSQL_HOST:mysql}:${CARIES_MYSQL_PORT:3306}/${CARIES_MYSQL_DATABASE:caries_biz}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
     username: ${CARIES_MYSQL_USERNAME:root}
     password: ${CARIES_MYSQL_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver

@@ -4,7 +4,6 @@ services:
     container_name: caries-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${CARIES_MYSQL_PASSWORD:-1234}
-      MYSQL_DATABASE: ${CARIES_MYSQL_DATABASE:-cg}
       TZ: Asia/Shanghai
     command:
       - --character-set-server=utf8mb4
@@ -14,6 +13,7 @@ services:
       - "${CARIES_MYSQL_HOST_PORT:-13306}:3306"
     volumes:
       - caries_mysql_data:/var/lib/mysql
+      - ./infra/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 10s
@@ -113,7 +113,7 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       CARIES_MYSQL_HOST: mysql
       CARIES_MYSQL_PORT: 3306
-      CARIES_MYSQL_DATABASE: ${CARIES_MYSQL_DATABASE:-cg}
+      CARIES_MYSQL_DATABASE: ${CARIES_MYSQL_DATABASE_BIZ:-caries_biz}
       CARIES_MYSQL_USERNAME: root
       CARIES_MYSQL_PASSWORD: ${CARIES_MYSQL_PASSWORD:-1234}
       CARIES_FLYWAY_CLEAN_DISABLED: ${CARIES_FLYWAY_CLEAN_DISABLED:-true}
@@ -180,7 +180,7 @@ services:
       CG_BUCKET_EXPORT: ${CARIES_BUCKET_EXPORT:-caries-export}
       CG_MYSQL_HOST: mysql
       CG_MYSQL_PORT: 3306
-      CG_MYSQL_DATABASE: ${CARIES_MYSQL_DATABASE:-cg}
+      CG_MYSQL_DATABASE: ${CARIES_MYSQL_DATABASE_AI:-caries_ai}
       CG_MYSQL_USERNAME: root
       CG_MYSQL_PASSWORD: ${CARIES_MYSQL_PASSWORD:-1234}
       CG_RAG_INDEX_DIR: ${CG_RAG_INDEX_DIR:-/tmp/cariesguard/vector-index}

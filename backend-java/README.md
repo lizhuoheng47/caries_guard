@@ -2,7 +2,7 @@
 
 ## 当前基线
 
-本文档按当前仓库代码、单基线 Flyway 迁移和本机 `cg` 数据库口径重写。
+本文档按当前仓库代码、单基线 Flyway 迁移和本机 `caries_biz` 数据库口径重写（业务平台库与 Python `caries_ai` 库的归属边界见 `Documents/10_数据库归属矩阵_Java_Python.md`）。
 
 当前项目是 `Spring Boot 3.2.12 + JDK 17` 的多模块单体后端，已经实现以下业务域：
 
@@ -16,14 +16,14 @@
 
 ## 当前数据库现状
 
-本地默认库为 `cg`，`application-local.yml` 配置如下：
+本地默认库为 `caries_biz`，`application-local.yml` 配置如下：
 
 - host: `127.0.0.1:3306`
-- database: `cg`
+- database: `caries_biz`
 - username: `root`
 - password: `1234`
 
-`cg` 当前共有 `38` 张表，其中：
+`caries_biz` 当前共有 `38` 张表，其中：
 
 - `1` 条 Flyway 基线迁移：`V001__baseline_schema.sql`
 - `37` 张业务表/系统表
