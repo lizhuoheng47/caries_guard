@@ -19,6 +19,9 @@ import com.cariesguard.report.domain.model.ReportCaseModel;
 import com.cariesguard.report.domain.model.ReportImageModel;
 import com.cariesguard.report.domain.model.ReportRecordModel;
 import com.cariesguard.report.domain.model.ReportRiskAssessmentModel;
+import com.cariesguard.report.domain.model.ReportRenderDataModel;
+import com.cariesguard.report.domain.model.ReportToothRecordModel;
+import com.cariesguard.report.domain.model.ReportVisualAssetModel;
 import com.cariesguard.report.domain.repository.ReportExportLogRepository;
 import com.cariesguard.report.domain.repository.ReportRecordRepository;
 import com.cariesguard.report.domain.repository.ReportSourceQueryRepository;
@@ -35,6 +38,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -78,12 +82,17 @@ class ReportAppServiceTests {
         when(reportSourceQueryRepository.findCase(3001L)).thenReturn(Optional.of(
                 new ReportCaseModel(3001L, "CASE202604130001", 4001L, "REVIEW_PENDING", 2001L)));
         when(reportSourceQueryRepository.findLatestSummary(3001L)).thenReturn(Optional.of(
-                new ReportAnalysisSummaryModel(1L, "{\"k\":1}", "C2", new BigDecimal("0.18"), "1")));
+                new ReportAnalysisSummaryModel(1L, 9001L, "{\"k\":1}", "C2", new BigDecimal("0.18"), "1", 2, 1)));
         when(reportSourceQueryRepository.listCaseImages(3001L)).thenReturn(List.of(
                 new ReportImageModel(5001L, 6001L, "PANORAMIC", "PASS", "1", "caries-image", "case-image/a.jpg", "a.jpg")));
+        when(reportSourceQueryRepository.listToothRecords(3001L)).thenReturn(List.of(
+                new ReportToothRecordModel(5101L, 5001L, "16", "OCCLUSAL", "CARIES", "C2", "suspected lesion", "review", 0)));
+        when(reportSourceQueryRepository.listVisualAssetsByTaskId(9001L)).thenReturn(List.of(
+                new ReportVisualAssetModel(5201L, 9001L, "OVERLAY", 6201L, 5001L, 6001L, "16", 0,
+                        "caries-visual", "visual/overlay.png", "image/png", "overlay.png")));
         when(reportSourceQueryRepository.findLatestRiskAssessment(3001L)).thenReturn(Optional.of(
                 new ReportRiskAssessmentModel(9001L, "HIGH", "{\"risk\":1}", 30, LocalDateTime.now())));
-        when(reportSourceQueryRepository.findLatestCorrection(3001L)).thenReturn(Optional.empty());
+        when(reportSourceQueryRepository.listCorrections(3001L)).thenReturn(List.of());
         when(reportRecordRepository.nextVersionNo(3001L, "DOCTOR")).thenReturn(1);
         when(reportTemplateResolver.resolveContent(2001L, "DOCTOR")).thenReturn("template");
         when(reportRenderService.render(any(), any(), any())).thenReturn("rendered");
@@ -100,6 +109,13 @@ class ReportAppServiceTests {
         verify(reportRecordRepository).createAttachment(any());
         verify(reportRecordRepository).updateArchiveInfo(any(), any(), eq("FINAL"), any(), eq(1001L));
         verify(caseCommandAppService).transitionStatus(eq(3001L), any());
+        ArgumentCaptor<ReportRenderDataModel> renderDataCaptor = ArgumentCaptor.forClass(ReportRenderDataModel.class);
+        verify(reportRenderService).render(eq("template"), any(), renderDataCaptor.capture());
+        ReportRenderDataModel renderData = renderDataCaptor.getValue();
+        assertThat(renderData.imageCount()).isEqualTo(1);
+        assertThat(renderData.toothRecordCount()).isEqualTo(1);
+        assertThat(renderData.visualAssetCount()).isEqualTo(1);
+        assertThat(renderData.correctionCount()).isZero();
     }
 
     @Test

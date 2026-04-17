@@ -29,8 +29,9 @@ public class ReportTemplateDomainService {
                     Case No: {{caseNo}}
                     Risk Level: {{riskLevelCode}}
                     Possible Findings: {{highestSeverity}}
+                    Summary: {{clinicalSummary}}
                     Recheck Suggestion (days): {{recommendedCycleDays}}
-                    Care Suggestion: Keep brushing and reduce sugar intake.
+                    Care Suggestion: {{patientAdvice}}
                     """;
         }
         return """
@@ -38,11 +39,20 @@ public class ReportTemplateDomainService {
                 Case No: {{caseNo}}
                 Severity: {{highestSeverity}}
                 Uncertainty: {{uncertaintyScore}}
+                Lesion Count: {{lesionCount}}
+                Abnormal Tooth Count: {{abnormalToothCount}}
                 Risk Level: {{riskLevelCode}}
                 Suggested Cycle (days): {{recommendedCycleDays}}
                 Review Suggested: {{reviewSuggestedFlag}}
+                Images:
+                {{images}}
+                Tooth Findings:
+                {{toothFindings}}
+                Visual Assets:
+                {{visualAssets}}
+                Corrections:
+                {{corrections}}
                 Doctor Conclusion: {{doctorConclusion}}
                 """;
     }
 }
-

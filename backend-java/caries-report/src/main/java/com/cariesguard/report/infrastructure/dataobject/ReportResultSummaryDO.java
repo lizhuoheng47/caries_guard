@@ -11,6 +11,7 @@ public class ReportResultSummaryDO {
 
     @TableId(type = IdType.INPUT)
     private Long id;
+    private Long taskId;
     private Long caseId;
     private String rawResultJson;
     private String overallHighestSeverity;
@@ -26,6 +27,8 @@ public class ReportResultSummaryDO {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public Long getTaskId() { return taskId; }
+    public void setTaskId(Long taskId) { this.taskId = taskId; }
     public Long getCaseId() { return caseId; }
     public void setCaseId(Long caseId) { this.caseId = caseId; }
     public String getRawResultJson() { return rawResultJson; }

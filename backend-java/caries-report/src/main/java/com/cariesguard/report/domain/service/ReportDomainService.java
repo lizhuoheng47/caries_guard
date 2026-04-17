@@ -66,7 +66,9 @@ public class ReportDomainService {
                 + ", type=" + renderData.reportTypeCode()
                 + ", severity=" + severity
                 + ", risk=" + risk
-                + ", images=" + renderData.imageCount();
+                + ", images=" + renderData.imageCount()
+                + ", teeth=" + renderData.toothRecordCount()
+                + ", visuals=" + renderData.visualAssetCount()
+                + ", corrections=" + renderData.correctionCount();
     }
 }
-

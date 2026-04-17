@@ -25,6 +25,8 @@ import com.cariesguard.report.domain.model.ReportImageModel;
 import com.cariesguard.report.domain.model.ReportRecordModel;
 import com.cariesguard.report.domain.model.ReportRenderDataModel;
 import com.cariesguard.report.domain.model.ReportRiskAssessmentModel;
+import com.cariesguard.report.domain.model.ReportToothRecordModel;
+import com.cariesguard.report.domain.model.ReportVisualAssetModel;
 import com.cariesguard.report.domain.repository.ReportExportLogRepository;
 import com.cariesguard.report.domain.repository.ReportRecordRepository;
 import com.cariesguard.report.domain.repository.ReportSourceQueryRepository;
@@ -121,8 +123,11 @@ public class ReportAppService {
         ReportAnalysisSummaryModel summary = reportSourceQueryRepository.findLatestSummary(caseId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Analysis summary does not exist"));
         List<ReportImageModel> images = reportSourceQueryRepository.listCaseImages(caseId);
+        List<ReportToothRecordModel> toothRecords = reportSourceQueryRepository.listToothRecords(caseId);
+        List<ReportVisualAssetModel> visualAssets = reportSourceQueryRepository.listVisualAssetsByTaskId(summary.taskId());
         Optional<ReportRiskAssessmentModel> riskAssessment = reportSourceQueryRepository.findLatestRiskAssessment(caseId);
-        Optional<ReportCorrectionModel> correction = reportSourceQueryRepository.findLatestCorrection(caseId);
+        List<ReportCorrectionModel> corrections = reportSourceQueryRepository.listCorrections(caseId);
+        Optional<ReportCorrectionModel> latestCorrection = corrections.stream().reduce((first, second) -> second);
         LocalDateTime generatedAt = LocalDateTime.now();
 
         long reportId = IdWorker.getId();
@@ -133,13 +138,17 @@ public class ReportAppService {
                 medicalCase.caseId(),
                 medicalCase.patientId(),
                 reportTypeCode,
-                images.size(),
+                images,
+                toothRecords,
+                visualAssets,
                 summary.overallHighestSeverity(),
                 summary.uncertaintyScore(),
+                summary.lesionCount(),
+                summary.abnormalToothCount(),
                 riskAssessment.map(ReportRiskAssessmentModel::overallRiskLevelCode).orElse(null),
                 riskAssessment.map(ReportRiskAssessmentModel::recommendedCycleDays).orElse(null),
                 summary.reviewSuggestedFlag(),
-                correction.map(ReportCorrectionModel::correctedTruthJson).orElse(null),
+                corrections,
                 trimToNull(command.doctorConclusion()),
                 generatedAt);
 
@@ -150,7 +159,7 @@ public class ReportAppService {
                 medicalCase.patientId(),
                 summary.summaryId(),
                 riskAssessment.map(ReportRiskAssessmentModel::riskAssessmentId).orElse(null),
-                correction.map(ReportCorrectionModel::correctionId).orElse(null),
+                latestCorrection.map(ReportCorrectionModel::correctionId).orElse(null),
                 reportTypeCode,
                 versionNo,
                 reportDomainService.draftStatus(),

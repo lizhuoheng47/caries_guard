@@ -8,7 +8,8 @@
       "Bash(mvn -q -pl caries-integration -am test -Dtest='AnalysisWorkflowE2ETests,AnalysisReportE2E*' -Dsurefire.failIfNoSpecifiedTests=false)",
       "Bash(mvn -pl caries-integration -am test -Dtest='AnalysisWorkflowE2ETests,AnalysisReportE2ETests' -Dsurefire.failIfNoSpecifiedTests=false)",
       "Bash(mvn -pl caries-integration -am test -Dtest='AnalysisReportFollowupE2ETest,AnalysisToReportE2ETest,AnalysisCallbackIdempotencyE2ETest,AnalysisWorkflowE2ETests')",
-      "Bash(mvn -pl caries-integration -am test -Dtest='AnalysisReportFollowupE2ETest,AnalysisToReportE2ETest,AnalysisCallbackIdempotencyE2ETest,AnalysisWorkflowE2ETests' -Dsurefire.failIfNoSpecifiedTests=false)"
+      "Bash(mvn -pl caries-integration -am test -Dtest='AnalysisReportFollowupE2ETest,AnalysisToReportE2ETest,AnalysisCallbackIdempotencyE2ETest,AnalysisWorkflowE2ETests' -Dsurefire.failIfNoSpecifiedTests=false)",
+      "Bash(./mvnw -q -pl caries-analysis -am test -Dtest='AnalysisCallbackAppServiceTests')"
     ]
   }
 }
