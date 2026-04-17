@@ -65,6 +65,7 @@ public class ReportAppService {
     private final ReportDomainService reportDomainService;
     private final ReportTemplateResolver reportTemplateResolver;
     private final ReportRenderService reportRenderService;
+    private final RagAppService ragAppService;
     private final ReportPdfService reportPdfService;
     private final ObjectStorageService objectStorageService;
     private final AttachmentAppService attachmentAppService;
@@ -78,6 +79,7 @@ public class ReportAppService {
                             ReportDomainService reportDomainService,
                             ReportTemplateResolver reportTemplateResolver,
                             ReportRenderService reportRenderService,
+                            RagAppService ragAppService,
                             ReportPdfService reportPdfService,
                             ObjectStorageService objectStorageService,
                             AttachmentAppService attachmentAppService,
@@ -89,6 +91,7 @@ public class ReportAppService {
         this.reportDomainService = reportDomainService;
         this.reportTemplateResolver = reportTemplateResolver;
         this.reportRenderService = reportRenderService;
+        this.ragAppService = ragAppService;
         this.reportPdfService = reportPdfService;
         this.objectStorageService = objectStorageService;
         this.attachmentAppService = attachmentAppService;
@@ -107,7 +110,7 @@ public class ReportAppService {
                             CaseCommandAppService caseCommandAppService,
                             FollowupTriggerService followupTriggerService) {
         this(reportSourceQueryRepository, reportRecordRepository, reportExportLogRepository,
-                reportDomainService, reportTemplateResolver, reportRenderService, reportPdfService,
+                reportDomainService, reportTemplateResolver, reportRenderService, null, reportPdfService,
                 objectStorageService, null, caseCommandAppService, followupTriggerService);
     }
 
@@ -150,7 +153,9 @@ public class ReportAppService {
                 summary.reviewSuggestedFlag(),
                 corrections,
                 trimToNull(command.doctorConclusion()),
+                null,
                 generatedAt);
+        renderData = renderData.withPatientExplanation(patientExplanation(reportTypeCode, reportNo, renderData));
 
         ReportGenerateModel draftRecord = new ReportGenerateModel(
                 reportId,
@@ -381,6 +386,13 @@ public class ReportAppService {
 
     private String reportAssetType(String reportTypeCode) {
         return "PATIENT".equalsIgnoreCase(reportTypeCode) ? "PATIENT_REPORT" : "DOCTOR_REPORT";
+    }
+
+    private String patientExplanation(String reportTypeCode, String reportNo, ReportRenderDataModel renderData) {
+        if (!"PATIENT".equalsIgnoreCase(reportTypeCode) || ragAppService == null) {
+            return null;
+        }
+        return trimToNull(ragAppService.generatePatientReportExplanation(reportNo, renderData));
     }
 
     private String md5(byte[] bytes) {

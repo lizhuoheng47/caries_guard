@@ -30,6 +30,7 @@ public class ReportTemplateDomainService {
                     Risk Level: {{riskLevelCode}}
                     Possible Findings: {{highestSeverity}}
                     Summary: {{clinicalSummary}}
+                    Patient Explanation: {{patientExplanation}}
                     Recheck Suggestion (days): {{recommendedCycleDays}}
                     Care Suggestion: {{patientAdvice}}
                     """;

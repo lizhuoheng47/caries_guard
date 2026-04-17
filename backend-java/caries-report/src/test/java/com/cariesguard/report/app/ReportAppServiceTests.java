@@ -62,6 +62,8 @@ class ReportAppServiceTests {
     @Mock
     private ReportRenderService reportRenderService;
     @Mock
+    private RagAppService ragAppService;
+    @Mock
     private ReportPdfService reportPdfService;
     @Mock
     private ObjectStorageService objectStorageService;
@@ -119,6 +121,39 @@ class ReportAppServiceTests {
     }
 
     @Test
+    void generatePatientReportShouldUseRagExplanationWhenAvailable() throws IOException {
+        ReportAppService appService = createService(ragAppService);
+        setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
+        when(reportSourceQueryRepository.findCase(3001L)).thenReturn(Optional.of(
+                new ReportCaseModel(3001L, "CASE202604130001", 4001L, "REVIEW_PENDING", 2001L)));
+        when(reportSourceQueryRepository.findLatestSummary(3001L)).thenReturn(Optional.of(
+                new ReportAnalysisSummaryModel(1L, 9001L, "{\"k\":1}", "C2", new BigDecimal("0.18"), "1", 2, 1)));
+        when(reportSourceQueryRepository.listCaseImages(3001L)).thenReturn(List.of(
+                new ReportImageModel(5001L, 6001L, "PANORAMIC", "PASS", "1", "caries-image", "case-image/a.jpg", "a.jpg")));
+        when(reportSourceQueryRepository.listToothRecords(3001L)).thenReturn(List.of(
+                new ReportToothRecordModel(5101L, 5001L, "16", "OCCLUSAL", "CARIES", "C2", "suspected lesion", "review", 0)));
+        when(reportSourceQueryRepository.listVisualAssetsByTaskId(9001L)).thenReturn(List.of());
+        when(reportSourceQueryRepository.findLatestRiskAssessment(3001L)).thenReturn(Optional.of(
+                new ReportRiskAssessmentModel(9001L, "HIGH", "{\"risk\":1}", 30, LocalDateTime.now())));
+        when(reportSourceQueryRepository.listCorrections(3001L)).thenReturn(List.of());
+        when(reportRecordRepository.nextVersionNo(3001L, "PATIENT")).thenReturn(1);
+        when(ragAppService.generatePatientReportExplanation(any(), any())).thenReturn("RAG patient explanation");
+        when(reportTemplateResolver.resolveContent(2001L, "PATIENT")).thenReturn("template");
+        when(reportRenderService.render(any(), any(), any())).thenReturn("rendered");
+        when(reportPdfService.generatePdf("rendered")).thenReturn(new byte[] {1, 2, 3});
+        when(objectStorageService.store(any(ObjectStoreCommand.class))).thenReturn(
+                new StoredObject("caries-report", "report/2026/04/15/report/rpt.pdf", "rpt.pdf", "application/pdf", 3L, "md5", "MINIO"));
+
+        ReportGenerateResultVO result = appService.generateReport(3001L, new GenerateReportCommand("PATIENT", null, null));
+
+        assertThat(result.reportTypeCode()).isEqualTo("PATIENT");
+        ArgumentCaptor<ReportRenderDataModel> renderDataCaptor = ArgumentCaptor.forClass(ReportRenderDataModel.class);
+        verify(reportRenderService).render(eq("template"), any(), renderDataCaptor.capture());
+        assertThat(renderDataCaptor.getValue().patientExplanation()).isEqualTo("RAG patient explanation");
+        verify(ragAppService).generatePatientReportExplanation(any(), any());
+    }
+
+    @Test
     void exportReportShouldCopyToExportBucketAndWriteAuditLog() throws IOException {
         ReportAppService appService = createService();
         setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
@@ -142,6 +177,10 @@ class ReportAppServiceTests {
     }
 
     private ReportAppService createService() {
+        return createService(null);
+    }
+
+    private ReportAppService createService(RagAppService ragAppService) {
         return new ReportAppService(
                 reportSourceQueryRepository,
                 reportRecordRepository,
@@ -149,8 +188,10 @@ class ReportAppServiceTests {
                 new ReportDomainService(),
                 reportTemplateResolver,
                 reportRenderService,
+                ragAppService,
                 reportPdfService,
                 objectStorageService,
+                null,
                 caseCommandAppService,
                 followupTriggerService);
     }

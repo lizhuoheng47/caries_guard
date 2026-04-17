@@ -21,6 +21,7 @@ public record ReportRenderDataModel(
         String reviewSuggestedFlag,
         List<ReportCorrectionModel> corrections,
         String doctorConclusion,
+        String patientExplanation,
         LocalDateTime generatedAt) {
 
     public int imageCount() {
@@ -37,5 +38,27 @@ public record ReportRenderDataModel(
 
     public int correctionCount() {
         return corrections == null ? 0 : corrections.size();
+    }
+
+    public ReportRenderDataModel withPatientExplanation(String patientExplanation) {
+        return new ReportRenderDataModel(
+                caseNo,
+                caseId,
+                patientId,
+                reportTypeCode,
+                images,
+                toothRecords,
+                visualAssets,
+                highestSeverity,
+                uncertaintyScore,
+                lesionCount,
+                abnormalToothCount,
+                riskLevelCode,
+                recommendedCycleDays,
+                reviewSuggestedFlag,
+                corrections,
+                doctorConclusion,
+                patientExplanation,
+                generatedAt);
     }
 }

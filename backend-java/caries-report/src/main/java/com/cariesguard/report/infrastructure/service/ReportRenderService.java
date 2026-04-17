@@ -38,6 +38,7 @@ public class ReportRenderService {
         placeholders.put("corrections", formatCorrections(renderData.corrections()));
         placeholders.put("clinicalSummary", clinicalSummary(renderData));
         placeholders.put("patientAdvice", patientAdvice(renderData));
+        placeholders.put("patientExplanation", patientExplanation(renderData));
         placeholders.put("doctorConclusion", value(renderData.doctorConclusion()));
         placeholders.put("generatedAt", value(renderData.generatedAt()));
 
@@ -129,5 +130,11 @@ public class ReportRenderService {
         String cycle = renderData.recommendedCycleDays() == null ? "按医生建议" : renderData.recommendedCycleDays() + " 天左右";
         return "请保持早晚刷牙、减少含糖食物和饮料，并在 " + cycle + " 复查。"
                 + " 如出现疼痛、肿胀或牙体缺损，请及时到口腔科就诊。当前风险等级：" + riskLevel + "。";
+    }
+
+    private String patientExplanation(ReportRenderDataModel renderData) {
+        return renderData.patientExplanation() == null || renderData.patientExplanation().isBlank()
+                ? patientAdvice(renderData)
+                : renderData.patientExplanation();
     }
 }

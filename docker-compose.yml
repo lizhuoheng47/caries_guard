@@ -136,6 +136,7 @@ services:
       CARIES_BUCKET_EXPORT: ${CARIES_BUCKET_EXPORT:-caries-export}
       CARIES_ANALYSIS_CALLBACK_SECRET: ${CARIES_ANALYSIS_CALLBACK_SECRET:-docker-change-me-to-a-strong-analysis-callback-secret}
       CARIES_ANALYSIS_MODEL_VERSION: ${CARIES_ANALYSIS_MODEL_VERSION:-caries-v1}
+      CARIES_RAG_BASE_URL: http://backend-python:8001/ai/v1
       TZ: Asia/Shanghai
     ports:
       - "${CARIES_BACKEND_JAVA_HOST_PORT:-8080}:8080"
