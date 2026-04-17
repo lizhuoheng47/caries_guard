@@ -70,6 +70,12 @@ class Settings:
     mysql_username: str = os.getenv("CG_MYSQL_USERNAME", os.getenv("CARIES_MYSQL_USERNAME", "root"))
     mysql_password: str = os.getenv("CG_MYSQL_PASSWORD", os.getenv("CARIES_MYSQL_PASSWORD", "1234"))
     mysql_connect_timeout_seconds: int = int_env("CG_MYSQL_CONNECT_TIMEOUT_SECONDS", 5)
+    db_pool_size: int = int_env("CG_DB_POOL_SIZE", 5)
+    db_max_overflow: int = int_env("CG_DB_MAX_OVERFLOW", 10)
+    db_pool_recycle_seconds: int = int_env("CG_DB_POOL_RECYCLE_SECONDS", 1800)
+    db_echo: bool = bool_env("CG_DB_ECHO", False)
+    db_schema_bootstrap_enabled: bool = bool_env("CG_DB_SCHEMA_BOOTSTRAP_ENABLED", True)
+    db_migration_enabled: bool = bool_env("CG_DB_MIGRATION_ENABLED", False)
     rag_index_dir: str = os.getenv("CG_RAG_INDEX_DIR", "/tmp/cariesguard/vector-index")
     rag_default_kb_code: str = os.getenv("CG_RAG_DEFAULT_KB_CODE", "caries-default")
     rag_default_kb_name: str = os.getenv("CG_RAG_DEFAULT_KB_NAME", "CariesGuard Default Knowledge Base")
@@ -79,3 +85,9 @@ class Settings:
     rag_top_k: int = int_env("CG_RAG_TOP_K", 5)
     llm_provider_code: str = os.getenv("CG_LLM_PROVIDER_CODE", "MOCK")
     llm_model_name: str = os.getenv("CG_LLM_MODEL_NAME", "template-llm-v1")
+
+    def build_mysql_url(self) -> str:
+        return (
+            f"mysql+pymysql://{self.mysql_username}:{self.mysql_password}"
+            f"@{self.mysql_host}:{self.mysql_port}/{self.mysql_database}?charset=utf8mb4"
+        )

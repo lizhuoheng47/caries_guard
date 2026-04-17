@@ -1,0 +1,17 @@
+﻿{
+    "code":  "00000",
+    "message":  "success",
+    "data":  {
+                 "token":  "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJJZCI6MTAwMDAxLCJvcmdJZCI6MTAwMDAxLCJyb2xlcyI6WyJTWVNfQURNSU4iXSwiaWF0IjoxNzc2NDE2OTY4LCJleHAiOjE3NzY0MjQxNjh9.bGqD5dc5cPTGC-FZvL9wDbr_yGTryikks-4QnAR2T9KomjbsrV7DaMRZ2cqY_NrT",
+                 "expireIn":  7200,
+                 "user":  {
+                              "userId":  100001,
+                              "username":  "admin",
+                              "nickName":  "Admin",
+                              "userTypeCode":  "ADMIN",
+                              "orgId":  100001
+                          }
+             },
+    "traceId":  "4bedeb88e65a4f27a05e23f2f31e7330",
+    "timestamp":  "2026-04-17T09:09:28.574775893Z"
+}

@@ -1,0 +1,10 @@
+﻿{
+    "evidenceDir":  "E:\\caries_guard\\e2e-artifacts\\phase3-rag-20260417-170726",
+    "caseId":  1776416967980539,
+    "reportId":  2045067109798940673,
+    "doctorRequestCount":  1,
+    "patientRequestCount":  1,
+    "retrievalCount":  8,
+    "llmCount":  2,
+    "vectorStorePath":  "/tmp/cariesguard/vector-index/caries-default.json"
+}

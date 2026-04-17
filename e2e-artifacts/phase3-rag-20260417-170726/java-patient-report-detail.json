@@ -1,0 +1,84 @@
+﻿{
+    "code":  "00000",
+    "message":  "success",
+    "data":  {
+                 "reportId":  2045067109798940673,
+                 "reportNo":  "RPT20260417940673",
+                 "caseId":  1776416967980539,
+                 "caseNo":  "P3E2E1776416967980536",
+                 "patientId":  1776416967980537,
+                 "attachmentId":  2045067112193888258,
+                 "sourceSummaryId":  1776416967980545,
+                 "sourceRiskAssessmentId":  1776416967980546,
+                 "sourceCorrectionId":  null,
+                 "reportTypeCode":  "PATIENT",
+                 "reportStatusCode":  "FINAL",
+                 "versionNo":  1,
+                 "summaryText":  "case=P3E2E1776416967980536, type=PATIENT, severity=C2, risk=HIGH, images=1, teeth=1, visuals=1, corrections=0, patientExplanation=æ ¹æ®æ¬æ¬¡æ£ç´¢å°çå·²å®¡æ ¸èµæï¼å¯ä»¥åæ£è\u0085è¿æ ·è§£éï¼Medium or high caries risk means the patient may need shorter recall intervals, diet counseling, fluoride use, and confiï¼Medium or high caries risk means the patient may need shorter recall intervals, diet counseling, fluoride use, and confiï¼For caries prevention, patients should brush twice daily with fluoride toothpaste, reduce frequent sugar intake, and retãè¯·ä¿ææ¥å¸¸æ¸\u0085æ´ï¼æ§å¶å«ç³é¥®é£ï¼å¹¶æé£é©ç­çº§å®æå¤æ¥ï¼è¥çç¶å éï¼åºåæ¶å°±è¯ã ä¾æ®ï¼[1] [2] [3] [4] [5]",
+                 "analysisSummary":  {
+                                         "summaryId":  1776416967980545,
+                                         "taskId":  1776416967980544,
+                                         "overallHighestSeverity":  "C2",
+                                         "uncertaintyScore":  0.2400,
+                                         "reviewSuggestedFlag":  "1",
+                                         "lesionCount":  2,
+                                         "abnormalToothCount":  1
+                                     },
+                 "riskAssessment":  {
+                                        "riskAssessmentId":  1776416967980546,
+                                        "overallRiskLevelCode":  "HIGH",
+                                        "assessmentReportJson":  "{\"phase\": \"phase3-e2e\", \"riskFactor\": \"frequent sugar intake\"}",
+                                        "recommendedCycleDays":  30,
+                                        "assessedAt":  "2026-04-17T09:09:29"
+                                    },
+                 "images":  [
+                                {
+                                    "imageId":  1776416967980541,
+                                    "attachmentId":  1776416967980540,
+                                    "imageTypeCode":  "PANORAMIC",
+                                    "qualityStatusCode":  "PASS",
+                                    "primaryFlag":  "1",
+                                    "bucketName":  "caries-image",
+                                    "objectKey":  "phase3/e2e/phase3e2e1776416967980536/image.jpg",
+                                    "originalName":  "phase3-e2e-image.jpg"
+                                }
+                            ],
+                 "toothRecords":  [
+                                      {
+                                          "toothRecordId":  1776416967980547,
+                                          "sourceImageId":  1776416967980541,
+                                          "toothCode":  "16",
+                                          "toothSurfaceCode":  "OCCLUSAL",
+                                          "issueTypeCode":  "CARIES",
+                                          "severityCode":  "C2",
+                                          "findingDesc":  "Suspicious occlusal lesion with moderate risk.",
+                                          "suggestion":  "Review image and reinforce fluoride care.",
+                                          "sortOrder":  0
+                                      }
+                                  ],
+                 "visualAssets":  [
+                                      {
+                                          "visualAssetId":  1776416967980543,
+                                          "taskId":  1776416967980544,
+                                          "assetTypeCode":  "HEATMAP",
+                                          "attachmentId":  1776416967980542,
+                                          "relatedImageId":  1776416967980541,
+                                          "sourceAttachmentId":  1776416967980540,
+                                          "toothCode":  "16",
+                                          "sortOrder":  0,
+                                          "bucketName":  "caries-visual",
+                                          "objectKey":  "phase3/e2e/phase3e2e1776416967980536/heatmap.png",
+                                          "contentType":  "image/png",
+                                          "originalName":  "phase3-e2e-heatmap.png"
+                                      }
+                                  ],
+                 "corrections":  [
+
+                                 ],
+                 "generatedAt":  "2026-04-17T17:09:29",
+                 "signedAt":  null,
+                 "createdAt":  "2026-04-17T09:09:29"
+             },
+    "traceId":  "212eaaa4fc834aeb833961112c89d402",
+    "timestamp":  "2026-04-17T09:09:29.831057557Z"
+}
