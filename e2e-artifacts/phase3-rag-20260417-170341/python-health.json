@@ -1,0 +1,22 @@
+﻿{
+    "code":  "00000",
+    "message":  "success",
+    "data":  {
+                 "status":  "UP",
+                 "mode":  "mock",
+                 "modelRegistry":  {
+                                       "modelVersion":  "caries-v1",
+                                       "status":  "MOCK"
+                                   },
+                 "dependencies":  {
+                                      "minioEndpoint":  "http://minio:9000",
+                                      "rabbitHost":  "rabbitmq",
+                                      "mysqlHost":  "mysql",
+                                      "mysqlPort":  3306,
+                                      "mysqlDatabase":  "caries_ai",
+                                      "ragIndexDir":  "/tmp/cariesguard/vector-index"
+                                  }
+             },
+    "traceId":  "health",
+    "timestamp":  "2026-04-17T09:04:41"
+}

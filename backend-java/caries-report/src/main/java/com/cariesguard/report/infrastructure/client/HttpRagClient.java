@@ -34,6 +34,7 @@ public class HttpRagClient implements RagClient {
     @Autowired
     public HttpRagClient(RagProperties properties, ObjectMapper objectMapper) {
         this(properties, objectMapper, HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(timeout(properties.getConnectTimeoutMillis()))
                 .build());
     }
@@ -58,7 +59,9 @@ public class HttpRagClient implements RagClient {
         try {
             String requestBody = objectMapper.writeValueAsString(requestPayload);
             HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint(path)))
+                    .version(HttpClient.Version.HTTP_1_1)
                     .timeout(timeout(properties.getRequestTimeoutMillis()))
+                    .header("Accept", "application/json")
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();

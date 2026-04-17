@@ -1,0 +1,44 @@
+﻿[
+    {
+        "code":  "00000",
+        "message":  "success",
+        "data":  {
+                     "kbCode":  "caries-default",
+                     "kbId":  1,
+                     "docId":  1,
+                     "docNo":  "DOC-D9AA0E3A6CDD41EF",
+                     "docTitle":  "Phase3 E2E - Patient care advice",
+                     "reviewStatusCode":  "APPROVED"
+                 },
+        "traceId":  null,
+        "timestamp":  "2026-04-17T09:04:41"
+    },
+    {
+        "code":  "00000",
+        "message":  "success",
+        "data":  {
+                     "kbCode":  "caries-default",
+                     "kbId":  1,
+                     "docId":  2,
+                     "docNo":  "DOC-3DAA2E8A75A04FD0",
+                     "docTitle":  "Phase3 E2E - Doctor uncertainty workflow",
+                     "reviewStatusCode":  "APPROVED"
+                 },
+        "traceId":  null,
+        "timestamp":  "2026-04-17T09:04:41"
+    },
+    {
+        "code":  "00000",
+        "message":  "success",
+        "data":  {
+                     "kbCode":  "caries-default",
+                     "kbId":  1,
+                     "docId":  3,
+                     "docNo":  "DOC-C90AAE6D6E684AA5",
+                     "docTitle":  "Phase3 E2E - Caries risk explanation",
+                     "reviewStatusCode":  "APPROVED"
+                 },
+        "traceId":  null,
+        "timestamp":  "2026-04-17T09:04:41"
+    }
+]

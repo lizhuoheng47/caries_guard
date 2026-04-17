@@ -1,0 +1,10 @@
+﻿id	doc_no	doc_title	review_status_code	created_at
+3	DOC-C90AAE6D6E684AA5	Phase3 E2E - Caries risk explanation	APPROVED	2026-04-17 09:04:41
+2	DOC-3DAA2E8A75A04FD0	Phase3 E2E - Doctor uncertainty workflow	APPROVED	2026-04-17 09:04:41
+1	DOC-D9AA0E3A6CDD41EF	Phase3 E2E - Patient care advice	APPROVED	2026-04-17 09:04:41
+id	rebuild_job_no	rebuild_status_code	chunk_count	vector_store_path	started_at	finished_at
+1	KBREBUILD-5FC17F3AD0044B9B	SUCCESS	3	/tmp/cariesguard/vector-index/caries-default.json	2026-04-17 09:04:41	2026-04-17 09:04:41
+id	kb_id	doc_id	chunk_no	chunk_preview
+3	1	3	1	Medium or high caries risk means the patient may need shorter recall intervals, diet counseling, fluoride use, and confi
+2	1	2	1	High uncertainty cases should be reviewed by a dentist using original images, tooth-level findings, visual overlays, and
+1	1	1	1	For caries prevention, patients should brush twice daily with fluoride toothpaste, reduce frequent sugar intake, and ret
