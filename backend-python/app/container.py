@@ -8,6 +8,7 @@ from app.infra.vector.simple_vector_store import SimpleVectorStore
 from app.pipelines.detection_pipeline import DetectionPipeline
 from app.pipelines.inference_pipeline import InferencePipeline
 from app.pipelines.quality_pipeline import QualityPipeline
+from app.pipelines.segmentation_pipeline import SegmentationPipeline
 from app.repositories.ai_runtime_repository import AiRuntimeRepository
 from app.repositories.governance_repository import GovernanceRepository
 from app.repositories.metadata_repository import MetadataRepository
@@ -50,6 +51,7 @@ class AppContainer:
 
         self.quality_pipeline = QualityPipeline(self.model_registry, settings)
         self.detection_pipeline = DetectionPipeline(self.model_registry, settings)
+        self.segmentation_pipeline = SegmentationPipeline(self.model_registry, settings)
         self.model_switch_service = ModelSwitchService(self.model_registry, settings)
 
         self.pipeline = InferencePipeline(
@@ -60,6 +62,7 @@ class AppContainer:
             model_registry=self.model_registry,
             quality_pipeline=self.quality_pipeline,
             detection_pipeline=self.detection_pipeline,
+            segmentation_pipeline=self.segmentation_pipeline,
         )
 
 

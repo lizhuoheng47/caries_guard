@@ -8,8 +8,10 @@ def _pipeline(mode: str) -> InferencePipeline:
         settings=Settings(callback_visual_asset_mode=mode),
         image_fetch_service=None,
         visual_asset_service=None,
-        quality_service=None,
         risk_service=None,
+        model_registry=None,
+        quality_pipeline=None,
+        detection_pipeline=None,
     )
 
 

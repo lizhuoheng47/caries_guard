@@ -9,6 +9,7 @@ from __future__ import annotations
 from app.core.config import Settings
 from app.core.logging import get_logger
 from app.infra.model.base_model import BaseModelAdapter, ImplType
+from app.infra.model.lesion_segmenter import LesionSegmenterAdapter
 from app.infra.model.quality_model import QualityModelAdapter
 from app.infra.model.tooth_detector import ToothDetectorAdapter
 
@@ -22,6 +23,7 @@ class ModelRegistry:
         self._settings = settings
         self._quality: QualityModelAdapter | None = None
         self._tooth_detector: ToothDetectorAdapter | None = None
+        self._segmenter: LesionSegmenterAdapter | None = None
 
     # ── accessors ────────────────────────────────────────────────────────
 
@@ -30,6 +32,9 @@ class ModelRegistry:
 
     def get_tooth_detector(self) -> ToothDetectorAdapter | None:
         return self._tooth_detector
+
+    def get_segmenter(self) -> LesionSegmenterAdapter | None:
+        return self._segmenter
 
     def get_runtime_mode(self) -> str:
         return self._settings.ai_runtime_mode
@@ -80,6 +85,17 @@ class ModelRegistry:
                 self._tooth_detector.impl_type.value,
             )
 
+        if self.is_module_real("segmentation"):
+            self._segmenter = LesionSegmenterAdapter(
+                confidence_threshold=self._settings.model_confidence_threshold,
+            )
+            self._segmenter.load()
+            log.info(
+                "segmentation adapter loaded model_code=%s impl_type=%s",
+                self._segmenter.model_code,
+                self._segmenter.impl_type.value,
+            )
+
         loaded = [a for a in self._all_adapters() if a.is_loaded()]
         log.info("model registry ready — %d adapter(s) loaded", len(loaded))
 
@@ -103,4 +119,4 @@ class ModelRegistry:
     # ── internal ─────────────────────────────────────────────────────────
 
     def _all_adapters(self) -> list[BaseModelAdapter]:
-        return [a for a in (self._quality, self._tooth_detector) if a is not None]
+        return [a for a in (self._quality, self._tooth_detector, self._segmenter) if a is not None]

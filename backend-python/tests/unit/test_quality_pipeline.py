@@ -1,8 +1,6 @@
 """Tests for QualityPipeline — mock/heuristic routing and fallback rules."""
 
-import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -17,14 +15,25 @@ from app.schemas.request import ImageInput
 
 
 def _settings(**overrides) -> Settings:
-    env = {
-        "CG_AI_RUNTIME_MODE": "mock",
-        "CG_MODEL_QUALITY_ENABLED": "false",
-        "CG_MODEL_CONFIDENCE_THRESHOLD": "0.5",
+    values = {
+        "ai_runtime_mode": "mock",
+        "model_quality_enabled": False,
+        "model_confidence_threshold": 0.5,
     }
-    env.update(overrides)
-    with patch.dict(os.environ, env, clear=False):
-        return Settings()
+    mapping = {
+        "CG_AI_RUNTIME_MODE": "ai_runtime_mode",
+        "CG_MODEL_QUALITY_ENABLED": "model_quality_enabled",
+        "CG_MODEL_CONFIDENCE_THRESHOLD": "model_confidence_threshold",
+    }
+    for key, value in overrides.items():
+        target = mapping.get(key, key)
+        if target == "model_quality_enabled":
+            values[target] = str(value).lower() == "true"
+        elif target == "model_confidence_threshold":
+            values[target] = float(value)
+        else:
+            values[target] = value
+    return Settings(**values)
 
 
 @pytest.fixture()

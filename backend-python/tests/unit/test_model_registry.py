@@ -1,28 +1,37 @@
 """Tests for ModelRegistry — mode routing and lifecycle."""
 
-import os
-from unittest.mock import patch
-
-import pytest
-
 from app.core.config import Settings
 from app.infra.model.model_registry import ModelRegistry
 
 
 def _settings(**overrides) -> Settings:
-    """Create a Settings with environment-based defaults overridden."""
-    env = {
-        "CG_AI_RUNTIME_MODE": "mock",
-        "CG_MODEL_QUALITY_ENABLED": "false",
-        "CG_MODEL_TOOTH_DETECT_ENABLED": "false",
-        "CG_MODEL_SEGMENTATION_ENABLED": "false",
-        "CG_MODEL_GRADING_ENABLED": "false",
-        "CG_MODEL_RISK_ENABLED": "false",
-        "CG_MODEL_CONFIDENCE_THRESHOLD": "0.5",
+    values = {
+        "ai_runtime_mode": "mock",
+        "model_quality_enabled": False,
+        "model_tooth_detect_enabled": False,
+        "model_segmentation_enabled": False,
+        "model_grading_enabled": False,
+        "model_risk_enabled": False,
+        "model_confidence_threshold": 0.5,
     }
-    env.update(overrides)
-    with patch.dict(os.environ, env, clear=False):
-        return Settings()
+    mapping = {
+        "CG_AI_RUNTIME_MODE": "ai_runtime_mode",
+        "CG_MODEL_QUALITY_ENABLED": "model_quality_enabled",
+        "CG_MODEL_TOOTH_DETECT_ENABLED": "model_tooth_detect_enabled",
+        "CG_MODEL_SEGMENTATION_ENABLED": "model_segmentation_enabled",
+        "CG_MODEL_GRADING_ENABLED": "model_grading_enabled",
+        "CG_MODEL_RISK_ENABLED": "model_risk_enabled",
+        "CG_MODEL_CONFIDENCE_THRESHOLD": "model_confidence_threshold",
+    }
+    for key, value in overrides.items():
+        target = mapping.get(key, key)
+        if target.startswith("model_") and target.endswith("_enabled"):
+            values[target] = str(value).lower() == "true"
+        elif target == "model_confidence_threshold":
+            values[target] = float(value)
+        else:
+            values[target] = value
+    return Settings(**values)
 
 
 class TestMockMode:
@@ -31,6 +40,7 @@ class TestMockMode:
         registry.startup()
         assert registry.get_quality_model() is None
         assert registry.get_tooth_detector() is None
+        assert registry.get_segmenter() is None
         assert registry.get_runtime_mode() == "mock"
 
     def test_is_module_real_always_false(self):
@@ -59,6 +69,15 @@ class TestHybridMode:
         assert registry.get_tooth_detector() is not None
         assert registry.get_tooth_detector().is_loaded()
         assert registry.get_quality_model() is None
+
+    def test_segmentation_enabled_loads_adapter(self):
+        registry = ModelRegistry(_settings(
+            CG_AI_RUNTIME_MODE="hybrid",
+            CG_MODEL_SEGMENTATION_ENABLED="true",
+        ))
+        registry.startup()
+        assert registry.get_segmenter() is not None
+        assert registry.get_segmenter().is_loaded()
 
     def test_both_enabled(self):
         registry = ModelRegistry(_settings(
@@ -116,3 +135,13 @@ class TestLifecycle:
         assert status["aiRuntimeMode"] == "hybrid"
         assert "QUALITY" in status["adapters"]
         assert status["adapters"]["QUALITY"]["implType"] == "HEURISTIC"
+
+    def test_status_includes_segmentation(self):
+        registry = ModelRegistry(_settings(
+            CG_AI_RUNTIME_MODE="hybrid",
+            CG_MODEL_SEGMENTATION_ENABLED="true",
+        ))
+        registry.startup()
+        status = registry.status()
+        assert "SEGMENTATION" in status["adapters"]
+        assert status["adapters"]["SEGMENTATION"]["implType"] == "HEURISTIC"

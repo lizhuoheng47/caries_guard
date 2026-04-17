@@ -10,9 +10,8 @@ Covers:
 - real mode failure (no silent fallback)
 """
 
-import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -28,16 +27,31 @@ from app.services.risk_service import RiskService
 
 
 def _settings(**overrides) -> Settings:
-    env = {
-        "CG_AI_RUNTIME_MODE": "mock",
-        "CG_MODEL_QUALITY_ENABLED": "false",
-        "CG_MODEL_TOOTH_DETECT_ENABLED": "false",
-        "CG_MODEL_CONFIDENCE_THRESHOLD": "0.3",
-        "CG_AI_DOWNLOAD_IMAGES": "false",
+    values = {
+        "ai_runtime_mode": "mock",
+        "model_quality_enabled": False,
+        "model_tooth_detect_enabled": False,
+        "model_segmentation_enabled": False,
+        "model_confidence_threshold": 0.3,
+        "download_images": False,
     }
-    env.update(overrides)
-    with patch.dict(os.environ, env, clear=False):
-        return Settings()
+    mapping = {
+        "CG_AI_RUNTIME_MODE": "ai_runtime_mode",
+        "CG_MODEL_QUALITY_ENABLED": "model_quality_enabled",
+        "CG_MODEL_TOOTH_DETECT_ENABLED": "model_tooth_detect_enabled",
+        "CG_MODEL_SEGMENTATION_ENABLED": "model_segmentation_enabled",
+        "CG_MODEL_CONFIDENCE_THRESHOLD": "model_confidence_threshold",
+        "CG_AI_DOWNLOAD_IMAGES": "download_images",
+    }
+    for key, value in overrides.items():
+        target = mapping.get(key, key)
+        if target in {"model_quality_enabled", "model_tooth_detect_enabled", "model_segmentation_enabled", "download_images"}:
+            values[target] = str(value).lower() == "true"
+        elif target == "model_confidence_threshold":
+            values[target] = float(value)
+        else:
+            values[target] = value
+    return Settings(**values)
 
 
 def _task_payload(task_no: str = "TASK-001") -> dict:
@@ -106,6 +120,8 @@ class TestMockModePipeline:
         assert raw["qualityImplType"] == "MOCK"
         assert raw["toothDetectionMode"] == "mock"
         assert raw["toothDetectionImplType"] == "MOCK"
+        assert raw["segmentationMode"] == "mock"
+        assert raw["segmentationImplType"] == "MOCK"
         assert raw["mode"] == "mock"
 
     def test_quality_check_results_present(self):
@@ -196,7 +212,7 @@ class TestHybridBothEnabled:
     def test_pipeline_version_updated(self):
         pipeline = _build_pipeline(_settings(CG_AI_RUNTIME_MODE="hybrid"))
         result = pipeline.run(_task_payload())
-        assert result["rawResultJson"]["pipelineVersion"] == "phase5a-1"
+        assert result["rawResultJson"]["pipelineVersion"] == "phase5b-1"
 
 
 # ── Failure payload ──────────────────────────────────────────────────────

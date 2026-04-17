@@ -1,8 +1,6 @@
 """Tests for DetectionPipeline — mock/heuristic routing and fallback rules."""
 
-import os
 from pathlib import Path
-from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -17,14 +15,25 @@ from app.services.image_fetch_service import FetchedImage
 
 
 def _settings(**overrides) -> Settings:
-    env = {
-        "CG_AI_RUNTIME_MODE": "mock",
-        "CG_MODEL_TOOTH_DETECT_ENABLED": "false",
-        "CG_MODEL_CONFIDENCE_THRESHOLD": "0.3",
+    values = {
+        "ai_runtime_mode": "mock",
+        "model_tooth_detect_enabled": False,
+        "model_confidence_threshold": 0.3,
     }
-    env.update(overrides)
-    with patch.dict(os.environ, env, clear=False):
-        return Settings()
+    mapping = {
+        "CG_AI_RUNTIME_MODE": "ai_runtime_mode",
+        "CG_MODEL_TOOTH_DETECT_ENABLED": "model_tooth_detect_enabled",
+        "CG_MODEL_CONFIDENCE_THRESHOLD": "model_confidence_threshold",
+    }
+    for key, value in overrides.items():
+        target = mapping.get(key, key)
+        if target == "model_tooth_detect_enabled":
+            values[target] = str(value).lower() == "true"
+        elif target == "model_confidence_threshold":
+            values[target] = float(value)
+        else:
+            values[target] = value
+    return Settings(**values)
 
 
 @pytest.fixture()

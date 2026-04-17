@@ -118,6 +118,9 @@ class Settings:
     model_confidence_threshold: float = float_env("CG_MODEL_CONFIDENCE_THRESHOLD", 0.5)
     uncertainty_review_threshold: float = float_env("CG_UNCERTAINTY_REVIEW_THRESHOLD", 0.35)
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "ai_runtime_mode", _validate_runtime_mode(self.ai_runtime_mode))
+
     def build_mysql_url(self) -> str:
         return (
             f"mysql+pymysql://{self.mysql_username}:{self.mysql_password}"

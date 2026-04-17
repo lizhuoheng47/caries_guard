@@ -14,6 +14,7 @@ from app.core.time_utils import local_naive_iso_now
 from app.infra.model.model_registry import ModelRegistry
 from app.pipelines.detection_pipeline import DetectionPipeline
 from app.pipelines.quality_pipeline import QualityPipeline
+from app.pipelines.segmentation_pipeline import SegmentationPipeline, SegmentationResult
 from app.schemas.base import dump_camel
 from app.schemas.callback import (
     AnalysisCallbackPayload,
@@ -42,6 +43,7 @@ class InferencePipeline:
         model_registry: ModelRegistry,
         quality_pipeline: QualityPipeline,
         detection_pipeline: DetectionPipeline,
+        segmentation_pipeline: SegmentationPipeline | None = None,
     ) -> None:
         self.settings = settings
         self.image_fetch_service = image_fetch_service
@@ -50,6 +52,7 @@ class InferencePipeline:
         self.model_registry = model_registry
         self.quality_pipeline = quality_pipeline
         self.detection_pipeline = detection_pipeline
+        self.segmentation_pipeline = segmentation_pipeline
 
     def run(self, raw_task: dict[str, Any]) -> dict[str, Any]:
         task = self._parse_task(raw_task)
@@ -75,7 +78,13 @@ class InferencePipeline:
             # ── Phase 5A: mode-aware tooth detection ────────────────────
             tooth_detections = self.detection_pipeline.detect_all(task.images, fetched_images)
 
-            visual_assets = self._create_visual_assets(task, fetched_images, workspace, model_version)
+            visual_assets, segmentation_result = self._create_visual_assets(
+                task,
+                fetched_images,
+                workspace,
+                model_version,
+                tooth_detections,
+            )
             risk_assessment = self.risk_service.assess(task.patient_profile)
 
         completed_at = local_naive_iso_now()
@@ -93,14 +102,32 @@ class InferencePipeline:
         quality_impl_type = self.quality_pipeline.get_last_impl_type()
         tooth_detection_mode = "real" if self.model_registry.is_module_real("tooth_detect") else "mock"
         tooth_detection_impl_type = self.detection_pipeline.get_last_impl_type()
+        segmentation_mode = (
+            segmentation_result.segmentation_mode
+            if segmentation_result is not None
+            else ("real" if self.model_registry.is_module_real("segmentation") else "mock")
+        )
+        segmentation_impl_type = (
+            segmentation_result.segmentation_impl_type
+            if segmentation_result is not None
+            else (
+                self.segmentation_pipeline.get_last_impl_type()
+                if self.segmentation_pipeline is not None
+                else "MOCK"
+            )
+        )
 
         raw_result_json: dict[str, Any] = {
-            "pipelineVersion": "phase5a-1",
+            "pipelineVersion": "phase5b-1",
             "mode": runtime_mode,
             "qualityMode": quality_mode,
             "qualityImplType": quality_impl_type,
             "toothDetectionMode": tooth_detection_mode,
             "toothDetectionImplType": tooth_detection_impl_type,
+            "segmentationMode": segmentation_mode,
+            "segmentationImplType": segmentation_impl_type,
+            "segmentationRegions": segmentation_result.regions if segmentation_result is not None else [],
+            "segmentationRawResult": segmentation_result.raw_result if segmentation_result is not None else {},
             "qualityCheckResults": [dump_camel(item) for item in quality_results],
             "toothDetections": [dump_camel(td) for td in tooth_detections],
             "lesionResults": [
@@ -136,8 +163,8 @@ class InferencePipeline:
             uncertainty_score=0.1,
         )
         log.info(
-            "pipeline completed taskNo=%s traceId=%s millis=%s qualityMode=%s toothMode=%s",
-            task.task_no, trace_id, inference_millis, quality_mode, tooth_detection_mode,
+            "pipeline completed taskNo=%s traceId=%s millis=%s qualityMode=%s toothMode=%s segmentationMode=%s",
+            task.task_no, trace_id, inference_millis, quality_mode, tooth_detection_mode, segmentation_mode,
         )
         return dump_camel(payload)
 
@@ -190,14 +217,58 @@ class InferencePipeline:
         fetched_images: list[FetchedImage],
         workspace: Path,
         model_version: str,
-    ) -> list[VisualAsset]:
+        tooth_detections: list[ToothDetection],
+    ) -> tuple[list[VisualAsset], SegmentationResult | None]:
         if not fetched_images or self.visual_asset_service is None:
-            return []
+            return [], None
         first_image = fetched_images[0]
+        image_input = task.images[0] if task.images else ImageInput(image_id=first_image.image_id)
         case_no = task.case_no or f"CASE{task.case_id or task.task_no}"
         image_id = first_image.image_id
         generated_dir = workspace / "visual"
         generated_dir.mkdir(parents=True, exist_ok=True)
+
+        if self.segmentation_pipeline is not None:
+            segmentation_result = self.segmentation_pipeline.segment(
+                image_input,
+                first_image.path,
+                tooth_detections,
+                generated_dir,
+            )
+            tooth_code = self._segmentation_tooth_code(segmentation_result)
+            assets = [
+                self.visual_asset_service.upload_visual(
+                    "MASK",
+                    task.org_id,
+                    case_no,
+                    task.task_no,
+                    model_version,
+                    image_id,
+                    segmentation_result.mask_path,
+                    tooth_code=tooth_code,
+                ),
+                self.visual_asset_service.upload_visual(
+                    "OVERLAY",
+                    task.org_id,
+                    case_no,
+                    task.task_no,
+                    model_version,
+                    image_id,
+                    segmentation_result.overlay_path,
+                    tooth_code=tooth_code,
+                ),
+                self.visual_asset_service.upload_visual(
+                    "HEATMAP",
+                    task.org_id,
+                    case_no,
+                    task.task_no,
+                    model_version,
+                    image_id,
+                    segmentation_result.heatmap_path,
+                ),
+            ]
+            return assets, segmentation_result
+
         mask_path = generated_dir / f"mask_{image_id or 'unknown'}_16.png"
         overlay_path = generated_dir / f"overlay_{image_id or 'unknown'}_16.png"
         heatmap_path = generated_dir / f"heatmap_{image_id or 'unknown'}.png"
@@ -206,7 +277,7 @@ class InferencePipeline:
             self.visual_asset_service.upload_visual("MASK", task.org_id, case_no, task.task_no, model_version, image_id, mask_path, tooth_code="16"),
             self.visual_asset_service.upload_visual("OVERLAY", task.org_id, case_no, task.task_no, model_version, image_id, overlay_path, tooth_code="16"),
             self.visual_asset_service.upload_visual("HEATMAP", task.org_id, case_no, task.task_no, model_version, image_id, heatmap_path),
-        ]
+        ], None
 
     def _callback_visual_assets(self, visual_assets: list[VisualAsset], task_no: str, trace_id: str) -> list[VisualAsset]:
         mode = (self.settings.callback_visual_asset_mode or "metadata").strip().lower()
@@ -261,3 +332,11 @@ class InferencePipeline:
             if asset.asset_type_code == asset_type_code:
                 return AssetRef(bucket_name=asset.bucket_name, object_key=asset.object_key)
         return None
+
+    @staticmethod
+    def _segmentation_tooth_code(segmentation_result: SegmentationResult) -> str:
+        for region in segmentation_result.regions:
+            tooth_code = region.get("toothCode") or region.get("tooth_code")
+            if tooth_code:
+                return str(tooth_code)
+        return "16"
