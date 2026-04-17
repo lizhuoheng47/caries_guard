@@ -62,7 +62,7 @@ public class ReportDomainService {
     public String buildSummaryText(ReportRenderDataModel renderData) {
         String severity = StringUtils.hasText(renderData.highestSeverity()) ? renderData.highestSeverity() : "UNKNOWN";
         String risk = StringUtils.hasText(renderData.riskLevelCode()) ? renderData.riskLevelCode() : "UNKNOWN";
-        return "case=" + renderData.caseNo()
+        String summary = "case=" + renderData.caseNo()
                 + ", type=" + renderData.reportTypeCode()
                 + ", severity=" + severity
                 + ", risk=" + risk
@@ -70,5 +70,17 @@ public class ReportDomainService {
                 + ", teeth=" + renderData.toothRecordCount()
                 + ", visuals=" + renderData.visualAssetCount()
                 + ", corrections=" + renderData.correctionCount();
+        if ("PATIENT".equalsIgnoreCase(renderData.reportTypeCode())
+                && StringUtils.hasText(renderData.patientExplanation())) {
+            summary += ", patientExplanation=" + abbreviate(renderData.patientExplanation(), 500);
+        }
+        return summary;
+    }
+
+    private String abbreviate(String value, int maxLength) {
+        if (value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, Math.max(0, maxLength - 3)) + "...";
     }
 }

@@ -137,6 +137,8 @@ services:
       CARIES_ANALYSIS_CALLBACK_SECRET: ${CARIES_ANALYSIS_CALLBACK_SECRET:-docker-change-me-to-a-strong-analysis-callback-secret}
       CARIES_ANALYSIS_MODEL_VERSION: ${CARIES_ANALYSIS_MODEL_VERSION:-caries-v1}
       CARIES_RAG_BASE_URL: http://backend-python:8001/ai/v1
+      CARIES_RAG_CONNECT_TIMEOUT_MS: ${CARIES_RAG_CONNECT_TIMEOUT_MS:-3000}
+      CARIES_RAG_READ_TIMEOUT_MS: ${CARIES_RAG_READ_TIMEOUT_MS:-10000}
       TZ: Asia/Shanghai
     ports:
       - "${CARIES_BACKEND_JAVA_HOST_PORT:-8080}:8080"
@@ -186,6 +188,8 @@ services:
       CG_MYSQL_PASSWORD: ${CARIES_MYSQL_PASSWORD:-1234}
       CG_RAG_INDEX_DIR: ${CG_RAG_INDEX_DIR:-/tmp/cariesguard/vector-index}
       TZ: Asia/Shanghai
+    ports:
+      - "${CARIES_BACKEND_PYTHON_HOST_PORT:-8001}:8001"
     depends_on:
       mysql:
         condition: service_healthy

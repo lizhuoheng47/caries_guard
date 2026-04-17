@@ -74,5 +74,5 @@ caries:
         failed-routing-key: ${CARIES_ANALYSIS_FAILED_ROUTING_KEY:analysis.failed}
   rag:
     base-url: ${CARIES_RAG_BASE_URL:http://127.0.0.1:8001/ai/v1}
-    connect-timeout-millis: ${CARIES_RAG_CONNECT_TIMEOUT_MILLIS:3000}
-    request-timeout-millis: ${CARIES_RAG_REQUEST_TIMEOUT_MILLIS:10000}
+    connect-timeout-millis: ${CARIES_RAG_CONNECT_TIMEOUT_MS:${CARIES_RAG_CONNECT_TIMEOUT_MILLIS:3000}}
+    request-timeout-millis: ${CARIES_RAG_READ_TIMEOUT_MS:${CARIES_RAG_REQUEST_TIMEOUT_MILLIS:10000}}
