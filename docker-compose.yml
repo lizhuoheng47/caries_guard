@@ -22,6 +22,29 @@ services:
     networks:
       - caries-net
 
+  mysql-init:
+    image: mysql:8.4
+    container_name: caries-mysql-init
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_ROOT_PASSWORD: ${CARIES_MYSQL_PASSWORD:-1234}
+      CARIES_MYSQL_DATABASE_BIZ: ${CARIES_MYSQL_DATABASE_BIZ:-caries_biz}
+      CARIES_MYSQL_DATABASE_AI: ${CARIES_MYSQL_DATABASE_AI:-caries_ai}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        case "$${CARIES_MYSQL_DATABASE_BIZ}" in *[!A-Za-z0-9_]*|"") echo "Invalid CARIES_MYSQL_DATABASE_BIZ"; exit 1;; esac
+        case "$${CARIES_MYSQL_DATABASE_AI}" in *[!A-Za-z0-9_]*|"") echo "Invalid CARIES_MYSQL_DATABASE_AI"; exit 1;; esac
+        mysql --protocol=tcp -hmysql -P3306 -uroot -p"$${MYSQL_ROOT_PASSWORD}" --default-character-set=utf8mb4 -e "CREATE DATABASE IF NOT EXISTS $${CARIES_MYSQL_DATABASE_BIZ} DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_0900_ai_ci;"
+        mysql --protocol=tcp -hmysql -P3306 -uroot -p"$${MYSQL_ROOT_PASSWORD}" --default-character-set=utf8mb4 -e "CREATE DATABASE IF NOT EXISTS $${CARIES_MYSQL_DATABASE_AI} DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_0900_ai_ci;"
+    restart: "no"
+    networks:
+      - caries-net
+
   redis:
     image: redis:7-alpine
     container_name: caries-redis
@@ -143,8 +166,8 @@ services:
     ports:
       - "${CARIES_BACKEND_JAVA_HOST_PORT:-8080}:8080"
     depends_on:
-      mysql:
-        condition: service_healthy
+      mysql-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       rabbitmq:
@@ -191,8 +214,8 @@ services:
     ports:
       - "${CARIES_BACKEND_PYTHON_HOST_PORT:-8001}:8001"
     depends_on:
-      mysql:
-        condition: service_healthy
+      mysql-init:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       minio-init:

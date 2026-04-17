@@ -68,6 +68,8 @@ import com.cariesguard.report.domain.model.ReportImageModel;
 import com.cariesguard.report.domain.model.ReportRecordModel;
 import com.cariesguard.report.domain.model.ReportRiskAssessmentModel;
 import com.cariesguard.report.domain.model.ReportTemplateModel;
+import com.cariesguard.report.domain.model.ReportToothRecordModel;
+import com.cariesguard.report.domain.model.ReportVisualAssetModel;
 import com.cariesguard.report.domain.repository.ReportExportLogRepository;
 import com.cariesguard.report.domain.repository.ReportRecordRepository;
 import com.cariesguard.report.domain.repository.ReportSourceQueryRepository;
@@ -831,28 +833,75 @@ public final class AnalysisReportE2EFixture {
         @Override
         public Optional<ReportAnalysisSummaryModel> findLatestSummary(Long caseId) {
             return summaryRepository.findLatestByCaseId(caseId)
-                    .map(item -> new ReportAnalysisSummaryModel(
-                            item.summaryId(),
-                            item.rawResultJson(),
-                            item.overallHighestSeverity(),
-                            item.uncertaintyScore(),
-                            item.reviewSuggestedFlag()));
+                    .map(this::toReportAnalysisSummary);
+        }
+
+        @Override
+        public Optional<ReportAnalysisSummaryModel> findSummaryById(Long summaryId) {
+            return shared.summariesByTaskId.values().stream()
+                    .filter(item -> Objects.equals(item.summaryId(), summaryId))
+                    .findFirst()
+                    .map(this::toReportAnalysisSummary);
+        }
+
+        @Override
+        public List<ReportToothRecordModel> listToothRecords(Long caseId) {
+            return List.of();
+        }
+
+        @Override
+        public List<ReportVisualAssetModel> listVisualAssetsByTaskId(Long taskId) {
+            return List.of();
         }
 
         @Override
         public Optional<ReportRiskAssessmentModel> findLatestRiskAssessment(Long caseId) {
             return riskRepository.findLatestByCaseId(caseId)
-                    .map(item -> new ReportRiskAssessmentModel(
-                            item.recordId(),
-                            item.overallRiskLevelCode(),
-                            item.assessmentReportJson(),
-                            item.recommendedCycleDays(),
-                            item.assessedAt()));
+                    .map(this::toReportRiskAssessment);
+        }
+
+        @Override
+        public Optional<ReportRiskAssessmentModel> findRiskAssessmentById(Long riskAssessmentId) {
+            return riskRepository.records().stream()
+                    .filter(item -> Objects.equals(item.recordId(), riskAssessmentId))
+                    .findFirst()
+                    .map(this::toReportRiskAssessment);
         }
 
         @Override
         public Optional<ReportCorrectionModel> findLatestCorrection(Long caseId) {
             return Optional.empty();
+        }
+
+        @Override
+        public Optional<ReportCorrectionModel> findCorrectionById(Long correctionId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<ReportCorrectionModel> listCorrections(Long caseId) {
+            return List.of();
+        }
+
+        private ReportAnalysisSummaryModel toReportAnalysisSummary(AnalysisResultSummaryModel item) {
+            return new ReportAnalysisSummaryModel(
+                    item.summaryId(),
+                    item.taskId(),
+                    item.rawResultJson(),
+                    item.overallHighestSeverity(),
+                    item.uncertaintyScore(),
+                    item.reviewSuggestedFlag(),
+                    item.lesionCount(),
+                    item.abnormalToothCount());
+        }
+
+        private ReportRiskAssessmentModel toReportRiskAssessment(RiskAssessmentCreateModel item) {
+            return new ReportRiskAssessmentModel(
+                    item.recordId(),
+                    item.overallRiskLevelCode(),
+                    item.assessmentReportJson(),
+                    item.recommendedCycleDays(),
+                    item.assessedAt());
         }
     }
 
