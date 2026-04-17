@@ -1,2 +1,0 @@
-﻿callback_payload_json
-{"taskNo": "TASK20260417224250185217", "traceId": "py-a310050aa486", "errorCode": "M5006", "startedAt": "2026-04-17T14:42:50", "completedAt": "2026-04-17T14:42:50", "errorMessage": "segmentation failed: forced segmentation failure", "modelVersion": "caries-v1", "visualAssets": [], "rawResultJson": {"errorCode": "M5006", "errorType": "BusinessException"}, "taskStatusCode": "FAILED", "inferenceMillis": 0}

@@ -1,8 +1,0 @@
-﻿id	task_no	task_status_code	model_version	error_code	error_message	trace_id	inference_millis	created_at	started_at	completed_at
-2045150368221937666	TASK20260417224019937666	SUCCESS	caries-v1	NULL	NULL	py-e4f12e205be1	104	2026-04-17 14:40:19	2026-04-17 14:40:19	2026-04-17 14:40:19
-task_id	overall_highest_severity	uncertainty_score	review_suggested_flag	mode	qualityMode	qualityImplType	toothDetectionMode	toothDetectionImplType	segmentationMode	segmentationImplType
-2045150368221937666	C1	0.1000	0	mock	mock	MOCK	mock	MOCK	mock	MOCK
-task_id	asset_type_code	related_image_id	source_attachment_id	attachment_id	bucket_name	object_key	content_type	file_size_bytes	md5
-2045150368221937666	MASK	1776436815871854	1776436815871853	2045150369471840257	caries-visual	org/100001/case/P51776436815871849/analysis/TASK20260417224019937666/caries-v1/MASK/1776436815871854/16/2045150369471840257.png	image/png	1108	17c157753d541ad4d9eb871d99034abd
-2045150368221937666	OVERLAY	1776436815871854	1776436815871853	2045150369664778242	caries-visual	org/100001/case/P51776436815871849/analysis/TASK20260417224019937666/caries-v1/OVERLAY/1776436815871854/16/2045150369664778242.png	image/png	306515	9d387f7af6c3164382dee0a31b1805de
-2045150368221937666	HEATMAP	1776436815871854	1776436815871853	2045150369857716226	caries-visual	org/100001/case/P51776436815871849/analysis/TASK20260417224019937666/caries-v1/HEATMAP/1776436815871854/NA/2045150369857716226.png	image/png	308659	22ff297acc320c15310010f55147844a

@@ -1,2 +1,0 @@
-﻿callback_payload_json
-{"taskNo": "TASK20260418001601966657", "traceId": "py-5493402b29f5", "errorCode": "M5008", "startedAt": "2026-04-17T16:16:02", "completedAt": "2026-04-17T16:16:02", "errorMessage": "grading failed: forced grading failure", "modelVersion": "caries-v1", "visualAssets": [], "rawResultJson": {"errorCode": "M5008", "errorType": "BusinessException"}, "taskStatusCode": "FAILED", "inferenceMillis": 0}

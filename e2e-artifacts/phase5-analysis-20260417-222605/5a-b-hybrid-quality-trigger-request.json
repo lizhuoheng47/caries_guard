@@ -1,7 +1,0 @@
-﻿{
-    "forceRetryFlag":  true,
-    "caseId":  1776436032129240,
-    "taskTypeCode":  "INFERENCE",
-    "patientId":  1776436032129238,
-    "remark":  "phase5 docker e2e 5a-b-hybrid-quality"
-}

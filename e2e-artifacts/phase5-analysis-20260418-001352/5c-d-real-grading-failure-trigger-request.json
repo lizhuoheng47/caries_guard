@@ -1,7 +1,0 @@
-﻿{
-    "forceRetryFlag":  true,
-    "caseId":  1776442558151482,
-    "taskTypeCode":  "INFERENCE",
-    "patientId":  1776442558151480,
-    "remark":  "phase5 docker e2e 5c-d-real-grading-failure"
-}
