@@ -135,6 +135,27 @@ public class ReportSourceQueryRepositoryImpl implements ReportSourceQueryReposit
     }
 
     @Override
+    public Optional<ReportAnalysisSummaryModel> findSummaryById(Long summaryId) {
+        if (summaryId == null) {
+            return Optional.empty();
+        }
+        ReportResultSummaryDO entity = reportResultSummaryMapper.selectOne(new LambdaQueryWrapper<ReportResultSummaryDO>()
+                .eq(ReportResultSummaryDO::getId, summaryId)
+                .eq(ReportResultSummaryDO::getDeletedFlag, 0L)
+                .eq(ReportResultSummaryDO::getStatus, "ACTIVE")
+                .last("LIMIT 1"));
+        return entity == null ? Optional.empty() : Optional.of(new ReportAnalysisSummaryModel(
+                entity.getId(),
+                entity.getTaskId(),
+                entity.getRawResultJson(),
+                entity.getOverallHighestSeverity(),
+                entity.getUncertaintyScore(),
+                entity.getReviewSuggestedFlag(),
+                entity.getLesionCount(),
+                entity.getAbnormalToothCount()));
+    }
+
+    @Override
     public List<ReportVisualAssetModel> listVisualAssetsByTaskId(Long taskId) {
         if (taskId == null) {
             return List.of();
@@ -198,6 +219,24 @@ public class ReportSourceQueryRepositoryImpl implements ReportSourceQueryReposit
     }
 
     @Override
+    public Optional<ReportRiskAssessmentModel> findRiskAssessmentById(Long riskAssessmentId) {
+        if (riskAssessmentId == null) {
+            return Optional.empty();
+        }
+        ReportRiskAssessmentDO entity = reportRiskAssessmentMapper.selectOne(new LambdaQueryWrapper<ReportRiskAssessmentDO>()
+                .eq(ReportRiskAssessmentDO::getId, riskAssessmentId)
+                .eq(ReportRiskAssessmentDO::getDeletedFlag, 0L)
+                .eq(ReportRiskAssessmentDO::getStatus, "ACTIVE")
+                .last("LIMIT 1"));
+        return entity == null ? Optional.empty() : Optional.of(new ReportRiskAssessmentModel(
+                entity.getId(),
+                entity.getOverallRiskLevelCode(),
+                entity.getAssessmentReportJson(),
+                entity.getRecommendedCycleDays(),
+                entity.getAssessedAt()));
+    }
+
+    @Override
     public Optional<ReportCorrectionModel> findLatestCorrection(Long caseId) {
         ReportCorrectionFeedbackDO entity = reportCorrectionFeedbackMapper.selectOne(new LambdaQueryWrapper<ReportCorrectionFeedbackDO>()
                 .eq(ReportCorrectionFeedbackDO::getCaseId, caseId)
@@ -205,6 +244,23 @@ public class ReportSourceQueryRepositoryImpl implements ReportSourceQueryReposit
                 .eq(ReportCorrectionFeedbackDO::getStatus, "ACTIVE")
                 .orderByDesc(ReportCorrectionFeedbackDO::getCreatedAt)
                 .orderByDesc(ReportCorrectionFeedbackDO::getId)
+                .last("LIMIT 1"));
+        return entity == null ? Optional.empty() : Optional.of(new ReportCorrectionModel(
+                entity.getId(),
+                entity.getFeedbackTypeCode(),
+                entity.getCorrectedTruthJson(),
+                entity.getCreatedAt()));
+    }
+
+    @Override
+    public Optional<ReportCorrectionModel> findCorrectionById(Long correctionId) {
+        if (correctionId == null) {
+            return Optional.empty();
+        }
+        ReportCorrectionFeedbackDO entity = reportCorrectionFeedbackMapper.selectOne(new LambdaQueryWrapper<ReportCorrectionFeedbackDO>()
+                .eq(ReportCorrectionFeedbackDO::getId, correctionId)
+                .eq(ReportCorrectionFeedbackDO::getDeletedFlag, 0L)
+                .eq(ReportCorrectionFeedbackDO::getStatus, "ACTIVE")
                 .last("LIMIT 1"));
         return entity == null ? Optional.empty() : Optional.of(new ReportCorrectionModel(
                 entity.getId(),

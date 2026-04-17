@@ -20,11 +20,17 @@ public interface ReportSourceQueryRepository {
 
     Optional<ReportAnalysisSummaryModel> findLatestSummary(Long caseId);
 
+    Optional<ReportAnalysisSummaryModel> findSummaryById(Long summaryId);
+
     List<ReportVisualAssetModel> listVisualAssetsByTaskId(Long taskId);
 
     Optional<ReportRiskAssessmentModel> findLatestRiskAssessment(Long caseId);
 
+    Optional<ReportRiskAssessmentModel> findRiskAssessmentById(Long riskAssessmentId);
+
     Optional<ReportCorrectionModel> findLatestCorrection(Long caseId);
+
+    Optional<ReportCorrectionModel> findCorrectionById(Long correctionId);
 
     List<ReportCorrectionModel> listCorrections(Long caseId);
 }
