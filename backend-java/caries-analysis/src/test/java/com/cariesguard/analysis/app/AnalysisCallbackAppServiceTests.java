@@ -63,6 +63,8 @@ class AnalysisCallbackAppServiceTests {
                 new AnalysisCallbackDomainService(),
                 analysisTaskEventPublisher,
                 caseCommandAppService,
+                null,
+                null,
                 new ObjectMapper());
     }
 

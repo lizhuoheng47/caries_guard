@@ -224,6 +224,8 @@ public final class AnalysisReportE2EFixture {
                 new AnalysisCallbackDomainService(),
                 eventPublisher,
                 caseCommandAppService,
+                null,
+                null,
                 objectMapper);
         InMemoryFupPlanRepository fupPlanRepository = new InMemoryFupPlanRepository();
         InMemoryFupTaskRepository fupTaskRepository = new InMemoryFupTaskRepository();

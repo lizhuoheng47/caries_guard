@@ -90,21 +90,6 @@ public class AnalysisCallbackAppService {
         this.objectMapper = objectMapper;
     }
 
-    public AnalysisCallbackAppService(AiCallbackSignatureVerifier aiCallbackSignatureVerifier,
-                                      AnaTaskRecordRepository anaTaskRecordRepository,
-                                      AnaResultSummaryRepository anaResultSummaryRepository,
-                                      AnaVisualAssetRepository anaVisualAssetRepository,
-                                      MedRiskAssessmentRecordRepository medRiskAssessmentRecordRepository,
-                                      AnalysisIdempotencyDomainService analysisIdempotencyDomainService,
-                                      AnalysisCallbackDomainService analysisCallbackDomainService,
-                                      AnalysisTaskEventPublisher analysisTaskEventPublisher,
-                                      CaseCommandAppService caseCommandAppService,
-                                      ObjectMapper objectMapper) {
-        this(aiCallbackSignatureVerifier, anaTaskRecordRepository, anaResultSummaryRepository, anaVisualAssetRepository,
-                medRiskAssessmentRecordRepository, analysisIdempotencyDomainService, analysisCallbackDomainService,
-                analysisTaskEventPublisher, caseCommandAppService, null, null, objectMapper);
-    }
-
     @Transactional
     public AnalysisCallbackAckVO handleResultCallback(String rawBody, String timestamp, String signature) {
         aiCallbackSignatureVerifier.verify(rawBody, timestamp, signature);

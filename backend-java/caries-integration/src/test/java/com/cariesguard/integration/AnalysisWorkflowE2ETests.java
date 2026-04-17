@@ -119,6 +119,8 @@ class AnalysisWorkflowE2ETests {
                 new AnalysisCallbackDomainService(),
                 eventPublisher,
                 caseCommandAppService,
+                null,
+                null,
                 objectMapper);
 
         setCurrentUser(new AuthenticatedUser(
