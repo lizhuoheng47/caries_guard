@@ -20,7 +20,8 @@ def health_check() -> dict:
         "dependencies": {
             "minioEndpoint": container.settings.minio_endpoint,
             "rabbitHost": container.settings.rabbit_host,
+            "metadataDbPath": container.settings.metadata_db_path,
+            "ragIndexDir": container.settings.rag_index_dir,
         },
     }
     return success_response(data=data, trace_id="health")
-

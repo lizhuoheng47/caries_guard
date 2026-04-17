@@ -30,6 +30,13 @@ def model_version() -> dict:
             "modelArtifactMd5": "mock",
             "releasedAt": None,
         },
+        "rag": {
+            "knowledgeBaseCode": settings.rag_default_kb_code,
+            "knowledgeVersion": settings.rag_knowledge_version,
+            "embeddingModel": settings.rag_embedding_model,
+            "vectorStoreType": settings.rag_vector_store_type,
+            "llmProviderCode": settings.llm_provider_code,
+            "llmModelName": settings.llm_model_name,
+        },
     }
     return success_response(data=data, trace_id="model-version")
-

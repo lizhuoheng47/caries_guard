@@ -14,6 +14,7 @@ CariesGuard Python AI 服务第一轮实现，按 `docs/Python端第一轮实施
 6. 上传 visual assets 到 MinIO `caries-visual`。
 7. 使用当前 Java 兼容的 `X-AI-Timestamp` 和 `X-AI-Signature` 完成 HMAC 回调。
 8. 提供 `/ai/v1/*` FastAPI 补齐接口，主链路仍以 RabbitMQ worker 为主。
+9. 提供 RAG 最小闭环：知识文档入库、索引重建、患者解释、医生问答和检索/生成日志留痕。
 
 ## 目录结构
 
@@ -23,6 +24,7 @@ app/
   core/         # 配置、日志、异常、时间、hash 等基础能力
   infra/        # MQ、MinIO、外部基础设施适配
   pipelines/    # 推理编排
+  repositories/ # Python AI/RAG 运行元数据访问
   schemas/      # Pydantic 契约模型
   services/     # image fetch、visual upload、callback、risk、quality
   main.py       # 应用入口
@@ -66,8 +68,24 @@ http://backend-python:8001
 - `POST /ai/v1/analyze`
 - `POST /ai/v1/assess-risk`
 - `GET /ai/v1/model-version`
+- `POST /ai/v1/knowledge/documents`
+- `POST /ai/v1/knowledge/rebuild`
+- `POST /ai/v1/rag/patient-explanation`
+- `POST /ai/v1/rag/doctor-qa`
 
 `POST /ai/v1/analyze` 只返回已受理，实际分析通过后台任务执行并回调 Java。
+
+## RAG 最小闭环
+
+当前 RAG 实现用于联调和演示：
+
+1. `POST /ai/v1/knowledge/documents` 写入知识文档元数据，只有 `reviewStatusCode=APPROVED` 的文档会进入索引。
+2. `POST /ai/v1/knowledge/rebuild` 将文档切分为 chunk，并生成本地向量索引文件。
+3. `POST /ai/v1/rag/patient-explanation` 基于检索结果生成患者版解释。
+4. `POST /ai/v1/rag/doctor-qa` 基于检索结果生成医生端问答。
+5. 每次 RAG 请求都会记录 `rag_session`、`rag_request_log`、`rag_retrieval_log`、`llm_call_log`。
+
+本轮不引入外部大模型强依赖，`TemplateLlmClient` 用受控模板模拟通用大模型网关；后续可在 `app/infra/llm` 下替换为真实 HTTP LLM 适配器。本地向量索引位于 `CG_RAG_INDEX_DIR`，元数据表结构按文档语义在 SQLite 中落地，后续可替换为 MySQL 适配。
 
 ## 关键环境变量
 
@@ -93,6 +111,15 @@ http://backend-python:8001
 | `CG_BUCKET_REPORT` | `caries-report` | 报告 bucket，Python 本轮不写 |
 | `CG_BUCKET_EXPORT` | `caries-export` | 导出 bucket，Python 本轮不写 |
 | `CG_TEMP_DIR` | `/tmp/cariesguard` | 临时目录 |
+| `CG_METADATA_DB_PATH` | `/tmp/cariesguard/cariesguard_ai.sqlite3` | Python AI/RAG 元数据 SQLite 文件 |
+| `CG_RAG_INDEX_DIR` | `/tmp/cariesguard/vector-index` | 本地向量索引文件目录 |
+| `CG_RAG_DEFAULT_KB_CODE` | `caries-default` | 默认知识库编码 |
+| `CG_RAG_KNOWLEDGE_VERSION` | `v1.0` | 默认知识版本 |
+| `CG_RAG_EMBEDDING_MODEL` | `hashing-embedding-v1` | 当前轻量 embedding 标识 |
+| `CG_RAG_VECTOR_STORE_TYPE` | `LOCAL_JSON` | 当前向量索引类型 |
+| `CG_RAG_TOP_K` | `5` | 默认检索 TopK |
+| `CG_LLM_PROVIDER_CODE` | `MOCK` | 通用大模型网关提供方标识 |
+| `CG_LLM_MODEL_NAME` | `template-llm-v1` | 当前文本生成模型标识 |
 
 ## Visual ObjectKey
 

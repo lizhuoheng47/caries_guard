@@ -63,3 +63,14 @@ class Settings:
     temp_dir: str = os.getenv("CG_TEMP_DIR", "/tmp/cariesguard")
 
     allow_bucket_create: bool = bool_env("CG_MINIO_ALLOW_BUCKET_CREATE", False)
+
+    metadata_db_path: str = os.getenv("CG_METADATA_DB_PATH", "/tmp/cariesguard/cariesguard_ai.sqlite3")
+    rag_index_dir: str = os.getenv("CG_RAG_INDEX_DIR", "/tmp/cariesguard/vector-index")
+    rag_default_kb_code: str = os.getenv("CG_RAG_DEFAULT_KB_CODE", "caries-default")
+    rag_default_kb_name: str = os.getenv("CG_RAG_DEFAULT_KB_NAME", "CariesGuard Default Knowledge Base")
+    rag_knowledge_version: str = os.getenv("CG_RAG_KNOWLEDGE_VERSION", "v1.0")
+    rag_embedding_model: str = os.getenv("CG_RAG_EMBEDDING_MODEL", "hashing-embedding-v1")
+    rag_vector_store_type: str = os.getenv("CG_RAG_VECTOR_STORE_TYPE", "LOCAL_JSON")
+    rag_top_k: int = int_env("CG_RAG_TOP_K", 5)
+    llm_provider_code: str = os.getenv("CG_LLM_PROVIDER_CODE", "MOCK")
+    llm_model_name: str = os.getenv("CG_LLM_MODEL_NAME", "template-llm-v1")
