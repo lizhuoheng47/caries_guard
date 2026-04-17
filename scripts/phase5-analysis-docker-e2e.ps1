@@ -8,6 +8,7 @@ param(
     [string]$MinioSecretKey = $(if ($env:CARIES_MINIO_SECRET_KEY) { $env:CARIES_MINIO_SECRET_KEY } else { "minioadmin" }),
     [string]$EvidenceDir = "",
     [int]$WaitSeconds = 120,
+    [switch]$Phase5COnly,
     [switch]$SkipComposeUp
 )
 
@@ -94,11 +95,17 @@ function Invoke-MysqlScalar {
 
 function Set-PhaseRuntime {
     param([hashtable]$Scenario)
+    $gradingEnabled = if ($Scenario.ContainsKey("gradingEnabled")) { $Scenario.gradingEnabled } else { "false" }
+    $gradingForceFail = if ($Scenario.ContainsKey("gradingForceFail")) { $Scenario.gradingForceFail } else { "false" }
+    $uncertaintyThreshold = if ($Scenario.ContainsKey("uncertaintyThreshold")) { $Scenario.uncertaintyThreshold } else { "0.35" }
     $env:CG_AI_RUNTIME_MODE = $Scenario.runtimeMode
     $env:CG_MODEL_QUALITY_ENABLED = $Scenario.qualityEnabled
     $env:CG_MODEL_TOOTH_DETECT_ENABLED = $Scenario.toothEnabled
     $env:CG_MODEL_SEGMENTATION_ENABLED = $Scenario.segmentationEnabled
+    $env:CG_MODEL_GRADING_ENABLED = $gradingEnabled
     $env:CG_SEGMENTATION_FORCE_FAIL = $Scenario.segmentationForceFail
+    $env:CG_GRADING_FORCE_FAIL = $gradingForceFail
+    $env:CG_UNCERTAINTY_REVIEW_THRESHOLD = $uncertaintyThreshold
     $env:CG_CALLBACK_VISUAL_ASSET_MODE = "metadata"
     $env:CG_AI_DOWNLOAD_IMAGES = "true"
 
@@ -109,7 +116,10 @@ CG_AI_RUNTIME_MODE=$env:CG_AI_RUNTIME_MODE
 CG_MODEL_QUALITY_ENABLED=$env:CG_MODEL_QUALITY_ENABLED
 CG_MODEL_TOOTH_DETECT_ENABLED=$env:CG_MODEL_TOOTH_DETECT_ENABLED
 CG_MODEL_SEGMENTATION_ENABLED=$env:CG_MODEL_SEGMENTATION_ENABLED
+CG_MODEL_GRADING_ENABLED=$env:CG_MODEL_GRADING_ENABLED
 CG_SEGMENTATION_FORCE_FAIL=$env:CG_SEGMENTATION_FORCE_FAIL
+CG_GRADING_FORCE_FAIL=$env:CG_GRADING_FORCE_FAIL
+CG_UNCERTAINTY_REVIEW_THRESHOLD=$env:CG_UNCERTAINTY_REVIEW_THRESHOLD
 "@
     & docker compose up -d --build backend-python | Out-Host
     if ($LASTEXITCODE -ne 0) {
@@ -121,15 +131,26 @@ CG_SEGMENTATION_FORCE_FAIL=$env:CG_SEGMENTATION_FORCE_FAIL
 }
 
 function New-TestImageObject {
-    param([string]$ObjectKey)
+    param([string]$ObjectKey, [string]$ImageKind = "default")
     $code = @"
 from io import BytesIO
 from minio import Minio
 import numpy as np
 from PIL import Image
 
-arr = np.random.randint(70, 210, (256, 512), dtype=np.uint8)
-arr[96:132, 170:215] = 30
+kind = "$ImageKind"
+if kind == "phase5c-low-uncertainty":
+    rng = np.random.default_rng(501)
+    arr = rng.integers(70, 210, (256, 512), dtype=np.uint8)
+    arr[40:90, 35:95] = 10
+elif kind == "phase5c-high-uncertainty":
+    rng = np.random.default_rng(502)
+    arr = rng.integers(70, 210, (256, 512), dtype=np.uint8)
+    arr[46:80, 43:83] = 105
+else:
+    rng = np.random.default_rng(500)
+    arr = rng.integers(70, 210, (256, 512), dtype=np.uint8)
+    arr[96:132, 170:215] = 30
 img = Image.fromarray(arr, mode="L").convert("RGB")
 buf = BytesIO()
 img.save(buf, format="PNG")
@@ -145,7 +166,7 @@ client.put_object("caries-image", "$ObjectKey", buf, length=len(buf.getvalue()),
 }
 
 function New-AnalysisFixture {
-    param([string]$ScenarioName)
+    param([string]$ScenarioName, [string]$ImageKind = "default")
     $seed = ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() * 1000) + (Get-Random -Minimum 10 -Maximum 999)
     $patientId = $seed + 1
     $visitId = $seed + 2
@@ -155,7 +176,7 @@ function New-AnalysisFixture {
     $caseNo = "P5$seed"
     $objectKey = "phase5/e2e/$ScenarioName/$seed/source.png"
 
-    New-TestImageObject $objectKey
+    New-TestImageObject $objectKey $ImageKind
 
     $sql = @"
 INSERT INTO pat_patient
@@ -191,6 +212,7 @@ VALUES
         imageId = $imageId
         imageAttachmentId = $imageAttachmentId
         objectKey = $objectKey
+        imageKind = $ImageKind
     }
 }
 
@@ -224,7 +246,14 @@ SELECT task_id, overall_highest_severity, uncertainty_score, review_suggested_fl
        JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.toothDetectionMode')) AS toothDetectionMode,
        JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.toothDetectionImplType')) AS toothDetectionImplType,
        JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.segmentationMode')) AS segmentationMode,
-       JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.segmentationImplType')) AS segmentationImplType
+       JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.segmentationImplType')) AS segmentationImplType,
+       JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.gradingMode')) AS gradingMode,
+       JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.gradingImplType')) AS gradingImplType,
+       JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.gradingLabel')) AS gradingLabel,
+       JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.uncertaintyMode')) AS uncertaintyMode,
+       JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.uncertaintyImplType')) AS uncertaintyImplType,
+       JSON_EXTRACT(raw_result_json, '$.uncertaintyScore') AS rawUncertaintyScore,
+       JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.needsReview')) AS needsReview
 FROM ana_result_summary
 WHERE task_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1)
 ORDER BY id DESC
@@ -262,6 +291,12 @@ function Assert-ScenarioResult {
         $toothImpl = Invoke-MysqlScalar $BizDatabase "SELECT JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.toothDetectionImplType')) FROM ana_result_summary WHERE task_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1;"
         $segMode = Invoke-MysqlScalar $BizDatabase "SELECT JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.segmentationMode')) FROM ana_result_summary WHERE task_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1;"
         $segImpl = Invoke-MysqlScalar $BizDatabase "SELECT JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.segmentationImplType')) FROM ana_result_summary WHERE task_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1;"
+        $gradingMode = Invoke-MysqlScalar $BizDatabase "SELECT JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.gradingMode')) FROM ana_result_summary WHERE task_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1;"
+        $gradingImpl = Invoke-MysqlScalar $BizDatabase "SELECT JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.gradingImplType')) FROM ana_result_summary WHERE task_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1;"
+        $uncertaintyMode = Invoke-MysqlScalar $BizDatabase "SELECT JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.uncertaintyMode')) FROM ana_result_summary WHERE task_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1;"
+        $uncertaintyImpl = Invoke-MysqlScalar $BizDatabase "SELECT JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.uncertaintyImplType')) FROM ana_result_summary WHERE task_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1;"
+        $uncertaintyScore = [double](Invoke-MysqlScalar $BizDatabase "SELECT JSON_EXTRACT(raw_result_json, '$.uncertaintyScore') FROM ana_result_summary WHERE task_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1;")
+        $needsReview = Invoke-MysqlScalar $BizDatabase "SELECT JSON_UNQUOTE(JSON_EXTRACT(raw_result_json, '$.needsReview')) FROM ana_result_summary WHERE task_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1;"
         $visualCount = [int](Invoke-MysqlScalar $BizDatabase "SELECT COUNT(1) FROM ana_visual_asset WHERE task_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1) AND deleted_flag = 0;")
         $attachmentCount = [int](Invoke-MysqlScalar $BizDatabase "SELECT COUNT(1) FROM med_attachment WHERE biz_module_code = 'ANALYSIS' AND biz_id = (SELECT id FROM ana_task_record WHERE task_no = '$TaskNo' ORDER BY id DESC LIMIT 1) AND deleted_flag = 0;")
         if ($mode -ne $Scenario.expectedMode) { throw "$($Scenario.name) mode expected $($Scenario.expectedMode), got $mode" }
@@ -271,6 +306,13 @@ function Assert-ScenarioResult {
         if ($toothImpl -ne $Scenario.expectedToothImpl) { throw "$($Scenario.name) toothDetectionImplType expected $($Scenario.expectedToothImpl), got $toothImpl" }
         if ($segMode -ne $Scenario.expectedSegMode) { throw "$($Scenario.name) segmentationMode expected $($Scenario.expectedSegMode), got $segMode" }
         if ($segImpl -ne $Scenario.expectedSegImpl) { throw "$($Scenario.name) segmentationImplType expected $($Scenario.expectedSegImpl), got $segImpl" }
+        if ($Scenario.ContainsKey("expectedGradingMode") -and $gradingMode -ne $Scenario.expectedGradingMode) { throw "$($Scenario.name) gradingMode expected $($Scenario.expectedGradingMode), got $gradingMode" }
+        if ($Scenario.ContainsKey("expectedGradingImpl") -and $gradingImpl -ne $Scenario.expectedGradingImpl) { throw "$($Scenario.name) gradingImplType expected $($Scenario.expectedGradingImpl), got $gradingImpl" }
+        if ($Scenario.ContainsKey("expectedUncertaintyMode") -and $uncertaintyMode -ne $Scenario.expectedUncertaintyMode) { throw "$($Scenario.name) uncertaintyMode expected $($Scenario.expectedUncertaintyMode), got $uncertaintyMode" }
+        if ($Scenario.ContainsKey("expectedUncertaintyImpl") -and $uncertaintyImpl -ne $Scenario.expectedUncertaintyImpl) { throw "$($Scenario.name) uncertaintyImplType expected $($Scenario.expectedUncertaintyImpl), got $uncertaintyImpl" }
+        if ($Scenario.ContainsKey("expectedNeedsReview") -and $needsReview.ToLowerInvariant() -ne $Scenario.expectedNeedsReview) { throw "$($Scenario.name) needsReview expected $($Scenario.expectedNeedsReview), got $needsReview" }
+        if ($Scenario.ContainsKey("uncertaintyLessThan") -and $uncertaintyScore -ge [double]$Scenario.uncertaintyLessThan) { throw "$($Scenario.name) uncertaintyScore expected < $($Scenario.uncertaintyLessThan), got $uncertaintyScore" }
+        if ($Scenario.ContainsKey("uncertaintyAtLeast") -and $uncertaintyScore -lt [double]$Scenario.uncertaintyAtLeast) { throw "$($Scenario.name) uncertaintyScore expected >= $($Scenario.uncertaintyAtLeast), got $uncertaintyScore" }
         if ($visualCount -ne 3) { throw "$($Scenario.name) expected 3 ana_visual_asset rows, got $visualCount" }
         if ($attachmentCount -lt 3) { throw "$($Scenario.name) expected >=3 ANALYSIS attachments, got $attachmentCount" }
     } else {
@@ -285,7 +327,8 @@ function Invoke-AnalysisScenario {
     param([hashtable]$Scenario, [string]$Token)
     Write-Host "Running scenario $($Scenario.name)..."
     Set-PhaseRuntime $Scenario
-    $fixture = New-AnalysisFixture $Scenario.name
+    $imageKind = if ($Scenario.ContainsKey("imageKind")) { $Scenario.imageKind } else { "default" }
+    $fixture = New-AnalysisFixture $Scenario.name $imageKind
     Save-Json "$($Scenario.name)-fixture.json" $fixture
 
     $request = @{
@@ -385,8 +428,50 @@ $scenarios = @(
         name = "5b-c-real-segmentation-failure"
         runtimeMode = "real"; qualityEnabled = "true"; toothEnabled = "true"; segmentationEnabled = "true"; segmentationForceFail = "true"
         expectedStatus = "FAILED"; expectedErrorCode = "M5006"
+    },
+    @{
+        name = "5c-a-mock-grading"
+        runtimeMode = "mock"; qualityEnabled = "false"; toothEnabled = "false"; segmentationEnabled = "false"; gradingEnabled = "false"; segmentationForceFail = "false"; gradingForceFail = "false"; uncertaintyThreshold = "0.35"; imageKind = "default"
+        expectedStatus = "SUCCESS"; expectedMode = "mock"
+        expectedQualityMode = "mock"; expectedQualityImpl = "MOCK"
+        expectedToothMode = "mock"; expectedToothImpl = "MOCK"
+        expectedSegMode = "mock"; expectedSegImpl = "MOCK"
+        expectedGradingMode = "mock"; expectedGradingImpl = "MOCK"
+        expectedUncertaintyMode = "mock"; expectedUncertaintyImpl = "MOCK"
+        expectedNeedsReview = "false"; uncertaintyLessThan = "0.35"
+    },
+    @{
+        name = "5c-b-hybrid-grading-low-uncertainty"
+        runtimeMode = "hybrid"; qualityEnabled = "true"; toothEnabled = "true"; segmentationEnabled = "true"; gradingEnabled = "true"; segmentationForceFail = "false"; gradingForceFail = "false"; uncertaintyThreshold = "0.35"; imageKind = "phase5c-low-uncertainty"
+        expectedStatus = "SUCCESS"; expectedMode = "hybrid"
+        expectedQualityMode = "real"; expectedQualityImpl = "HEURISTIC"
+        expectedToothMode = "real"; expectedToothImpl = "HEURISTIC"
+        expectedSegMode = "real"; expectedSegImpl = "HEURISTIC"
+        expectedGradingMode = "real"; expectedGradingImpl = "HEURISTIC"
+        expectedUncertaintyMode = "real"; expectedUncertaintyImpl = "HEURISTIC"
+        expectedNeedsReview = "false"; uncertaintyLessThan = "0.35"
+    },
+    @{
+        name = "5c-c-hybrid-grading-high-uncertainty"
+        runtimeMode = "hybrid"; qualityEnabled = "true"; toothEnabled = "true"; segmentationEnabled = "true"; gradingEnabled = "true"; segmentationForceFail = "false"; gradingForceFail = "false"; uncertaintyThreshold = "0.35"; imageKind = "phase5c-high-uncertainty"
+        expectedStatus = "SUCCESS"; expectedMode = "hybrid"
+        expectedQualityMode = "real"; expectedQualityImpl = "HEURISTIC"
+        expectedToothMode = "real"; expectedToothImpl = "HEURISTIC"
+        expectedSegMode = "real"; expectedSegImpl = "HEURISTIC"
+        expectedGradingMode = "real"; expectedGradingImpl = "HEURISTIC"
+        expectedUncertaintyMode = "real"; expectedUncertaintyImpl = "HEURISTIC"
+        expectedNeedsReview = "true"; uncertaintyAtLeast = "0.35"
+    },
+    @{
+        name = "5c-d-real-grading-failure"
+        runtimeMode = "real"; qualityEnabled = "true"; toothEnabled = "true"; segmentationEnabled = "true"; gradingEnabled = "true"; segmentationForceFail = "false"; gradingForceFail = "true"; uncertaintyThreshold = "0.35"; imageKind = "phase5c-low-uncertainty"
+        expectedStatus = "FAILED"; expectedErrorCode = "M5008"
     }
 )
+
+if ($Phase5COnly) {
+    $scenarios = @($scenarios | Where-Object { $_.name -like "5c-*" })
+}
 
 $results = @()
 foreach ($scenario in $scenarios) {

@@ -90,6 +90,14 @@ class GradingPipeline:
             "reviewThreshold": self._settings.uncertainty_review_threshold,
             "needsReview": needs_review,
         })
+        log.info(
+            "grading completed mode=real implType=%s label=%s uncertainty=%s threshold=%s needsReview=%s",
+            result.get("implType") or ImplType.HEURISTIC.value,
+            result.get("gradingLabel") or "C1",
+            uncertainty_score,
+            self._settings.uncertainty_review_threshold,
+            needs_review,
+        )
         return GradingResult(
             grading_mode="real",
             grading_impl_type=str(result.get("implType") or ImplType.HEURISTIC.value),
@@ -115,6 +123,12 @@ class GradingPipeline:
         }
         if fallback_reason:
             raw_result["fallbackReason"] = fallback_reason
+        log.info(
+            "grading completed mode=mock implType=MOCK label=C1 uncertainty=%s threshold=%s needsReview=%s",
+            uncertainty_score,
+            self._settings.uncertainty_review_threshold,
+            needs_review,
+        )
         return GradingResult(
             grading_mode="mock",
             grading_impl_type=ImplType.MOCK.value,
