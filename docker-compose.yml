@@ -178,8 +178,16 @@ services:
       CG_MINIO_BUCKET_VISUAL: ${CARIES_BUCKET_VISUAL:-caries-visual}
       CG_BUCKET_REPORT: ${CARIES_BUCKET_REPORT:-caries-report}
       CG_BUCKET_EXPORT: ${CARIES_BUCKET_EXPORT:-caries-export}
+      CG_MYSQL_HOST: mysql
+      CG_MYSQL_PORT: 3306
+      CG_MYSQL_DATABASE: ${CARIES_MYSQL_DATABASE:-cg}
+      CG_MYSQL_USERNAME: root
+      CG_MYSQL_PASSWORD: ${CARIES_MYSQL_PASSWORD:-1234}
+      CG_RAG_INDEX_DIR: ${CG_RAG_INDEX_DIR:-/tmp/cariesguard/vector-index}
       TZ: Asia/Shanghai
     depends_on:
+      mysql:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       minio-init:

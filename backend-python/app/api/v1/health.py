@@ -20,7 +20,9 @@ def health_check() -> dict:
         "dependencies": {
             "minioEndpoint": container.settings.minio_endpoint,
             "rabbitHost": container.settings.rabbit_host,
-            "metadataDbPath": container.settings.metadata_db_path,
+            "mysqlHost": container.settings.mysql_host,
+            "mysqlPort": container.settings.mysql_port,
+            "mysqlDatabase": container.settings.mysql_database,
             "ragIndexDir": container.settings.rag_index_dir,
         },
     }

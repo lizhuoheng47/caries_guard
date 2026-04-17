@@ -64,7 +64,12 @@ class Settings:
 
     allow_bucket_create: bool = bool_env("CG_MINIO_ALLOW_BUCKET_CREATE", False)
 
-    metadata_db_path: str = os.getenv("CG_METADATA_DB_PATH", "/tmp/cariesguard/cariesguard_ai.sqlite3")
+    mysql_host: str = os.getenv("CG_MYSQL_HOST", os.getenv("CARIES_MYSQL_HOST", "mysql"))
+    mysql_port: int = int_env("CG_MYSQL_PORT", int_env("CARIES_MYSQL_PORT", 3306))
+    mysql_database: str = os.getenv("CG_MYSQL_DATABASE", os.getenv("CARIES_MYSQL_DATABASE", "cg"))
+    mysql_username: str = os.getenv("CG_MYSQL_USERNAME", os.getenv("CARIES_MYSQL_USERNAME", "root"))
+    mysql_password: str = os.getenv("CG_MYSQL_PASSWORD", os.getenv("CARIES_MYSQL_PASSWORD", "1234"))
+    mysql_connect_timeout_seconds: int = int_env("CG_MYSQL_CONNECT_TIMEOUT_SECONDS", 5)
     rag_index_dir: str = os.getenv("CG_RAG_INDEX_DIR", "/tmp/cariesguard/vector-index")
     rag_default_kb_code: str = os.getenv("CG_RAG_DEFAULT_KB_CODE", "caries-default")
     rag_default_kb_name: str = os.getenv("CG_RAG_DEFAULT_KB_NAME", "CariesGuard Default Knowledge Base")

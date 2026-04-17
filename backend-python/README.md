@@ -85,7 +85,7 @@ http://backend-python:8001
 4. `POST /ai/v1/rag/doctor-qa` 基于检索结果生成医生端问答。
 5. 每次 RAG 请求都会记录 `rag_session`、`rag_request_log`、`rag_retrieval_log`、`llm_call_log`。
 
-本轮不引入外部大模型强依赖，`TemplateLlmClient` 用受控模板模拟通用大模型网关；后续可在 `app/infra/llm` 下替换为真实 HTTP LLM 适配器。本地向量索引位于 `CG_RAG_INDEX_DIR`，元数据表结构按文档语义在 SQLite 中落地，后续可替换为 MySQL 适配。
+本轮不引入外部大模型强依赖，`TemplateLlmClient` 用受控模板模拟通用大模型网关；后续可在 `app/infra/llm` 下替换为真实 HTTP LLM 适配器。本地向量索引位于 `CG_RAG_INDEX_DIR`，AI/RAG 元数据直接写入 MySQL。
 
 ## 关键环境变量
 
@@ -111,7 +111,12 @@ http://backend-python:8001
 | `CG_BUCKET_REPORT` | `caries-report` | 报告 bucket，Python 本轮不写 |
 | `CG_BUCKET_EXPORT` | `caries-export` | 导出 bucket，Python 本轮不写 |
 | `CG_TEMP_DIR` | `/tmp/cariesguard` | 临时目录 |
-| `CG_METADATA_DB_PATH` | `/tmp/cariesguard/cariesguard_ai.sqlite3` | Python AI/RAG 元数据 SQLite 文件 |
+| `CG_MYSQL_HOST` | `mysql` | Python AI/RAG 元数据 MySQL 主机 |
+| `CG_MYSQL_PORT` | `3306` | Python AI/RAG 元数据 MySQL 端口 |
+| `CG_MYSQL_DATABASE` | `cg` | Python AI/RAG 元数据 MySQL 数据库 |
+| `CG_MYSQL_USERNAME` | `root` | Python AI/RAG 元数据 MySQL 用户名 |
+| `CG_MYSQL_PASSWORD` | `1234` | Python AI/RAG 元数据 MySQL 密码 |
+| `CG_MYSQL_CONNECT_TIMEOUT_SECONDS` | `5` | MySQL 连接超时 |
 | `CG_RAG_INDEX_DIR` | `/tmp/cariesguard/vector-index` | 本地向量索引文件目录 |
 | `CG_RAG_DEFAULT_KB_CODE` | `caries-default` | 默认知识库编码 |
 | `CG_RAG_KNOWLEDGE_VERSION` | `v1.0` | 默认知识版本 |
