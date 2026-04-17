@@ -11,6 +11,9 @@ from app.core.config import Settings
 from app.core.exceptions import BusinessException
 from app.core.logging import get_logger
 from app.core.time_utils import local_naive_iso_now
+from app.infra.model.model_registry import ModelRegistry
+from app.pipelines.detection_pipeline import DetectionPipeline
+from app.pipelines.quality_pipeline import QualityPipeline
 from app.schemas.base import dump_camel
 from app.schemas.callback import (
     AnalysisCallbackPayload,
@@ -23,7 +26,6 @@ from app.schemas.callback import (
 )
 from app.schemas.request import AnalyzeRequest, ImageInput
 from app.services.image_fetch_service import FetchedImage, ImageFetchService, TaskWorkspace
-from app.services.quality_service import QualityService
 from app.services.risk_service import RiskService
 from app.services.visual_asset_service import VisualAssetService
 
@@ -36,14 +38,18 @@ class InferencePipeline:
         settings: Settings,
         image_fetch_service: ImageFetchService,
         visual_asset_service: VisualAssetService | None,
-        quality_service: QualityService,
         risk_service: RiskService,
+        model_registry: ModelRegistry,
+        quality_pipeline: QualityPipeline,
+        detection_pipeline: DetectionPipeline,
     ) -> None:
         self.settings = settings
         self.image_fetch_service = image_fetch_service
         self.visual_asset_service = visual_asset_service
-        self.quality_service = quality_service
         self.risk_service = risk_service
+        self.model_registry = model_registry
+        self.quality_pipeline = quality_pipeline
+        self.detection_pipeline = detection_pipeline
 
     def run(self, raw_task: dict[str, Any]) -> dict[str, Any]:
         task = self._parse_task(raw_task)
@@ -51,12 +57,25 @@ class InferencePipeline:
         started = time.perf_counter()
         trace_id = task.trace_id or raw_task.get("traceId") or f"py-{uuid.uuid4().hex[:12]}"
         model_version = task.model_version or self.settings.model_version
-        log.info("pipeline started taskNo=%s traceId=%s images=%s", task.task_no, trace_id, len(task.images))
+        runtime_mode = self.model_registry.get_runtime_mode()
+        log.info(
+            "pipeline started taskNo=%s traceId=%s images=%s runtimeMode=%s",
+            task.task_no, trace_id, len(task.images), runtime_mode,
+        )
 
         with TaskWorkspace(self.settings, task.task_no) as workspace:
             fetched_images = self._fetch_images(task, workspace)
+
+            # ── Phase 5A: mode-aware quality check ──────────────────────
+            quality_results = []
+            for image in task.images:
+                img_path = self._get_image_path(fetched_images, image)
+                quality_results.append(self.quality_pipeline.check(image, img_path))
+
+            # ── Phase 5A: mode-aware tooth detection ────────────────────
+            tooth_detections = self.detection_pipeline.detect_all(task.images, fetched_images)
+
             visual_assets = self._create_visual_assets(task, fetched_images, workspace, model_version)
-            quality_results = [self.quality_service.check(image) for image in task.images]
             risk_assessment = self.risk_service.assess(task.patient_profile)
 
         completed_at = local_naive_iso_now()
@@ -66,21 +85,29 @@ class InferencePipeline:
             overall_highest_severity="C1",
             uncertainty_score=0.1,
             review_suggested_flag="0",
-            teeth_count=2,
+            teeth_count=len(tooth_detections),
         )
-        raw_result_json = {
-            "pipelineVersion": "mock-1",
-            "mode": self.settings.app_mode,
+
+        # ── Phase 5A: mode / implType stamps ────────────────────────────
+        quality_mode = "real" if self.model_registry.is_module_real("quality") else "mock"
+        quality_impl_type = self.quality_pipeline.get_last_impl_type()
+        tooth_detection_mode = "real" if self.model_registry.is_module_real("tooth_detect") else "mock"
+        tooth_detection_impl_type = self.detection_pipeline.get_last_impl_type()
+
+        raw_result_json: dict[str, Any] = {
+            "pipelineVersion": "phase5a-1",
+            "mode": runtime_mode,
+            "qualityMode": quality_mode,
+            "qualityImplType": quality_impl_type,
+            "toothDetectionMode": tooth_detection_mode,
+            "toothDetectionImplType": tooth_detection_impl_type,
             "qualityCheckResults": [dump_camel(item) for item in quality_results],
-            "toothDetections": [
-                dump_camel(ToothDetection(image_id=first_image_id, tooth_code="16")),
-                dump_camel(ToothDetection(image_id=first_image_id, tooth_code="26", bbox=[220, 64, 340, 180], detection_score=0.93)),
-            ],
+            "toothDetections": [dump_camel(td) for td in tooth_detections],
             "lesionResults": [
                 dump_camel(
                     LesionResult(
                         image_id=first_image_id,
-                        tooth_code="16",
+                        tooth_code=tooth_detections[0].tooth_code if tooth_detections else "16",
                         severity_code="C1",
                         uncertainty_score=0.1,
                         lesion_area_px=512,
@@ -92,7 +119,6 @@ class InferencePipeline:
             ],
             "riskAssessment": dump_camel(risk_assessment),
             "visualAssets": [dump_camel(item) for item in visual_assets],
-            "note": "mock visual assets are for integration verification only",
         }
         payload = AnalysisCallbackPayload(
             task_no=task.task_no,
@@ -109,7 +135,10 @@ class InferencePipeline:
             inference_millis=inference_millis,
             uncertainty_score=0.1,
         )
-        log.info("pipeline completed taskNo=%s traceId=%s millis=%s", task.task_no, trace_id, inference_millis)
+        log.info(
+            "pipeline completed taskNo=%s traceId=%s millis=%s qualityMode=%s toothMode=%s",
+            task.task_no, trace_id, inference_millis, quality_mode, tooth_detection_mode,
+        )
         return dump_camel(payload)
 
     def build_failure_payload(self, raw_task: dict[str, Any], exc: Exception) -> dict[str, Any]:
@@ -147,6 +176,14 @@ class InferencePipeline:
             fetched.append(self.image_fetch_service.download(image, workspace))
         return fetched
 
+    @staticmethod
+    def _get_image_path(fetched_images: list[FetchedImage], image: ImageInput) -> Path | None:
+        """Find the local file path for the given ImageInput."""
+        for f in fetched_images:
+            if f.image_id == image.image_id:
+                return f.path
+        return fetched_images[0].path if fetched_images else None
+
     def _create_visual_assets(
         self,
         task: AnalyzeRequest,
@@ -183,7 +220,7 @@ class InferencePipeline:
                     trace_id,
                 )
             return []
-        raise BusinessException(f"unsupported CG_CALLBACK_VISUAL_ASSET_MODE={self.settings.callback_visual_asset_mode}")
+        raise BusinessException("C4001", f"unsupported CG_CALLBACK_VISUAL_ASSET_MODE={self.settings.callback_visual_asset_mode}")
 
     def _draw_mock_assets(self, image_path: Path, mask_path: Path, overlay_path: Path, heatmap_path: Path) -> None:
         try:

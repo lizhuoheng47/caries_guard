@@ -18,6 +18,5 @@ def quality_check(request: QualityCheckRequest) -> dict:
         object_key=request.object_key,
         access_url=request.access_url,
     )
-    result = container.quality_service.check(image)
+    result = container.quality_pipeline.check(image)
     return success_response(data=dump_camel(result), trace_id=request.trace_id)
-

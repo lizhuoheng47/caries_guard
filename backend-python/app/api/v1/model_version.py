@@ -8,8 +8,15 @@ router = APIRouter(tags=["model-version"])
 
 @router.get("/model-version")
 def model_version() -> dict:
-    settings = get_container().settings
+    container = get_container()
+    settings = container.settings
+
+    # ── Phase 5A: include runtime status ────────────────────────────────
+    runtime_status = container.model_switch_service.get_runtime_status()
+
     data = {
+        "aiRuntimeMode": settings.ai_runtime_mode,
+        "runtimeStatus": runtime_status,
         "toothDetect": {
             "modelVersion": settings.model_version,
             "modelArtifactMd5": "mock",
