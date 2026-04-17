@@ -1,0 +1,7 @@
+﻿{
+    "forceRetryFlag":  true,
+    "caseId":  1776435638848119,
+    "taskTypeCode":  "INFERENCE",
+    "patientId":  1776435638848117,
+    "remark":  "phase5 docker e2e 5b-c-real-segmentation-failure"
+}

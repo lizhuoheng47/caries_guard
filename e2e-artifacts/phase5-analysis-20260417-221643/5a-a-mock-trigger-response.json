@@ -1,0 +1,20 @@
+﻿{
+    "code":  "00000",
+    "message":  "success",
+    "data":  {
+                 "taskId":  2045144645436940289,
+                 "taskNo":  "TASK20260417221735940289",
+                 "taskStatusCode":  "QUEUEING",
+                 "taskTypeCode":  "INFERENCE",
+                 "modelVersion":  "caries-v1",
+                 "errorCode":  null,
+                 "errorMessage":  null,
+                 "createdAt":  "2026-04-17T22:17:35.378080281",
+                 "startedAt":  null,
+                 "completedAt":  null,
+                 "traceId":  null,
+                 "inferenceMillis":  null
+             },
+    "traceId":  "45eee13b01564c2c927baceac1234deb",
+    "timestamp":  "2026-04-17T14:17:35.390708698Z"
+}

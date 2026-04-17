@@ -1,0 +1,7 @@
+﻿{
+    "forceRetryFlag":  true,
+    "caseId":  1776436815871852,
+    "taskTypeCode":  "INFERENCE",
+    "patientId":  1776436815871850,
+    "remark":  "phase5 docker e2e 5a-a-mock"
+}

@@ -1,0 +1,2 @@
+﻿id	task_no	task_status_code	model_version	error_code	error_message	trace_id	inference_millis	created_at	started_at	completed_at
+2045145437860335618	TASK20260417222044335618	FAILED	caries-v1	M5006	segmentation failed: forced segmentation failure	py-557329d27504	0	2026-04-17 14:20:44	2026-04-17 14:20:44	2026-04-17 14:20:44

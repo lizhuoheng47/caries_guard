@@ -1,0 +1,55 @@
+﻿caries-backend-java  | Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+caries-backend-java  | 
+caries-backend-java  | @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+caries-backend-java  | @                                                                           @
+caries-backend-java  | @   ____                _                 ____                 _            @
+caries-backend-java  | @  / ___|  _ __   ____ (_) _ __    __ _  | __ )   ___    ___  | |_          @
+caries-backend-java  | @  \___ \ | '_ \ | '__|| || '_ \  / _` | |  _ \  / _ \  / _ \ | __|         @
+caries-backend-java  | @   ___) || |_)  | |   | || | | || (_| | | |_) || (_) || (_) || |_          @
+caries-backend-java  | @  |____/ | .__/ |_|   |_||_| |_| \__, | |____/  \___/  \___/  \__|         @
+caries-backend-java  | @         |_|                      |___/                                    @
+caries-backend-java  | @                                                                           @
+caries-backend-java  | @@@@@@@@@@@@@@@@@ Dental Medical Assistant System v1.0 @@@@@@@@@@@@@@@@@@@@@@S
+caries-backend-java  |                  ──────────────────────────────────────────
+caries-backend-java  |                  >> Version:   3.2.12            │
+caries-backend-java  |                  >> Profile:   docker          │
+caries-backend-java  |                  >> Status:    Running / Stable       │
+caries-backend-java  |                  ──────────────────────────────────────────┘
+caries-backend-java  | 2026-04-17T22:28:03.595+08:00  INFO [] 1 --- [caries-guard-backend] [           main] c.c.boot.CariesBootApplication           : Starting CariesBootApplication v0.1.0-SNAPSHOT using Java 17.0.18 with PID 1 (/app/caries-boot.jar started by root in /app)
+caries-backend-java  | 2026-04-17T22:28:03.598+08:00  INFO [] 1 --- [caries-guard-backend] [           main] c.c.boot.CariesBootApplication           : The following 1 profile is active: "docker"
+caries-backend-java  | 2026-04-17T22:28:05.406+08:00  INFO [] 1 --- [caries-guard-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+caries-backend-java  | 2026-04-17T22:28:05.410+08:00  INFO [] 1 --- [caries-guard-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+caries-backend-java  | 2026-04-17T22:28:05.451+08:00  INFO [] 1 --- [caries-guard-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 21 ms. Found 0 Redis repository interfaces.
+caries-backend-java  | 2026-04-17T22:28:06.455+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+caries-backend-java  | 2026-04-17T22:28:06.468+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+caries-backend-java  | 2026-04-17T22:28:06.468+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.33]
+caries-backend-java  | 2026-04-17T22:28:06.508+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+caries-backend-java  | 2026-04-17T22:28:06.510+08:00  INFO [] 1 --- [caries-guard-backend] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 2849 ms
+caries-backend-java  | Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+caries-backend-java  |  _ _   |_  _ _|_. ___ _ |    _ 
+caries-backend-java  | | | |\/|_)(_| | |_\  |_)||_|_\ 
+caries-backend-java  |      /               |         
+caries-backend-java  |                         3.5.7 
+caries-backend-java  | 2026-04-17T22:28:07.029+08:00  INFO [] 1 --- [caries-guard-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+caries-backend-java  | 2026-04-17T22:28:07.210+08:00  INFO [] 1 --- [caries-guard-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@7816454d
+caries-backend-java  | 2026-04-17T22:28:07.212+08:00  INFO [] 1 --- [caries-guard-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+caries-backend-java  | 2026-04-17T22:28:07.307+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.c.internal.license.VersionPrinter    : Flyway Community Edition 9.22.3 by Redgate
+caries-backend-java  | 2026-04-17T22:28:07.307+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.c.internal.license.VersionPrinter    : See release notes here: https://rd.gt/416ObMi
+caries-backend-java  | 2026-04-17T22:28:07.307+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.c.internal.license.VersionPrinter    : 
+caries-backend-java  | 2026-04-17T22:28:07.333+08:00  INFO [] 1 --- [caries-guard-backend] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://mysql:3306/caries_biz (MySQL 8.4)
+caries-backend-java  | 2026-04-17T22:28:07.345+08:00  WARN [] 1 --- [caries-guard-backend] [           main] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: MySQL 8.4 is newer than this version of Flyway and support has not been tested. The latest supported version of MySQL is 8.0.
+caries-backend-java  | 2026-04-17T22:28:07.383+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 2 migrations (execution time 00:00.028s)
+caries-backend-java  | 2026-04-17T22:28:07.397+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `caries_biz`: 002
+caries-backend-java  | 2026-04-17T22:28:07.399+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Schema `caries_biz` is up to date. No migration necessary.
+caries-backend-java  | 2026-04-17T22:28:10.560+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoint(s) beneath base path '/actuator'
+caries-backend-java  | 2026-04-17T22:28:10.619+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@571360b2, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@13a8cb4e, org.springframework.security.web.context.SecurityContextHolderFilter@468dbd07, org.springframework.security.web.header.HeaderWriterFilter@6ae1d5f1, org.springframework.web.filter.CorsFilter@35ec3604, org.springframework.security.web.authentication.logout.LogoutFilter@34a48013, com.cariesguard.framework.security.jwt.JwtAuthenticationFilter@36931450, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@23e0b938, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@21a1554, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@ab5954d, org.springframework.security.web.session.SessionManagementFilter@627f678d, org.springframework.security.web.access.ExceptionTranslationFilter@445adbd7, org.springframework.security.web.access.intercept.AuthorizationFilter@2f349170]
+caries-backend-java  | 2026-04-17T22:28:11.384+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path ''
+caries-backend-java  | 2026-04-17T22:28:11.400+08:00  INFO [] 1 --- [caries-guard-backend] [           main] c.c.boot.CariesBootApplication           : Started CariesBootApplication in 8.323 seconds (process running for 8.787)
+caries-backend-java  | 2026-04-17T22:28:12.895+08:00  INFO [] 1 --- [caries-guard-backend] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+caries-backend-java  | 2026-04-17T22:28:12.895+08:00  INFO [] 1 --- [caries-guard-backend] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+caries-backend-java  | 2026-04-17T22:28:12.897+08:00  INFO [] 1 --- [caries-guard-backend] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+caries-backend-java  | 2026-04-17T22:28:12.964+08:00  INFO [13f3532a6f1e4f1f927731892a30844a] 1 --- [caries-guard-backend] [nio-8080-exec-1] o.s.a.r.c.CachingConnectionFactory       : Attempting to connect to: [rabbitmq:5672]
+caries-backend-java  | 2026-04-17T22:28:13.007+08:00  INFO [13f3532a6f1e4f1f927731892a30844a] 1 --- [caries-guard-backend] [nio-8080-exec-1] o.s.a.r.c.CachingConnectionFactory       : Created new connection: rabbitConnectionFactory#75d9b73c:0/SimpleConnection@5faf800b [delegate=amqp://guest@172.19.0.2:5672/, localPort=60394]
+caries-backend-java  | 2026-04-17T22:28:19.521+08:00  INFO [7e48e54fbb7b47d6b21011c398cabf62] 1 --- [caries-guard-backend] [nio-8080-exec-2] c.a.i.m.RabbitAnalysisTaskEventPublisher : analysis.requested published exchange=caries.analysis.exchange routingKey=analysis.requested taskId=2045147347833257985 taskNo=TASK20260417222819257985
+caries-backend-java  | 2026-04-17T22:28:19.823+08:00  INFO [py-285f6a20046d] 1 --- [caries-guard-backend] [nio-8080-exec-3] c.a.i.m.RabbitAnalysisTaskEventPublisher : analysis.completed published exchange=caries.analysis.exchange routingKey=analysis.completed taskId=2045147347833257985 taskNo=TASK20260417222819257985
+

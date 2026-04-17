@@ -1,0 +1,221 @@
+﻿caries-backend-java  | 
+caries-backend-java  | @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+caries-backend-java  | @                                                                           @
+caries-backend-java  | @   ____                _                 ____                 _            @
+caries-backend-java  | @  / ___|  _ __   ____ (_) _ __    __ _  | __ )   ___    ___  | |_          @
+caries-backend-java  | @  \___ \ | '_ \ | '__|| || '_ \  / _` | |  _ \  / _ \  / _ \ | __|         @
+caries-backend-java  | @   ___) || |_)  | |   | || | | || (_| | | |_) || (_) || (_) || |_          @
+caries-backend-java  | @  |____/ | .__/ |_|   |_||_| |_| \__, | |____/  \___/  \___/  \__|         @
+caries-backend-java  | @         |_|                      |___/                                    @
+caries-backend-java  | @                                                                           @
+caries-backend-java  | @@@@@@@@@@@@@@@@@ Dental Medical Assistant System v1.0 @@@@@@@@@@@@@@@@@@@@@@S
+caries-backend-java  |                  ──────────────────────────────────────────
+caries-backend-java  |                  >> Version:   3.2.12            │
+caries-backend-java  |                  >> Profile:   docker          │
+caries-backend-java  |                  >> Status:    Running / Stable       │
+caries-backend-java  |                  ──────────────────────────────────────────┘
+caries-backend-java  | 2026-04-17T22:42:06.711+08:00  INFO [] 1 --- [caries-guard-backend] [           main] c.c.boot.CariesBootApplication           : Starting CariesBootApplication v0.1.0-SNAPSHOT using Java 17.0.18 with PID 1 (/app/caries-boot.jar started by root in /app)
+caries-backend-java  | 2026-04-17T22:42:06.714+08:00  INFO [] 1 --- [caries-guard-backend] [           main] c.c.boot.CariesBootApplication           : The following 1 profile is active: "docker"
+caries-backend-java  | 2026-04-17T22:42:08.465+08:00  INFO [] 1 --- [caries-guard-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+caries-backend-java  | 2026-04-17T22:42:08.468+08:00  INFO [] 1 --- [caries-guard-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+caries-backend-java  | 2026-04-17T22:42:08.497+08:00  INFO [] 1 --- [caries-guard-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 13 ms. Found 0 Redis repository interfaces.
+caries-backend-java  | 2026-04-17T22:42:09.607+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+caries-backend-java  | 2026-04-17T22:42:09.618+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+caries-backend-java  | 2026-04-17T22:42:09.619+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.33]
+caries-backend-java  | 2026-04-17T22:42:09.653+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+caries-backend-java  | 2026-04-17T22:42:09.654+08:00  INFO [] 1 --- [caries-guard-backend] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 2867 ms
+caries-backend-java  | Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+caries-backend-java  |  _ _   |_  _ _|_. ___ _ |    _ 
+caries-backend-java  | | | |\/|_)(_| | |_\  |_)||_|_\ 
+caries-backend-java  |      /               |         
+caries-backend-java  |                         3.5.7 
+caries-backend-java  | 2026-04-17T22:42:10.157+08:00  INFO [] 1 --- [caries-guard-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+caries-backend-java  | 2026-04-17T22:42:10.403+08:00  INFO [] 1 --- [caries-guard-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@4f356b98
+caries-backend-java  | 2026-04-17T22:42:10.406+08:00  INFO [] 1 --- [caries-guard-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+caries-backend-java  | 2026-04-17T22:42:10.511+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.c.internal.license.VersionPrinter    : Flyway Community Edition 9.22.3 by Redgate
+caries-backend-java  | 2026-04-17T22:42:10.511+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.c.internal.license.VersionPrinter    : See release notes here: https://rd.gt/416ObMi
+caries-backend-java  | 2026-04-17T22:42:10.511+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.c.internal.license.VersionPrinter    : 
+caries-backend-java  | 2026-04-17T22:42:10.534+08:00  INFO [] 1 --- [caries-guard-backend] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://mysql:3306/caries_biz (MySQL 8.4)
+caries-backend-java  | 2026-04-17T22:42:10.545+08:00  WARN [] 1 --- [caries-guard-backend] [           main] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: MySQL 8.4 is newer than this version of Flyway and support has not been tested. The latest supported version of MySQL is 8.0.
+caries-backend-java  | 2026-04-17T22:42:10.587+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 2 migrations (execution time 00:00.031s)
+caries-backend-java  | 2026-04-17T22:42:10.601+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `caries_biz`: 002
+caries-backend-java  | 2026-04-17T22:42:10.604+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.f.core.internal.command.DbMigrate      : Schema `caries_biz` is up to date. No migration necessary.
+caries-backend-java  | 2026-04-17T22:42:14.008+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoint(s) beneath base path '/actuator'
+caries-backend-java  | 2026-04-17T22:42:14.073+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@4a0dd851, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@293dd4b3, org.springframework.security.web.context.SecurityContextHolderFilter@5016934, org.springframework.security.web.header.HeaderWriterFilter@2dbfcbe4, org.springframework.web.filter.CorsFilter@25a81f28, org.springframework.security.web.authentication.logout.LogoutFilter@4dc23273, com.cariesguard.framework.security.jwt.JwtAuthenticationFilter@2634d000, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@240a717d, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@238cac6, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@51577fc8, org.springframework.security.web.session.SessionManagementFilter@25af2afe, org.springframework.security.web.access.ExceptionTranslationFilter@4b55652a, org.springframework.security.web.access.intercept.AuthorizationFilter@61799152]
+caries-backend-java  | 2026-04-17T22:42:14.864+08:00  INFO [] 1 --- [caries-guard-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path ''
+caries-backend-java  | 2026-04-17T22:42:14.883+08:00  INFO [] 1 --- [caries-guard-backend] [           main] c.c.boot.CariesBootApplication           : Started CariesBootApplication in 8.679 seconds (process running for 9.157)
+caries-backend-java  | 2026-04-17T22:42:16.108+08:00  INFO [] 1 --- [caries-guard-backend] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+caries-backend-java  | 2026-04-17T22:42:16.108+08:00  INFO [] 1 --- [caries-guard-backend] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+caries-backend-java  | 2026-04-17T22:42:16.110+08:00  INFO [] 1 --- [caries-guard-backend] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+caries-backend-java  | 2026-04-17T22:42:16.169+08:00  INFO [8f8e460ca9dd4646a3aa695c0bf585cb] 1 --- [caries-guard-backend] [nio-8080-exec-1] o.s.a.r.c.CachingConnectionFactory       : Attempting to connect to: [rabbitmq:5672]
+caries-backend-java  | 2026-04-17T22:42:16.206+08:00  INFO [8f8e460ca9dd4646a3aa695c0bf585cb] 1 --- [caries-guard-backend] [nio-8080-exec-1] o.s.a.r.c.CachingConnectionFactory       : Created new connection: rabbitConnectionFactory#1e487d57:0/SimpleConnection@33389562 [delegate=amqp://guest@172.19.0.2:5672/, localPort=33532]
+caries-backend-java  | 2026-04-17T22:42:22.539+08:00  INFO [e8d978ac25d9400cbca7040b891bf4b2] 1 --- [caries-guard-backend] [nio-8080-exec-2] c.a.i.m.RabbitAnalysisTaskEventPublisher : analysis.requested published exchange=caries.analysis.exchange routingKey=analysis.requested taskId=2045150883604054017 taskNo=TASK20260417224222054017
+caries-backend-java  | 2026-04-17T22:42:21.446+08:00 ERROR [py-1006a15092bb] 1 --- [caries-guard-backend] [nio-8080-exec-3] c.c.f.web.GlobalExceptionHandler         : Unhandled exception
+caries-backend-java  | 
+caries-backend-java  | java.lang.RuntimeException: Clock moved backwards.  Refusing to generate id for 1086 milliseconds
+caries-backend-java  | 	at com.baomidou.mybatisplus.core.toolkit.Sequence.nextId(Sequence.java:198) ~[mybatis-plus-core-3.5.7.jar!/:3.5.7]
+caries-backend-java  | 	at com.baomidou.mybatisplus.core.incrementer.DefaultIdentifierGenerator.nextId(DefaultIdentifierGenerator.java:56) ~[mybatis-plus-core-3.5.7.jar!/:3.5.7]
+caries-backend-java  | 	at com.baomidou.mybatisplus.core.incrementer.DefaultIdentifierGenerator.nextId(DefaultIdentifierGenerator.java:29) ~[mybatis-plus-core-3.5.7.jar!/:3.5.7]
+caries-backend-java  | 	at com.baomidou.mybatisplus.core.toolkit.IdWorker.getId(IdWorker.java:60) ~[mybatis-plus-core-3.5.7.jar!/:3.5.7]
+caries-backend-java  | 	at com.baomidou.mybatisplus.core.toolkit.IdWorker.getId(IdWorker.java:51) ~[mybatis-plus-core-3.5.7.jar!/:3.5.7]
+caries-backend-java  | 	at com.cariesguard.analysis.app.AnalysisCallbackAppService.processSuccess(AnalysisCallbackAppService.java:158) ~[caries-analysis-0.1.0-SNAPSHOT.jar!/:0.1.0-SNAPSHOT]
+caries-backend-java  | 	at com.cariesguard.analysis.app.AnalysisCallbackAppService.handleResultCallback(AnalysisCallbackAppService.java:114) ~[caries-analysis-0.1.0-SNAPSHOT.jar!/:0.1.0-SNAPSHOT]
+caries-backend-java  | 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
+caries-backend-java  | 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(Unknown Source) ~[na:na]
+caries-backend-java  | 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source) ~[na:na]
+caries-backend-java  | 	at java.base/java.lang.reflect.Method.invoke(Unknown Source) ~[na:na]
+caries-backend-java  | 	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:355) ~[spring-aop-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196) ~[spring-aop-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163) ~[spring-aop-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.aop.framework.CglibAopProxy$CglibMethodInvocation.proceed(CglibAopProxy.java:768) ~[spring-aop-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:379) ~[spring-tx-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119) ~[spring-tx-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184) ~[spring-aop-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.aop.framework.CglibAopProxy$CglibMethodInvocation.proceed(CglibAopProxy.java:768) ~[spring-aop-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:720) ~[spring-aop-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at com.cariesguard.analysis.app.AnalysisCallbackAppService$$SpringCGLIB$$0.handleResultCallback(<generated>) ~[caries-analysis-0.1.0-SNAPSHOT.jar!/:0.1.0-SNAPSHOT]
+caries-backend-java  | 	at com.cariesguard.analysis.controller.AnalysisCallbackController.receiveAnalysisResultCallback(AnalysisCallbackController.java:34) ~[caries-analysis-0.1.0-SNAPSHOT.jar!/:0.1.0-SNAPSHOT]
+caries-backend-java  | 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
+caries-backend-java  | 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(Unknown Source) ~[na:na]
+caries-backend-java  | 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source) ~[na:na]
+caries-backend-java  | 	at java.base/java.lang.reflect.Method.invoke(Unknown Source) ~[na:na]
+caries-backend-java  | 	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:255) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:188) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:118) ~[spring-webmvc-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:926) ~[spring-webmvc-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:831) ~[spring-webmvc-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:87) ~[spring-webmvc-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1089) ~[spring-webmvc-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:979) ~[spring-webmvc-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014) ~[spring-webmvc-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:914) ~[spring-webmvc-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:590) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885) ~[spring-webmvc-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:195) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:51) ~[tomcat-embed-websocket-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at com.cariesguard.framework.web.TraceIdFilter.doFilterInternal(TraceIdFilter.java:31) ~[caries-framework-0.1.0-SNAPSHOT.jar!/:0.1.0-SNAPSHOT]
+caries-backend-java  | 	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:110) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$3(FilterChainProxy.java:231) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:479) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:340) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:82) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:128) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:100) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:131) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:85) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:100) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:179) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.savedrequest.RequestCacheAwareFilter.doFilter(RequestCacheAwareFilter.java:63) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at com.cariesguard.framework.security.jwt.JwtAuthenticationFilter.doFilterInternal(JwtAuthenticationFilter.java:47) ~[caries-framework-0.1.0-SNAPSHOT.jar!/:0.1.0-SNAPSHOT]
+caries-backend-java  | 	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:107) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:93) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.web.filter.CorsFilter.doFilterInternal(CorsFilter.java:91) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:323) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:224) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:233) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191) ~[spring-security-web-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$3(HandlerMappingIntrospector.java:195) ~[spring-webmvc-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:230) ~[spring-security-config-6.2.8.jar!/:6.2.8]
+caries-backend-java  | 	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:362) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:278) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:113) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.15.jar!/:6.1.15]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:483) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:397) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:905) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1741) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1190) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63) ~[tomcat-embed-core-10.1.33.jar!/:na]
+caries-backend-java  | 	at java.base/java.lang.Thread.run(Unknown Source) ~[na:na]
+caries-backend-java  | 
+caries-backend-java  | 2026-04-17T22:42:23.637+08:00  INFO [py-1006a15092bb] 1 --- [caries-guard-backend] [nio-8080-exec-4] c.a.i.m.RabbitAnalysisTaskEventPublisher : analysis.completed published exchange=caries.analysis.exchange routingKey=analysis.completed taskId=2045150883604054017 taskNo=TASK20260417224222054017
+

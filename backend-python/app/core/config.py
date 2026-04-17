@@ -116,6 +116,7 @@ class Settings:
     model_device: str = os.getenv("CG_MODEL_DEVICE", "cpu")
     model_weights_dir: str = os.getenv("CG_MODEL_WEIGHTS_DIR", "/app/model-weights")
     model_confidence_threshold: float = float_env("CG_MODEL_CONFIDENCE_THRESHOLD", 0.5)
+    segmentation_force_fail: bool = bool_env("CG_SEGMENTATION_FORCE_FAIL", False)
     uncertainty_review_threshold: float = float_env("CG_UNCERTAINTY_REVIEW_THRESHOLD", 0.35)
 
     def __post_init__(self) -> None:

@@ -1,0 +1,7 @@
+﻿{
+    "forceRetryFlag":  true,
+    "caseId":  1776436095659570,
+    "taskTypeCode":  "INFERENCE",
+    "patientId":  1776436095659568,
+    "remark":  "phase5 docker e2e 5b-a-mock-segmentation"
+}

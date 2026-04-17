@@ -1,0 +1,33 @@
+﻿caries-backend-python  | [entrypoint] Alembic migration enabled — checking database state…
+caries-backend-python  | [entrypoint] alembic_version exists — running alembic upgrade head
+caries-backend-python  | INFO  [alembic.runtime.migration] Context impl MySQLImpl.
+caries-backend-python  | INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+caries-backend-python  | [entrypoint] Alembic migration complete.
+caries-backend-python  | 2026-04-17 22:19:47,991 INFO cariesguard-ai.model.registry model registry startup ai_runtime_mode=hybrid
+caries-backend-python  | 2026-04-17 22:19:47,992 INFO cariesguard-ai.model.quality loading quality heuristic adapter model_code=quality-check-heuristic-v1
+caries-backend-python  | 2026-04-17 22:19:47,992 INFO cariesguard-ai.model.registry quality adapter loaded model_code=quality-check-heuristic-v1 impl_type=HEURISTIC
+caries-backend-python  | 2026-04-17 22:19:47,992 INFO cariesguard-ai.model.tooth-detector loading tooth detector heuristic adapter model_code=tooth-detect-heuristic-v1
+caries-backend-python  | 2026-04-17 22:19:47,992 INFO cariesguard-ai.model.registry tooth detector loaded model_code=tooth-detect-heuristic-v1 impl_type=HEURISTIC
+caries-backend-python  | 2026-04-17 22:19:47,992 INFO cariesguard-ai.model.lesion-segmenter loading lesion segmentation heuristic adapter model_code=lesion-segmentation-heuristic-v1
+caries-backend-python  | 2026-04-17 22:19:47,992 INFO cariesguard-ai.model.registry segmentation adapter loaded model_code=lesion-segmentation-heuristic-v1 impl_type=HEURISTIC
+caries-backend-python  | 2026-04-17 22:19:47,992 INFO cariesguard-ai.model.registry model registry ready — 3 adapter(s) loaded
+caries-backend-python  | 2026-04-17 22:19:47,992 INFO cariesguard-ai starting CariesGuard Python AI service mode=mock modelVersion=caries-v1
+caries-backend-python  | 2026-04-17 22:19:47,992 INFO cariesguard-ai callback_url=http://backend-java:8080/api/v1/internal/ai/callbacks/analysis-result
+caries-backend-python  | 2026-04-17 22:19:47,997 INFO pika.adapters.utils.connection_workflow Pika version 1.3.2 connecting to ('172.19.0.2', 5672)
+caries-backend-python  | 2026-04-17 22:19:47,999 INFO pika.adapters.utils.io_services_utils Socket connected: <socket.socket fd=5, family=2, type=1, proto=6, laddr=('172.19.0.7', 59002), raddr=('172.19.0.2', 5672)>
+caries-backend-python  | 2026-04-17 22:19:48,000 INFO pika.adapters.utils.connection_workflow Streaming transport linked up: (<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x7eed535ed210>, _StreamingProtocolShim: <SelectConnection PROTOCOL transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x7eed535ed210> params=<ConnectionParameters host=rabbitmq port=5672 virtual_host=/ ssl=False>>).
+caries-backend-python  | 2026-04-17 22:19:48,008 INFO pika.adapters.utils.connection_workflow AMQPConnector - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x7eed535ed210> params=<ConnectionParameters host=rabbitmq port=5672 virtual_host=/ ssl=False>>
+caries-backend-python  | 2026-04-17 22:19:48,009 INFO pika.adapters.utils.connection_workflow AMQPConnectionWorkflow - reporting success: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x7eed535ed210> params=<ConnectionParameters host=rabbitmq port=5672 virtual_host=/ ssl=False>>
+caries-backend-python  | 2026-04-17 22:19:48,009 INFO pika.adapters.blocking_connection Connection workflow succeeded: <SelectConnection OPEN transport=<pika.adapters.utils.io_services_utils._AsyncPlaintextTransport object at 0x7eed535ed210> params=<ConnectionParameters host=rabbitmq port=5672 virtual_host=/ ssl=False>>
+caries-backend-python  | 2026-04-17 22:19:48,009 INFO pika.adapters.blocking_connection Created channel=1
+caries-backend-python  | 2026-04-17 22:19:48,017 INFO cariesguard-ai.mq waiting for analysis tasks rabbit=rabbitmq:5672 queue=caries.analysis.requested.queue
+caries-backend-python  | INFO:     Started server process [1]
+caries-backend-python  | INFO:     Waiting for application startup.
+caries-backend-python  | INFO:     Application startup complete.
+caries-backend-python  | INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+caries-backend-python  | INFO:     172.19.0.1:40012 - "GET /ai/v1/health HTTP/1.1" 200 OK
+caries-backend-python  | 2026-04-17 22:20:06,450 INFO cariesguard-ai.mq received analysis task taskNo=TASK20260417222006780546 traceId=None images=1
+caries-backend-python  | 2026-04-17 22:20:06,450 INFO cariesguard-ai.pipeline pipeline started taskNo=TASK20260417222006780546 traceId=py-e4b61ab28e3e images=1 runtimeMode=hybrid
+caries-backend-python  | 2026-04-17 22:20:06,654 INFO cariesguard-ai.pipeline pipeline completed taskNo=TASK20260417222006780546 traceId=py-e4b61ab28e3e millis=204 qualityMode=real toothMode=real segmentationMode=real
+caries-backend-python  | 2026-04-17 22:20:06,985 INFO cariesguard-ai.callback callback accepted taskNo=TASK20260417222006780546 traceId=py-e4b61ab28e3e status=SUCCESS
+

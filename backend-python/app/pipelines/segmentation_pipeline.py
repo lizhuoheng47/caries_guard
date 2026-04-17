@@ -64,6 +64,8 @@ class SegmentationPipeline:
             return self._mock_result(image, image_path, output_dir)
 
         try:
+            if self._settings.segmentation_force_fail:
+                raise RuntimeError("forced segmentation failure")
             result = adapter.infer(image_path, image_detections)
             return self._real_result(image, image_path, output_dir, result)
         except Exception as exc:

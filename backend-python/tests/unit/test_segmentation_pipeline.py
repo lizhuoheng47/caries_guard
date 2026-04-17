@@ -19,15 +19,17 @@ def _settings(**overrides) -> Settings:
         "ai_runtime_mode": "mock",
         "model_segmentation_enabled": False,
         "model_confidence_threshold": 0.3,
+        "segmentation_force_fail": False,
     }
     mapping = {
         "CG_AI_RUNTIME_MODE": "ai_runtime_mode",
         "CG_MODEL_SEGMENTATION_ENABLED": "model_segmentation_enabled",
         "CG_MODEL_CONFIDENCE_THRESHOLD": "model_confidence_threshold",
+        "CG_SEGMENTATION_FORCE_FAIL": "segmentation_force_fail",
     }
     for key, value in overrides.items():
         target = mapping.get(key, key)
-        if target == "model_segmentation_enabled":
+        if target in {"model_segmentation_enabled", "segmentation_force_fail"}:
             values[target] = str(value).lower() == "true"
         elif target == "model_confidence_threshold":
             values[target] = float(value)
@@ -127,3 +129,16 @@ class TestRealMode:
 
         assert result.segmentation_mode == "real"
         assert result.segmentation_impl_type == "HEURISTIC"
+
+    def test_force_fail_raises_in_real_mode(self, sample_image: Path, tmp_path: Path):
+        settings = _settings(
+            CG_AI_RUNTIME_MODE="real",
+            CG_SEGMENTATION_FORCE_FAIL="true",
+        )
+        registry = ModelRegistry(settings)
+        registry.startup()
+        pipeline = SegmentationPipeline(registry, settings)
+
+        with pytest.raises(BusinessException) as exc_info:
+            pipeline.segment(_image(), sample_image, _detections(), tmp_path / "visual")
+        assert exc_info.value.code == "M5006"
