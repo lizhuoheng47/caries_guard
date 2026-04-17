@@ -209,6 +209,8 @@ services:
       CG_MYSQL_DATABASE: ${CARIES_MYSQL_DATABASE_AI:-caries_ai}
       CG_MYSQL_USERNAME: root
       CG_MYSQL_PASSWORD: ${CARIES_MYSQL_PASSWORD:-1234}
+      CG_DB_SCHEMA_BOOTSTRAP_ENABLED: "false"
+      CG_DB_MIGRATION_ENABLED: "true"
       CG_RAG_INDEX_DIR: ${CG_RAG_INDEX_DIR:-/tmp/cariesguard/vector-index}
       TZ: Asia/Shanghai
     ports:

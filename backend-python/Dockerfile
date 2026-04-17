@@ -10,7 +10,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY tests ./tests
+COPY alembic.ini ./
+COPY migrations ./migrations
+COPY scripts ./scripts
+RUN chmod +x scripts/entrypoint.sh
 
 EXPOSE 8001
 
-CMD ["python", "-m", "app.main"]
+CMD ["scripts/entrypoint.sh"]
