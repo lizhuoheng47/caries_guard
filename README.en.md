@@ -1,36 +1,38 @@
-# Comp_dent_system
+# CariesGuard
 
-#### Description
-{**When you're done, you can delete the content in this README and update the file with details for others getting started with your repository**}
+CariesGuard is a dental caries screening, AI-assisted analysis, reporting, review, and follow-up platform.
 
-#### Software Architecture
-Software architecture description
+## Architecture
 
-#### Installation
+Java owns the business workflow. Python provides AI and RAG capabilities.
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+```text
+Java Backend -> RabbitMQ -> Python AI/RAG -> Java Callback
+```
 
-#### Instructions
+Databases:
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+- `caries_biz`: Java business domain.
+- `caries_ai`: Python AI/RAG runtime domain.
 
-#### Contribution
+Storage:
 
-1.  Fork the repository
-2.  Create Feat_xxx branch
-3.  Commit your code
-4.  Create Pull Request
+- MinIO stores source images, visual assets, reports, and exports.
 
+## AI Strategy
 
-#### Gitee Feature
+The current AI strategy is general LLM + knowledge-base RAG, not domain-specific LLM fine-tuning.
 
-1.  You can use Readme\_XXX.md to support different languages, such as Readme\_en.md, Readme\_zh.md
-2.  Gitee blog [blog.gitee.com](https://blog.gitee.com)
-3.  Explore open source project [https://gitee.com/explore](https://gitee.com/explore)
-4.  The most valuable open source project [GVP](https://gitee.com/gvp)
-5.  The manual of Gitee [https://gitee.com/help](https://gitee.com/help)
-6.  The most popular members  [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+- Image analysis produces structured outputs through replaceable adapters.
+- RAG uses curated knowledge, citations, and structured case context.
+- General LLM output is advisory and cannot directly change clinical business state.
+- High uncertainty triggers review semantics.
+
+## Key Docs
+
+- `Documents/1. 系统架构概述.md`
+- `Documents/03_项目总体设计文档.md`
+- `backend-python/docs/08_Python AI与RAG开发说明书.md`
+- `backend-python/docs/A_Java_Python接口契约对照表.md`
+
+Temporary implementation notes and phase process documents have been removed.
