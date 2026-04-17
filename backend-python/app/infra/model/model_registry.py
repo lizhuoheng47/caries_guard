@@ -12,6 +12,7 @@ from app.infra.model.base_model import BaseModelAdapter, ImplType
 from app.infra.model.grading_model import GradingModelAdapter
 from app.infra.model.lesion_segmenter import LesionSegmenterAdapter
 from app.infra.model.quality_model import QualityModelAdapter
+from app.infra.model.risk_model import RiskFusionAdapter
 from app.infra.model.tooth_detector import ToothDetectorAdapter
 
 log = get_logger("cariesguard-ai.model.registry")
@@ -26,6 +27,7 @@ class ModelRegistry:
         self._tooth_detector: ToothDetectorAdapter | None = None
         self._segmenter: LesionSegmenterAdapter | None = None
         self._grading_model: GradingModelAdapter | None = None
+        self._risk_model: RiskFusionAdapter | None = None
 
     # ── accessors ────────────────────────────────────────────────────────
 
@@ -40,6 +42,9 @@ class ModelRegistry:
 
     def get_grading_model(self) -> GradingModelAdapter | None:
         return self._grading_model
+
+    def get_risk_model(self) -> RiskFusionAdapter | None:
+        return self._risk_model
 
     def get_runtime_mode(self) -> str:
         return self._settings.ai_runtime_mode
@@ -112,6 +117,17 @@ class ModelRegistry:
                 self._grading_model.impl_type.value,
             )
 
+        if self.is_module_real("risk"):
+            self._risk_model = RiskFusionAdapter(
+                confidence_threshold=self._settings.model_confidence_threshold,
+            )
+            self._risk_model.load()
+            log.info(
+                "risk fusion adapter loaded model_code=%s impl_type=%s",
+                self._risk_model.model_code,
+                self._risk_model.impl_type.value,
+            )
+
         loaded = [a for a in self._all_adapters() if a.is_loaded()]
         log.info("model registry ready — %d adapter(s) loaded", len(loaded))
 
@@ -142,6 +158,7 @@ class ModelRegistry:
                 self._tooth_detector,
                 self._segmenter,
                 self._grading_model,
+                self._risk_model,
             )
             if a is not None
         ]

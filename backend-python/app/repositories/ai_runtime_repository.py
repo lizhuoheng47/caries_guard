@@ -54,7 +54,9 @@ class AiRuntimeRepository:
                 patient_uuid=patient_uuid,
                 infer_type_code=infer_type_code,
                 model_version=model_version,
+                status_code="RUNNING",
                 request_json=request_json,
+                started_at=now,
                 callback_required_flag=callback_required_flag,
                 org_id=org_id,
                 created_at=now,
@@ -82,6 +84,37 @@ class AiRuntimeRepository:
                     result_json=result_json,
                     error_message=error_message,
                     finished_at=now,
+                    updated_at=now,
+                )
+            )
+            job = session.execute(
+                select(AiInferJob).where(AiInferJob.id == job_id)
+            ).scalar_one_or_none()
+            return _row_to_dict(job) if job else {}
+
+    def get_latest_infer_job(self, java_task_no: str, *, open_only: bool = False) -> dict[str, Any] | None:
+        with session_scope() as session:
+            stmt = (
+                select(AiInferJob)
+                .where(
+                    AiInferJob.java_task_no == java_task_no,
+                    AiInferJob.deleted_flag == "0",
+                )
+                .order_by(AiInferJob.id.desc())
+            )
+            if open_only:
+                stmt = stmt.where(AiInferJob.status_code.notin_(["SUCCESS", "FAILED", "CANCELLED"]))
+            row = session.execute(stmt).scalars().first()
+            return _row_to_dict(row) if row else None
+
+    def update_callback_status(self, job_id: int, callback_status_code: str) -> dict[str, Any]:
+        now = local_naive_now()
+        with session_scope() as session:
+            session.execute(
+                update(AiInferJob)
+                .where(AiInferJob.id == job_id)
+                .values(
+                    callback_status_code=callback_status_code,
                     updated_at=now,
                 )
             )

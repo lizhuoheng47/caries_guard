@@ -130,7 +130,7 @@ def test_phase5b_pipeline_uploads_segmentation_visual_assets(tmp_path: Path):
     raw = result["rawResultJson"]
     visual_assets = result["visualAssets"]
 
-    assert raw["pipelineVersion"] == "phase5c-1"
+    assert raw["pipelineVersion"] == "phase5d-1"
     assert raw["segmentationMode"] == "real"
     assert raw["segmentationImplType"] == "HEURISTIC"
     assert raw["gradingMode"] == "real"
@@ -140,6 +140,9 @@ def test_phase5b_pipeline_uploads_segmentation_visual_assets(tmp_path: Path):
     assert raw["gradingLabel"] in {"C0", "C1", "C2", "C3"}
     assert raw["uncertaintyScore"] == result["uncertaintyScore"]
     assert raw["needsReview"] == (raw["uncertaintyScore"] >= settings.uncertainty_review_threshold)
+    assert raw["riskMode"] == "mock"
+    assert raw["riskImplType"] == "MOCK"
+    assert raw["riskRawResult"]["gradingLabel"] == raw["gradingLabel"]
     assert len(raw["segmentationRegions"]) >= 1
     assert [item["assetTypeCode"] for item in visual_assets] == ["MASK", "OVERLAY", "HEATMAP"]
     for item in visual_assets:

@@ -15,7 +15,9 @@ from app.infra.model.model_registry import ModelRegistry
 from app.pipelines.detection_pipeline import DetectionPipeline
 from app.pipelines.grading_pipeline import GradingPipeline, GradingResult
 from app.pipelines.quality_pipeline import QualityPipeline
+from app.pipelines.risk_pipeline import RiskPipeline, RiskPipelineResult
 from app.pipelines.segmentation_pipeline import SegmentationPipeline, SegmentationResult
+from app.repositories.ai_runtime_repository import AiRuntimeRepository
 from app.schemas.base import dump_camel
 from app.schemas.callback import (
     AnalysisCallbackPayload,
@@ -46,6 +48,8 @@ class InferencePipeline:
         detection_pipeline: DetectionPipeline,
         segmentation_pipeline: SegmentationPipeline | None = None,
         grading_pipeline: GradingPipeline | None = None,
+        risk_pipeline: RiskPipeline | None = None,
+        ai_runtime_repository: AiRuntimeRepository | None = None,
     ) -> None:
         self.settings = settings
         self.image_fetch_service = image_fetch_service
@@ -56,6 +60,8 @@ class InferencePipeline:
         self.detection_pipeline = detection_pipeline
         self.segmentation_pipeline = segmentation_pipeline
         self.grading_pipeline = grading_pipeline
+        self.risk_pipeline = risk_pipeline
+        self.ai_runtime_repository = ai_runtime_repository
 
     def run(self, raw_task: dict[str, Any]) -> dict[str, Any]:
         task = self._parse_task(raw_task)
@@ -68,6 +74,7 @@ class InferencePipeline:
             "pipeline started taskNo=%s traceId=%s images=%s runtimeMode=%s",
             task.task_no, trace_id, len(task.images), runtime_mode,
         )
+        runtime_job = self._safe_create_runtime_job(task, raw_task, model_version)
 
         with TaskWorkspace(self.settings, task.task_no) as workspace:
             fetched_images = self._fetch_images(task, workspace)
@@ -94,7 +101,13 @@ class InferencePipeline:
                 segmentation_result,
                 tooth_detections,
             )
-            risk_assessment = self.risk_service.assess(task.patient_profile)
+            risk_result = self._create_risk_result(
+                task,
+                grading_result,
+                segmentation_result,
+                tooth_detections,
+            )
+            risk_assessment = risk_result.assessment
 
         completed_at = local_naive_iso_now()
         inference_millis = int((time.perf_counter() - started) * 1000)
@@ -127,8 +140,10 @@ class InferencePipeline:
         )
 
         raw_result_json: dict[str, Any] = {
-            "pipelineVersion": "phase5c-1",
+            "pipelineVersion": "phase5d-1",
             "mode": runtime_mode,
+            "aiRuntimeJobId": runtime_job.get("id") if runtime_job else None,
+            "aiRuntimeJobNo": runtime_job.get("job_no") if runtime_job else None,
             "qualityMode": quality_mode,
             "qualityImplType": quality_impl_type,
             "toothDetectionMode": tooth_detection_mode,
@@ -146,6 +161,9 @@ class InferencePipeline:
             "uncertaintyScore": grading_result.uncertainty_score,
             "needsReview": grading_result.needs_review,
             "gradingRawResult": grading_result.raw_result,
+            "riskMode": risk_result.risk_mode,
+            "riskImplType": risk_result.risk_impl_type,
+            "riskRawResult": risk_result.raw_result,
             "qualityCheckResults": [dump_camel(item) for item in quality_results],
             "toothDetections": [dump_camel(td) for td in tooth_detections],
             "lesionResults": [
@@ -165,6 +183,15 @@ class InferencePipeline:
             "riskAssessment": dump_camel(risk_assessment),
             "visualAssets": [dump_camel(item) for item in visual_assets],
         }
+        self._safe_persist_runtime_success(
+            runtime_job,
+            task,
+            fetched_images,
+            quality_results,
+            visual_assets,
+            raw_result_json,
+            grading_result,
+        )
         payload = AnalysisCallbackPayload(
             task_no=task.task_no,
             task_status_code="SUCCESS",
@@ -181,8 +208,8 @@ class InferencePipeline:
             uncertainty_score=grading_result.uncertainty_score,
         )
         log.info(
-            "pipeline completed taskNo=%s traceId=%s millis=%s qualityMode=%s toothMode=%s segmentationMode=%s gradingMode=%s",
-            task.task_no, trace_id, inference_millis, quality_mode, tooth_detection_mode, segmentation_mode, grading_result.grading_mode,
+            "pipeline completed taskNo=%s traceId=%s millis=%s qualityMode=%s toothMode=%s segmentationMode=%s gradingMode=%s riskMode=%s",
+            task.task_no, trace_id, inference_millis, quality_mode, tooth_detection_mode, segmentation_mode, grading_result.grading_mode, risk_result.risk_mode,
         )
         return dump_camel(payload)
 
@@ -191,13 +218,25 @@ class InferencePipeline:
         task_no = str(raw_task.get("taskNo") or raw_task.get("task_no") or "UNKNOWN")
         trace_id = str(raw_task.get("traceId") or raw_task.get("trace_id") or f"py-{uuid.uuid4().hex[:12]}")
         code = exc.code if isinstance(exc, BusinessException) else "C9999"
+        model_version = str(raw_task.get("modelVersion") or self.settings.model_version)
+        raw_result_json = {"errorCode": code, "errorType": exc.__class__.__name__}
+        runtime_job = self._safe_persist_runtime_failure(
+            raw_task,
+            task_no,
+            model_version,
+            raw_result_json,
+            exc,
+        )
+        if runtime_job:
+            raw_result_json["aiRuntimeJobId"] = runtime_job.get("id")
+            raw_result_json["aiRuntimeJobNo"] = runtime_job.get("job_no")
         payload = FailureCallbackPayload(
             task_no=task_no,
             task_status_code="FAILED",
             started_at=now,
             completed_at=now,
-            model_version=str(raw_task.get("modelVersion") or self.settings.model_version),
-            raw_result_json={"errorCode": code, "errorType": exc.__class__.__name__},
+            model_version=model_version,
+            raw_result_json=raw_result_json,
             error_code=code,
             error_message=str(exc),
             trace_id=trace_id,
@@ -328,6 +367,153 @@ class InferencePipeline:
             regions,
             tooth_detections,
         )
+
+    def _create_risk_result(
+        self,
+        task: AnalyzeRequest,
+        grading_result: GradingResult,
+        segmentation_result: SegmentationResult | None,
+        tooth_detections: list[ToothDetection],
+    ) -> RiskPipelineResult:
+        regions = segmentation_result.regions if segmentation_result is not None else []
+        if self.risk_pipeline is not None:
+            return self.risk_pipeline.assess(
+                task.patient_profile,
+                grading_result,
+                regions,
+                len(tooth_detections),
+            )
+
+        assessment = self.risk_service.assess(
+            task.patient_profile,
+            grading_label=grading_result.grading_label,
+            uncertainty_score=grading_result.uncertainty_score,
+            needs_review=grading_result.needs_review,
+            segmentation_regions=regions,
+        )
+        return RiskPipelineResult(
+            risk_mode="mock",
+            risk_impl_type="MOCK",
+            assessment=assessment,
+            raw_result=assessment.assessment_report_json,
+        )
+
+    def _safe_create_runtime_job(
+        self,
+        task: AnalyzeRequest,
+        raw_task: dict[str, Any],
+        model_version: str,
+    ) -> dict[str, Any]:
+        if self.ai_runtime_repository is None:
+            return {}
+        try:
+            return self.ai_runtime_repository.create_infer_job(
+                task.task_no,
+                model_version,
+                case_no=task.case_no,
+                patient_uuid=str(task.patient_id) if task.patient_id is not None else None,
+                request_json=raw_task,
+                org_id=task.org_id,
+            )
+        except Exception as exc:
+            log.warning("failed to create ai runtime job taskNo=%s error=%s", task.task_no, exc)
+            return {}
+
+    def _safe_persist_runtime_success(
+        self,
+        runtime_job: dict[str, Any],
+        task: AnalyzeRequest,
+        fetched_images: list[FetchedImage],
+        quality_results: list[Any],
+        visual_assets: list[VisualAsset],
+        raw_result_json: dict[str, Any],
+        grading_result: GradingResult,
+    ) -> None:
+        if self.ai_runtime_repository is None or not runtime_job.get("id"):
+            return
+        job_id = int(runtime_job["id"])
+        try:
+            quality_by_image = {item.image_id: item for item in quality_results}
+            fetched_by_image = {item.image_id: item for item in fetched_images}
+            for image in task.images:
+                quality = quality_by_image.get(image.image_id)
+                fetched = fetched_by_image.get(image.image_id)
+                image_result = {
+                    "qualityCheckResult": dump_camel(quality) if quality is not None else None,
+                    "gradingMode": grading_result.grading_mode,
+                    "gradingImplType": grading_result.grading_impl_type,
+                    "gradingLabel": grading_result.grading_label,
+                    "confidenceScore": grading_result.confidence_score,
+                    "uncertaintyScore": grading_result.uncertainty_score,
+                    "needsReview": grading_result.needs_review,
+                    "rawResult": raw_result_json,
+                }
+                self.ai_runtime_repository.add_job_image(
+                    job_id,
+                    image_id=image.image_id,
+                    attachment_id=image.attachment_id,
+                    image_type_code=image.image_type_code,
+                    bucket_name=image.bucket_name,
+                    object_key=image.object_key,
+                    access_url=image.access_url,
+                    download_status_code="SUCCESS" if fetched is not None else "SKIPPED",
+                    local_cache_path=str(fetched.path) if fetched is not None else None,
+                    quality_status_code=quality.check_result_code if quality is not None else None,
+                    grading_label=grading_result.grading_label,
+                    uncertainty_score=grading_result.uncertainty_score,
+                    result_json=image_result,
+                )
+
+            for asset in visual_assets:
+                self.ai_runtime_repository.add_artifact(
+                    job_id,
+                    related_image_id=asset.related_image_id,
+                    artifact_type_code=asset.asset_type_code,
+                    bucket_name=asset.bucket_name,
+                    object_key=asset.object_key,
+                    content_type=asset.content_type,
+                    file_size_bytes=asset.file_size_bytes,
+                    md5=asset.md5,
+                    model_version=self.settings.model_version,
+                    attachment_id=asset.attachment_id,
+                    ext_json=dump_camel(asset),
+                )
+
+            self.ai_runtime_repository.finish_infer_job(
+                job_id,
+                "SUCCESS",
+                result_json=raw_result_json,
+            )
+        except Exception as exc:
+            log.warning("failed to persist ai runtime success taskNo=%s error=%s", task.task_no, exc)
+
+    def _safe_persist_runtime_failure(
+        self,
+        raw_task: dict[str, Any],
+        task_no: str,
+        model_version: str,
+        raw_result_json: dict[str, Any],
+        exc: Exception,
+    ) -> dict[str, Any]:
+        if self.ai_runtime_repository is None:
+            return {}
+        try:
+            runtime_job = self.ai_runtime_repository.get_latest_infer_job(task_no, open_only=True)
+            if runtime_job is None:
+                runtime_job = self.ai_runtime_repository.create_infer_job(
+                    task_no,
+                    model_version,
+                    request_json=raw_task,
+                )
+            return self.ai_runtime_repository.finish_infer_job(
+                int(runtime_job["id"]),
+                "FAILED",
+                result_json=raw_result_json,
+                error_message=str(exc)[:1000],
+            )
+        except Exception as persist_exc:
+            log.warning("failed to persist ai runtime failure taskNo=%s error=%s", task_no, persist_exc)
+            return {}
 
     def _callback_visual_assets(self, visual_assets: list[VisualAsset], task_no: str, trace_id: str) -> list[VisualAsset]:
         mode = (self.settings.callback_visual_asset_mode or "metadata").strip().lower()

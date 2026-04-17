@@ -71,7 +71,31 @@ def _task_payload(task_no: str = "TASK-001") -> dict:
     }
 
 
-def _build_pipeline(settings: Settings) -> InferencePipeline:
+class FakeAiRuntimeRepository:
+    def __init__(self):
+        self.created = []
+        self.images = []
+        self.artifacts = []
+        self.finished = []
+
+    def create_infer_job(self, java_task_no: str, model_version: str, **kwargs):
+        self.created.append((java_task_no, model_version, kwargs))
+        return {"id": 7, "job_no": "AIJOB-TEST"}
+
+    def add_job_image(self, job_id: int, **fields):
+        self.images.append((job_id, fields))
+        return {"id": len(self.images), "job_id": job_id, **fields}
+
+    def add_artifact(self, job_id: int, **fields):
+        self.artifacts.append((job_id, fields))
+        return {"id": len(self.artifacts), "job_id": job_id, **fields}
+
+    def finish_infer_job(self, job_id: int, status_code: str, **kwargs):
+        self.finished.append((job_id, status_code, kwargs))
+        return {"id": job_id, "job_no": "AIJOB-TEST", "status_code": status_code}
+
+
+def _build_pipeline(settings: Settings, ai_runtime_repository=None) -> InferencePipeline:
     registry = ModelRegistry(settings)
     registry.startup()
     quality_pipeline = QualityPipeline(registry, settings)
@@ -88,6 +112,7 @@ def _build_pipeline(settings: Settings) -> InferencePipeline:
         model_registry=registry,
         quality_pipeline=quality_pipeline,
         detection_pipeline=detection_pipeline,
+        ai_runtime_repository=ai_runtime_repository,
     )
 
 
@@ -128,6 +153,9 @@ class TestMockModePipeline:
         assert raw["uncertaintyMode"] == "mock"
         assert raw["uncertaintyImplType"] == "MOCK"
         assert raw["needsReview"] is False
+        assert raw["riskMode"] == "mock"
+        assert raw["riskImplType"] == "MOCK"
+        assert "riskRawResult" in raw
         assert raw["mode"] == "mock"
 
     def test_quality_check_results_present(self):
@@ -143,6 +171,19 @@ class TestMockModePipeline:
         raw = result["rawResultJson"]
         assert "toothDetections" in raw
         assert len(raw["toothDetections"]) == 2
+
+    def test_ai_runtime_repository_receives_success_trace(self):
+        repo = FakeAiRuntimeRepository()
+        pipeline = _build_pipeline(_settings(CG_AI_RUNTIME_MODE="mock"), repo)
+        result = pipeline.run(_task_payload())
+        raw = result["rawResultJson"]
+
+        assert raw["aiRuntimeJobId"] == 7
+        assert raw["aiRuntimeJobNo"] == "AIJOB-TEST"
+        assert repo.created[0][0] == "TASK-001"
+        assert repo.images[0][0] == 7
+        assert repo.images[0][1]["grading_label"] == raw["gradingLabel"]
+        assert repo.finished[0][1] == "SUCCESS"
 
 
 # ── Hybrid mode (quality enabled) ───────────────────────────────────────
@@ -218,7 +259,7 @@ class TestHybridBothEnabled:
     def test_pipeline_version_updated(self):
         pipeline = _build_pipeline(_settings(CG_AI_RUNTIME_MODE="hybrid"))
         result = pipeline.run(_task_payload())
-        assert result["rawResultJson"]["pipelineVersion"] == "phase5c-1"
+        assert result["rawResultJson"]["pipelineVersion"] == "phase5d-1"
 
 
 # ── Failure payload ──────────────────────────────────────────────────────

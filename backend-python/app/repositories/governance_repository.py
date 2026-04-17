@@ -71,6 +71,59 @@ class GovernanceRepository:
             session.flush()
             return _row_to_dict(row)
 
+    def ensure_model_version(
+        self,
+        model_code: str,
+        model_name: str,
+        version_no: str,
+        *,
+        model_type_code: str = "SEGMENTATION",
+        artifact_path: str | None = None,
+        dataset_version: str | None = None,
+        metrics_json: dict | list | None = None,
+        status_code: str = "APPROVED",
+        active_flag: str = "1",
+        org_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Create or refresh a model-version row without duplicating it."""
+        now = local_naive_now()
+        with session_scope() as session:
+            row = session.execute(
+                select(ModelVersion).where(
+                    ModelVersion.model_code == model_code,
+                    ModelVersion.version_no == version_no,
+                    ModelVersion.deleted_flag == "0",
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                row = ModelVersion(
+                    model_code=model_code,
+                    model_name=model_name,
+                    model_type_code=model_type_code,
+                    version_no=version_no,
+                    artifact_path=artifact_path,
+                    dataset_version=dataset_version,
+                    metrics_json=metrics_json,
+                    status_code=status_code,
+                    active_flag=active_flag,
+                    org_id=org_id,
+                    created_at=now,
+                    updated_at=now,
+                )
+                session.add(row)
+            else:
+                row.model_name = model_name
+                row.model_type_code = model_type_code
+                row.artifact_path = artifact_path
+                row.dataset_version = dataset_version
+                row.metrics_json = metrics_json
+                row.status_code = status_code
+                row.active_flag = active_flag
+                row.org_id = org_id
+                row.updated_at = now
+            session.flush()
+            return _row_to_dict(row)
+
     def get_active_model_version(self, model_code: str) -> dict[str, Any] | None:
         with session_scope() as session:
             stmt = (

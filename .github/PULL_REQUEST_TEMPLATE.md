@@ -23,7 +23,7 @@
 - [ ] 已在本地执行 `alembic upgrade head` 验证迁移无报错
 - [ ] `downgrade()` 可执行（已在 dev 环境回归验证）
 - [ ] ORM 模型 (`app/models/*.py`) 与迁移内容保持一致
-- [ ] 基线文档 `docs/13_caries_ai_baseline_schema.md` 已同步更新
+- [ ] 基线文档 `Documents/02_数据库设计.md` 已同步更新
 - [ ] 破坏性变更（删表/删列/改类型）已在本 PR 描述中标注
 
 ---
