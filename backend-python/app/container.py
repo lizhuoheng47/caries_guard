@@ -6,6 +6,7 @@ from app.infra.model.model_registry import ModelRegistry
 from app.infra.storage.minio_client import MinioStorageClient
 from app.infra.vector.simple_vector_store import SimpleVectorStore
 from app.pipelines.detection_pipeline import DetectionPipeline
+from app.pipelines.grading_pipeline import GradingPipeline
 from app.pipelines.inference_pipeline import InferencePipeline
 from app.pipelines.quality_pipeline import QualityPipeline
 from app.pipelines.segmentation_pipeline import SegmentationPipeline
@@ -52,6 +53,7 @@ class AppContainer:
         self.quality_pipeline = QualityPipeline(self.model_registry, settings)
         self.detection_pipeline = DetectionPipeline(self.model_registry, settings)
         self.segmentation_pipeline = SegmentationPipeline(self.model_registry, settings)
+        self.grading_pipeline = GradingPipeline(self.model_registry, settings)
         self.model_switch_service = ModelSwitchService(self.model_registry, settings)
 
         self.pipeline = InferencePipeline(
@@ -63,6 +65,7 @@ class AppContainer:
             quality_pipeline=self.quality_pipeline,
             detection_pipeline=self.detection_pipeline,
             segmentation_pipeline=self.segmentation_pipeline,
+            grading_pipeline=self.grading_pipeline,
         )
 
 

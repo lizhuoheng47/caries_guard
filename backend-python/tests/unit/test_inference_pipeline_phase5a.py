@@ -122,6 +122,12 @@ class TestMockModePipeline:
         assert raw["toothDetectionImplType"] == "MOCK"
         assert raw["segmentationMode"] == "mock"
         assert raw["segmentationImplType"] == "MOCK"
+        assert raw["gradingMode"] == "mock"
+        assert raw["gradingImplType"] == "MOCK"
+        assert raw["gradingLabel"] == "C1"
+        assert raw["uncertaintyMode"] == "mock"
+        assert raw["uncertaintyImplType"] == "MOCK"
+        assert raw["needsReview"] is False
         assert raw["mode"] == "mock"
 
     def test_quality_check_results_present(self):
@@ -212,7 +218,7 @@ class TestHybridBothEnabled:
     def test_pipeline_version_updated(self):
         pipeline = _build_pipeline(_settings(CG_AI_RUNTIME_MODE="hybrid"))
         result = pipeline.run(_task_payload())
-        assert result["rawResultJson"]["pipelineVersion"] == "phase5b-1"
+        assert result["rawResultJson"]["pipelineVersion"] == "phase5c-1"
 
 
 # ── Failure payload ──────────────────────────────────────────────────────

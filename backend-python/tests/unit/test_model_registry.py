@@ -41,6 +41,7 @@ class TestMockMode:
         assert registry.get_quality_model() is None
         assert registry.get_tooth_detector() is None
         assert registry.get_segmenter() is None
+        assert registry.get_grading_model() is None
         assert registry.get_runtime_mode() == "mock"
 
     def test_is_module_real_always_false(self):
@@ -79,6 +80,15 @@ class TestHybridMode:
         assert registry.get_segmenter() is not None
         assert registry.get_segmenter().is_loaded()
 
+    def test_grading_enabled_loads_adapter(self):
+        registry = ModelRegistry(_settings(
+            CG_AI_RUNTIME_MODE="hybrid",
+            CG_MODEL_GRADING_ENABLED="true",
+        ))
+        registry.startup()
+        assert registry.get_grading_model() is not None
+        assert registry.get_grading_model().is_loaded()
+
     def test_both_enabled(self):
         registry = ModelRegistry(_settings(
             CG_AI_RUNTIME_MODE="hybrid",
@@ -105,12 +115,15 @@ class TestRealMode:
         assert registry.is_module_real("quality")
         assert registry.is_module_real("tooth_detect")
         assert registry.is_module_real("segmentation")
+        assert registry.is_module_real("grading")
 
     def test_all_adapters_loaded(self):
         registry = ModelRegistry(_settings(CG_AI_RUNTIME_MODE="real"))
         registry.startup()
         assert registry.get_quality_model() is not None
         assert registry.get_tooth_detector() is not None
+        assert registry.get_segmenter() is not None
+        assert registry.get_grading_model() is not None
 
 
 class TestLifecycle:
@@ -145,3 +158,13 @@ class TestLifecycle:
         status = registry.status()
         assert "SEGMENTATION" in status["adapters"]
         assert status["adapters"]["SEGMENTATION"]["implType"] == "HEURISTIC"
+
+    def test_status_includes_grading(self):
+        registry = ModelRegistry(_settings(
+            CG_AI_RUNTIME_MODE="hybrid",
+            CG_MODEL_GRADING_ENABLED="true",
+        ))
+        registry.startup()
+        status = registry.status()
+        assert "GRADING" in status["adapters"]
+        assert status["adapters"]["GRADING"]["implType"] == "HEURISTIC"

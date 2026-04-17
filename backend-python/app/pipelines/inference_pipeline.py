@@ -13,6 +13,7 @@ from app.core.logging import get_logger
 from app.core.time_utils import local_naive_iso_now
 from app.infra.model.model_registry import ModelRegistry
 from app.pipelines.detection_pipeline import DetectionPipeline
+from app.pipelines.grading_pipeline import GradingPipeline, GradingResult
 from app.pipelines.quality_pipeline import QualityPipeline
 from app.pipelines.segmentation_pipeline import SegmentationPipeline, SegmentationResult
 from app.schemas.base import dump_camel
@@ -44,6 +45,7 @@ class InferencePipeline:
         quality_pipeline: QualityPipeline,
         detection_pipeline: DetectionPipeline,
         segmentation_pipeline: SegmentationPipeline | None = None,
+        grading_pipeline: GradingPipeline | None = None,
     ) -> None:
         self.settings = settings
         self.image_fetch_service = image_fetch_service
@@ -53,6 +55,7 @@ class InferencePipeline:
         self.quality_pipeline = quality_pipeline
         self.detection_pipeline = detection_pipeline
         self.segmentation_pipeline = segmentation_pipeline
+        self.grading_pipeline = grading_pipeline
 
     def run(self, raw_task: dict[str, Any]) -> dict[str, Any]:
         task = self._parse_task(raw_task)
@@ -85,15 +88,21 @@ class InferencePipeline:
                 model_version,
                 tooth_detections,
             )
+            grading_result = self._create_grading_result(
+                task,
+                fetched_images,
+                segmentation_result,
+                tooth_detections,
+            )
             risk_assessment = self.risk_service.assess(task.patient_profile)
 
         completed_at = local_naive_iso_now()
         inference_millis = int((time.perf_counter() - started) * 1000)
         first_image_id = task.images[0].image_id if task.images else None
         summary = Summary(
-            overall_highest_severity="C1",
-            uncertainty_score=0.1,
-            review_suggested_flag="0",
+            overall_highest_severity=grading_result.grading_label,
+            uncertainty_score=grading_result.uncertainty_score,
+            review_suggested_flag="1" if grading_result.needs_review else "0",
             teeth_count=len(tooth_detections),
         )
 
@@ -118,7 +127,7 @@ class InferencePipeline:
         )
 
         raw_result_json: dict[str, Any] = {
-            "pipelineVersion": "phase5b-1",
+            "pipelineVersion": "phase5c-1",
             "mode": runtime_mode,
             "qualityMode": quality_mode,
             "qualityImplType": quality_impl_type,
@@ -128,6 +137,15 @@ class InferencePipeline:
             "segmentationImplType": segmentation_impl_type,
             "segmentationRegions": segmentation_result.regions if segmentation_result is not None else [],
             "segmentationRawResult": segmentation_result.raw_result if segmentation_result is not None else {},
+            "gradingMode": grading_result.grading_mode,
+            "gradingImplType": grading_result.grading_impl_type,
+            "gradingLabel": grading_result.grading_label,
+            "confidenceScore": grading_result.confidence_score,
+            "uncertaintyMode": grading_result.grading_mode,
+            "uncertaintyImplType": grading_result.grading_impl_type,
+            "uncertaintyScore": grading_result.uncertainty_score,
+            "needsReview": grading_result.needs_review,
+            "gradingRawResult": grading_result.raw_result,
             "qualityCheckResults": [dump_camel(item) for item in quality_results],
             "toothDetections": [dump_camel(td) for td in tooth_detections],
             "lesionResults": [
@@ -135,8 +153,8 @@ class InferencePipeline:
                     LesionResult(
                         image_id=first_image_id,
                         tooth_code=tooth_detections[0].tooth_code if tooth_detections else "16",
-                        severity_code="C1",
-                        uncertainty_score=0.1,
+                        severity_code=grading_result.grading_label,
+                        uncertainty_score=grading_result.uncertainty_score,
                         lesion_area_px=512,
                         lesion_area_ratio=0.01,
                         mask_asset=self._asset_ref(visual_assets, "MASK"),
@@ -160,11 +178,11 @@ class InferencePipeline:
             error_message=None,
             trace_id=trace_id,
             inference_millis=inference_millis,
-            uncertainty_score=0.1,
+            uncertainty_score=grading_result.uncertainty_score,
         )
         log.info(
-            "pipeline completed taskNo=%s traceId=%s millis=%s qualityMode=%s toothMode=%s segmentationMode=%s",
-            task.task_no, trace_id, inference_millis, quality_mode, tooth_detection_mode, segmentation_mode,
+            "pipeline completed taskNo=%s traceId=%s millis=%s qualityMode=%s toothMode=%s segmentationMode=%s gradingMode=%s",
+            task.task_no, trace_id, inference_millis, quality_mode, tooth_detection_mode, segmentation_mode, grading_result.grading_mode,
         )
         return dump_camel(payload)
 
@@ -278,6 +296,38 @@ class InferencePipeline:
             self.visual_asset_service.upload_visual("OVERLAY", task.org_id, case_no, task.task_no, model_version, image_id, overlay_path, tooth_code="16"),
             self.visual_asset_service.upload_visual("HEATMAP", task.org_id, case_no, task.task_no, model_version, image_id, heatmap_path),
         ], None
+
+    def _create_grading_result(
+        self,
+        task: AnalyzeRequest,
+        fetched_images: list[FetchedImage],
+        segmentation_result: SegmentationResult | None,
+        tooth_detections: list[ToothDetection],
+    ) -> GradingResult:
+        if self.grading_pipeline is None:
+            uncertainty_score = 0.1
+            return GradingResult(
+                grading_mode="mock",
+                grading_impl_type="MOCK",
+                grading_label="C1",
+                confidence_score=0.9,
+                uncertainty_score=uncertainty_score,
+                needs_review=uncertainty_score >= self.settings.uncertainty_review_threshold,
+                raw_result={
+                    "source": "legacy-default",
+                    "reviewThreshold": self.settings.uncertainty_review_threshold,
+                },
+            )
+
+        image_input = task.images[0] if task.images else None
+        image_path = fetched_images[0].path if fetched_images else None
+        regions = segmentation_result.regions if segmentation_result is not None else []
+        return self.grading_pipeline.grade(
+            image_input,
+            image_path,
+            regions,
+            tooth_detections,
+        )
 
     def _callback_visual_assets(self, visual_assets: list[VisualAsset], task_no: str, trace_id: str) -> list[VisualAsset]:
         mode = (self.settings.callback_visual_asset_mode or "metadata").strip().lower()

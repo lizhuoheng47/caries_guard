@@ -9,6 +9,7 @@ from PIL import Image
 from app.core.config import Settings
 from app.infra.model.model_registry import ModelRegistry
 from app.pipelines.detection_pipeline import DetectionPipeline
+from app.pipelines.grading_pipeline import GradingPipeline
 from app.pipelines.inference_pipeline import InferencePipeline
 from app.pipelines.quality_pipeline import QualityPipeline
 from app.pipelines.segmentation_pipeline import SegmentationPipeline
@@ -36,6 +37,7 @@ def _settings(tmp_path: Path, **overrides) -> Settings:
         "model_quality_enabled": False,
         "model_tooth_detect_enabled": True,
         "model_segmentation_enabled": True,
+        "model_grading_enabled": True,
         "model_confidence_threshold": 0.3,
         "download_images": True,
         "temp_dir": str(tmp_path / "work"),
@@ -45,13 +47,20 @@ def _settings(tmp_path: Path, **overrides) -> Settings:
         "CG_MODEL_QUALITY_ENABLED": "model_quality_enabled",
         "CG_MODEL_TOOTH_DETECT_ENABLED": "model_tooth_detect_enabled",
         "CG_MODEL_SEGMENTATION_ENABLED": "model_segmentation_enabled",
+        "CG_MODEL_GRADING_ENABLED": "model_grading_enabled",
         "CG_MODEL_CONFIDENCE_THRESHOLD": "model_confidence_threshold",
         "CG_AI_DOWNLOAD_IMAGES": "download_images",
         "CG_TEMP_DIR": "temp_dir",
     }
     for key, value in overrides.items():
         target = mapping.get(key, key)
-        if target in {"model_quality_enabled", "model_tooth_detect_enabled", "model_segmentation_enabled", "download_images"}:
+        if target in {
+            "model_quality_enabled",
+            "model_tooth_detect_enabled",
+            "model_segmentation_enabled",
+            "model_grading_enabled",
+            "download_images",
+        }:
             values[target] = str(value).lower() == "true"
         elif target == "model_confidence_threshold":
             values[target] = float(value)
@@ -93,6 +102,7 @@ def test_phase5b_pipeline_uploads_segmentation_visual_assets(tmp_path: Path):
     quality_pipeline = QualityPipeline(registry, settings)
     detection_pipeline = DetectionPipeline(registry, settings)
     segmentation_pipeline = SegmentationPipeline(registry, settings)
+    grading_pipeline = GradingPipeline(registry, settings)
 
     image_path = _sample_image(tmp_path)
     mock_fetch = MagicMock(spec=ImageFetchService)
@@ -113,15 +123,23 @@ def test_phase5b_pipeline_uploads_segmentation_visual_assets(tmp_path: Path):
         quality_pipeline=quality_pipeline,
         detection_pipeline=detection_pipeline,
         segmentation_pipeline=segmentation_pipeline,
+        grading_pipeline=grading_pipeline,
     )
 
     result = pipeline.run(_task_payload())
     raw = result["rawResultJson"]
     visual_assets = result["visualAssets"]
 
-    assert raw["pipelineVersion"] == "phase5b-1"
+    assert raw["pipelineVersion"] == "phase5c-1"
     assert raw["segmentationMode"] == "real"
     assert raw["segmentationImplType"] == "HEURISTIC"
+    assert raw["gradingMode"] == "real"
+    assert raw["gradingImplType"] == "HEURISTIC"
+    assert raw["uncertaintyMode"] == "real"
+    assert raw["uncertaintyImplType"] == "HEURISTIC"
+    assert raw["gradingLabel"] in {"C0", "C1", "C2", "C3"}
+    assert raw["uncertaintyScore"] == result["uncertaintyScore"]
+    assert raw["needsReview"] == (raw["uncertaintyScore"] >= settings.uncertainty_review_threshold)
     assert len(raw["segmentationRegions"]) >= 1
     assert [item["assetTypeCode"] for item in visual_assets] == ["MASK", "OVERLAY", "HEATMAP"]
     for item in visual_assets:
