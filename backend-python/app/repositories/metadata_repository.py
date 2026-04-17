@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from contextlib import contextmanager
 from typing import Any, Iterator
 
@@ -9,15 +8,29 @@ from pymysql.connections import Connection
 from pymysql.cursors import DictCursor
 
 from app.core.config import Settings
-from app.core.time_utils import local_naive_iso_now
 
 
 class MetadataRepository:
+    """Legacy schema-bootstrap helper retained for dev/local convenience.
+
+    Phase 4 (Python persistence engineering) moved all CRUD onto domain
+    repositories backed by SQLAlchemy ORM, and DDL lifecycle onto Alembic.
+    This class now only owns the ``ensure_schema()`` fallback used when a
+    developer runs ``python -m app.main`` against a fresh MySQL without
+    first executing ``alembic upgrade head``. The fallback is gated by
+    ``CG_DB_SCHEMA_BOOTSTRAP_ENABLED`` and is OFF in Docker/CI/prod.
+
+    Scheduled for removal in Phase 4 stage B once Alembic is load-bearing
+    in every environment.
+    """
+
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.ensure_schema()
 
     def ensure_schema(self) -> None:
+        if not self.settings.db_schema_bootstrap_enabled:
+            return
         with self._transaction() as conn:
             for statement in self._table_statements():
                 self._execute(conn, statement)
@@ -28,333 +41,6 @@ class MetadataRepository:
                     if exc.args and exc.args[0] == 1061:
                         continue
                     raise
-
-    def ensure_knowledge_base(
-        self,
-        kb_code: str,
-        kb_name: str,
-        kb_type_code: str,
-        knowledge_version: str,
-        embedding_model: str,
-        vector_store_type_code: str,
-        vector_store_path: str,
-        org_id: int | None = None,
-    ) -> dict[str, Any]:
-        existing = self.get_knowledge_base(kb_code)
-        now = self._now()
-        if existing:
-            with self._transaction() as conn:
-                self._execute(
-                    conn,
-                    """
-                    UPDATE kb_knowledge_base
-                    SET kb_name = %s, kb_type_code = %s, knowledge_version = %s, embedding_model = %s,
-                        vector_store_type_code = %s, vector_store_path = %s, updated_at = %s
-                    WHERE kb_code = %s
-                    """,
-                    (kb_name, kb_type_code, knowledge_version, embedding_model, vector_store_type_code, vector_store_path, now, kb_code),
-                )
-            return self.get_knowledge_base(kb_code) or existing
-        with self._transaction() as conn:
-            self._execute(
-                conn,
-                """
-                INSERT INTO kb_knowledge_base (
-                    kb_code, kb_name, kb_type_code, knowledge_version, embedding_model,
-                    vector_store_type_code, vector_store_path, org_id, created_at, updated_at
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (kb_code, kb_name, kb_type_code, knowledge_version, embedding_model, vector_store_type_code, vector_store_path, org_id, now, now),
-            )
-        return self.get_knowledge_base(kb_code) or {}
-
-    def get_knowledge_base(self, kb_code: str) -> dict[str, Any] | None:
-        with self._transaction(readonly=True) as conn:
-            return self._fetchone(
-                conn,
-                "SELECT * FROM kb_knowledge_base WHERE kb_code = %s AND deleted_flag = '0'",
-                (kb_code,),
-            )
-
-    def create_document(
-        self,
-        kb_id: int,
-        doc_title: str,
-        content_text: str,
-        doc_no: str | None,
-        doc_source_code: str,
-        source_uri: str | None,
-        doc_version: str,
-        review_status_code: str,
-        org_id: int | None,
-    ) -> dict[str, Any]:
-        now = self._now()
-        reviewed_at = now if review_status_code == "APPROVED" else None
-        doc_no = doc_no or f"DOC-{uuid.uuid4().hex[:16].upper()}"
-        with self._transaction() as conn:
-            doc_id = self._execute(
-                conn,
-                """
-                INSERT INTO kb_document (
-                    kb_id, doc_no, doc_title, doc_source_code, source_uri, doc_version,
-                    content_text, review_status_code, reviewed_at, org_id, created_at, updated_at
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    kb_id,
-                    doc_no,
-                    doc_title,
-                    doc_source_code,
-                    source_uri,
-                    doc_version,
-                    content_text,
-                    review_status_code,
-                    reviewed_at,
-                    org_id,
-                    now,
-                    now,
-                ),
-            )
-            return self._fetchone(conn, "SELECT * FROM kb_document WHERE id = %s", (doc_id,)) or {}
-
-    def list_approved_documents(self, kb_id: int) -> list[dict[str, Any]]:
-        with self._transaction(readonly=True) as conn:
-            return self._fetchall(
-                conn,
-                """
-                SELECT * FROM kb_document
-                WHERE kb_id = %s
-                  AND review_status_code = 'APPROVED'
-                  AND enabled_flag = '1'
-                  AND deleted_flag = '0'
-                ORDER BY id
-                """,
-                (kb_id,),
-            )
-
-    def replace_chunks(self, kb_id: int, chunks: list[dict[str, Any]], embedding_model: str, vector_store_path: str) -> list[dict[str, Any]]:
-        now = self._now()
-        with self._transaction() as conn:
-            self._execute(conn, "DELETE FROM kb_document_chunk WHERE kb_id = %s", (kb_id,))
-            stored: list[dict[str, Any]] = []
-            for item in chunks:
-                chunk_id = self._execute(
-                    conn,
-                    """
-                    INSERT INTO kb_document_chunk (
-                        kb_id, doc_id, chunk_no, chunk_text, token_count, embedding_model,
-                        vector_store_path, org_id, created_at
-                    )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    (
-                        kb_id,
-                        item["doc_id"],
-                        item["chunk_no"],
-                        item["chunk_text"],
-                        item.get("token_count"),
-                        embedding_model,
-                        vector_store_path,
-                        item.get("org_id"),
-                        now,
-                    ),
-                )
-                vector_id = f"chunk-{chunk_id}"
-                self._execute(conn, "UPDATE kb_document_chunk SET vector_id = %s WHERE id = %s", (vector_id, chunk_id))
-                row = self._fetchone(
-                    conn,
-                    """
-                    SELECT c.*, d.doc_title, d.doc_no, d.source_uri, d.doc_source_code
-                    FROM kb_document_chunk c
-                    JOIN kb_document d ON d.id = c.doc_id
-                    WHERE c.id = %s
-                    """,
-                    (chunk_id,),
-                )
-                if row is not None:
-                    stored.append(row)
-            return stored
-
-    def create_rebuild_job(self, kb_id: int, knowledge_version: str, vector_store_path: str, org_id: int | None) -> dict[str, Any]:
-        now = self._now()
-        job_no = f"KBREBUILD-{uuid.uuid4().hex[:16].upper()}"
-        with self._transaction() as conn:
-            job_id = self._execute(
-                conn,
-                """
-                INSERT INTO kb_rebuild_job (
-                    rebuild_job_no, kb_id, knowledge_version, rebuild_status_code, vector_store_path,
-                    started_at, org_id, created_at, updated_at
-                )
-                VALUES (%s, %s, %s, 'RUNNING', %s, %s, %s, %s, %s)
-                """,
-                (job_no, kb_id, knowledge_version, vector_store_path, now, org_id, now, now),
-            )
-            return self._fetchone(conn, "SELECT * FROM kb_rebuild_job WHERE id = %s", (job_id,)) or {}
-
-    def finish_rebuild_job(self, job_id: int, status_code: str, chunk_count: int, error_message: str | None = None) -> dict[str, Any]:
-        now = self._now()
-        with self._transaction() as conn:
-            self._execute(
-                conn,
-                """
-                UPDATE kb_rebuild_job
-                SET rebuild_status_code = %s, chunk_count = %s, error_message = %s, finished_at = %s, updated_at = %s
-                WHERE id = %s
-                """,
-                (status_code, chunk_count, error_message, now, now, job_id),
-            )
-            return self._fetchone(conn, "SELECT * FROM kb_rebuild_job WHERE id = %s", (job_id,)) or {}
-
-    def list_chunks(self, kb_id: int) -> list[dict[str, Any]]:
-        with self._transaction(readonly=True) as conn:
-            return self._fetchall(
-                conn,
-                """
-                SELECT c.*, d.doc_title, d.doc_no, d.source_uri, d.doc_source_code
-                FROM kb_document_chunk c
-                JOIN kb_document d ON d.id = c.doc_id
-                WHERE c.kb_id = %s
-                  AND c.enabled_flag = '1'
-                  AND c.deleted_flag = '0'
-                ORDER BY c.id
-                """,
-                (kb_id,),
-            )
-
-    def create_rag_session(
-        self,
-        session_type_code: str,
-        knowledge_version: str,
-        model_name: str,
-        related_biz_no: str | None,
-        patient_uuid: str | None,
-        java_user_id: int | None,
-        org_id: int | None,
-    ) -> dict[str, Any]:
-        now = self._now()
-        session_no = f"RAG-{uuid.uuid4().hex[:16].upper()}"
-        with self._transaction() as conn:
-            session_id = self._execute(
-                conn,
-                """
-                INSERT INTO rag_session (
-                    session_no, session_type_code, related_biz_no, patient_uuid, java_user_id,
-                    knowledge_version, model_name, org_id, created_at, updated_at
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (session_no, session_type_code, related_biz_no, patient_uuid, java_user_id, knowledge_version, model_name, org_id, now, now),
-            )
-            return self._fetchone(conn, "SELECT * FROM rag_session WHERE id = %s", (session_id,)) or {}
-
-    def create_rag_request(
-        self,
-        session_id: int,
-        request_type_code: str,
-        user_query: str,
-        rewritten_query: str,
-        top_k: int,
-        org_id: int | None,
-    ) -> dict[str, Any]:
-        now = self._now()
-        request_no = f"RAGREQ-{uuid.uuid4().hex[:16].upper()}"
-        with self._transaction() as conn:
-            request_id = self._execute(
-                conn,
-                """
-                INSERT INTO rag_request_log (
-                    session_id, request_no, request_type_code, user_query, rewritten_query,
-                    top_k, org_id, created_at, updated_at
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (session_id, request_no, request_type_code, user_query, rewritten_query, top_k, org_id, now, now),
-            )
-            return self._fetchone(conn, "SELECT * FROM rag_request_log WHERE id = %s", (request_id,)) or {}
-
-    def finish_rag_request(self, request_id: int, answer_text: str, status_code: str, latency_ms: int, safety_flag: str = "0") -> None:
-        now = self._now()
-        with self._transaction() as conn:
-            self._execute(
-                conn,
-                """
-                UPDATE rag_request_log
-                SET answer_text = %s, request_status_code = %s, latency_ms = %s, safety_flag = %s, updated_at = %s
-                WHERE id = %s
-                """,
-                (answer_text, status_code, latency_ms, safety_flag, now, request_id),
-            )
-
-    def create_retrieval_logs(self, request_id: int, hits: list[dict[str, Any]], org_id: int | None) -> None:
-        now = self._now()
-        with self._transaction() as conn:
-            for rank, hit in enumerate(hits, start=1):
-                self._execute(
-                    conn,
-                    """
-                    INSERT INTO rag_retrieval_log (
-                        request_id, chunk_id, rank_no, retrieval_score, doc_id,
-                        chunk_text_snapshot, cited_flag, org_id, created_at
-                    )
-                    VALUES (%s, %s, %s, %s, %s, %s, '1', %s, %s)
-                    """,
-                    (
-                        request_id,
-                        hit["chunk_id"],
-                        rank,
-                        hit.get("score"),
-                        hit["doc_id"],
-                        hit.get("chunk_text"),
-                        org_id,
-                        now,
-                    ),
-                )
-
-    def create_llm_call_log(
-        self,
-        request_id: int,
-        model_name: str,
-        provider_code: str,
-        prompt_text: str,
-        completion_text: str,
-        latency_ms: int,
-        status_code: str,
-        org_id: int | None,
-        error_message: str | None = None,
-    ) -> None:
-        now = self._now()
-        prompt_tokens = len(prompt_text.split())
-        completion_tokens = len(completion_text.split())
-        with self._transaction() as conn:
-            self._execute(
-                conn,
-                """
-                INSERT INTO llm_call_log (
-                    request_id, model_name, provider_code, prompt_text, completion_text,
-                    prompt_tokens, completion_tokens, total_tokens, latency_ms,
-                    call_status_code, error_message, org_id, created_at
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    request_id,
-                    model_name,
-                    provider_code,
-                    prompt_text,
-                    completion_text,
-                    prompt_tokens,
-                    completion_tokens,
-                    prompt_tokens + completion_tokens,
-                    latency_ms,
-                    status_code,
-                    error_message,
-                    org_id,
-                    now,
-                ),
-            )
 
     @contextmanager
     def _transaction(self, readonly: bool = False) -> Iterator[Connection]:
@@ -387,23 +73,6 @@ class MetadataRepository:
         with conn.cursor() as cursor:
             cursor.execute(sql, params)
             return int(cursor.lastrowid or 0)
-
-    @staticmethod
-    def _fetchone(conn: Connection, sql: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | None:
-        with conn.cursor() as cursor:
-            cursor.execute(sql, params)
-            row = cursor.fetchone()
-            return dict(row) if row is not None else None
-
-    @staticmethod
-    def _fetchall(conn: Connection, sql: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
-        with conn.cursor() as cursor:
-            cursor.execute(sql, params)
-            return [dict(row) for row in cursor.fetchall()]
-
-    @staticmethod
-    def _now() -> str:
-        return local_naive_iso_now().replace("T", " ")
 
     @staticmethod
     def _table_statements() -> list[str]:

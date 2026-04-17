@@ -7,7 +7,7 @@ from typing import Any
 from app.core.config import Settings
 from app.infra.llm.template_llm_client import TemplateLlmClient
 from app.infra.vector.simple_vector_store import SimpleVectorStore
-from app.repositories.metadata_repository import MetadataRepository
+from app.repositories.rag_repository import RagRepository
 from app.schemas.base import dump_camel
 from app.schemas.rag import DoctorQaRequest, PatientExplanationRequest, RagAnswer, RagCitation
 from app.services.knowledge_service import KnowledgeService
@@ -17,7 +17,7 @@ class RagService:
     def __init__(
         self,
         settings: Settings,
-        repository: MetadataRepository,
+        repository: RagRepository,
         vector_store: SimpleVectorStore,
         llm_client: TemplateLlmClient,
         knowledge_service: KnowledgeService,

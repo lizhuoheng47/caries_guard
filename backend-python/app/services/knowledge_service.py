@@ -6,12 +6,12 @@ from typing import Any
 
 from app.core.config import Settings
 from app.infra.vector.simple_vector_store import SimpleVectorStore
-from app.repositories.metadata_repository import MetadataRepository
+from app.repositories.rag_repository import RagRepository
 from app.schemas.rag import KnowledgeDocumentRequest, KnowledgeRebuildRequest
 
 
 class KnowledgeService:
-    def __init__(self, settings: Settings, repository: MetadataRepository, vector_store: SimpleVectorStore) -> None:
+    def __init__(self, settings: Settings, repository: RagRepository, vector_store: SimpleVectorStore) -> None:
         self.settings = settings
         self.repository = repository
         self.vector_store = vector_store

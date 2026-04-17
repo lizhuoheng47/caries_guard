@@ -1,0 +1,6 @@
+Generic single-database configuration for CariesGuard backend-python.
+
+This directory is managed by Alembic.
+- env.py reads the database URL from app.core.config.Settings.build_mysql_url().
+- target_metadata is wired to app.models.Base.metadata.
+- Migrations are hand-written; do NOT use alembic revision --autogenerate (see Phase 4 doc §6.3).
