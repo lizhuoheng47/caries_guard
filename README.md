@@ -1,183 +1,84 @@
 # CariesGuard
 
-CariesGuard 是一个面向龋病筛查场景的医疗 AI 辅助决策系统。仓库主线固定为：
+CariesGuard 是一个面向龋病筛查场景的医疗 AI 辅助决策系统，主线固定为：
 
-`影像分析 -> uncertainty 复核 -> RAG 解释 -> 风险融合 -> 医生反馈回流`
+`影像分析 -> 不确定性评估 -> 医生复核 -> RAG 解释 -> 风险评估 -> 报告/随访`
 
-这里的 AI 用于辅助分析、解释和风险提示，不替代医生最终诊断。
+AI 用于辅助分析、解释和风险提示，不替代医生最终诊断。
 
 > English version: [README.en.md](README.en.md)
 
-## 项目定位
-
-- 场景：口腔龋病筛查与解释
-- 方法：影像分析、知识检索增强生成、风险融合、医生复核反馈
-- 边界：AI 提供结构化结果和证据链，医生保留最终判断权
-- 架构：Java 负责业务主链和状态权威，Python 负责 AI/RAG 能力提供
-
-## 系统主线
+## 架构概览
 
 ```text
-脱敏影像 / 病例上下文 / 知识文档 / 医生反馈
-  -> Java Backend 创建业务任务、维护状态、鉴权与审计
-  -> RabbitMQ 投递分析任务
-  -> Python Backend 执行 quality / detection / segmentation / grading / uncertainty / risk / rag
-  -> HTTP callback 回传结构化结果与 visual assets 元数据
-  -> Java Backend 落库、推进 review / report / feedback 状态
+Client / Script
+  -> Java Backend
+      -> caries_biz (MySQL)
+      -> Redis
+      -> RabbitMQ
+      -> MinIO
+      -> Python Backend
+          -> caries_ai (MySQL)
+          -> Vector Index
+          -> General LLM Provider
 ```
 
-## 角色边界
+职责边界：
 
-### Java Backend
+- Java 负责业务主链、状态机、权限、报告、复核、随访和对外 API。
+- Python 负责 AI 推理、RAG、知识库、运行日志和模型治理。
+- RabbitMQ 负责分析任务异步投递。
+- MinIO 负责原始影像、可视化产物、报告和导出文件存储。
 
-- 业务主链入口
-- 状态权威与任务编排
-- MQ 投递、callback 接收、结果落库
-- review、报告、RAG 集成、AI 运行指标聚合
+## 核心能力
 
-### Python Backend
+- 患者、就诊、病例、影像和附件管理
+- AI 分析任务创建、异步执行和结果回流
+- 医生复核、纠偏反馈和训练候选样本导出
+- 报告生成、RAG 问答、患者解释
+- 随访计划、随访任务、随访记录
+- 业务看板、AI 运行时看板、模型治理
 
-- 影像分析流水线
-- uncertainty 评估与风险融合
-- RAG、知识检索、LLM 网关
-- AI 运行日志、检索日志、知识治理
+## 快速启动
 
-这两个后端是协作关系，不是相互替代关系。Python 不直接拥有 `caries_biz` 业务主表状态；Java 不直接实现模型推理和向量检索主链。
-
-## 比赛版与开发版
-
-| 维度 | 比赛版 | 开发版 |
-| --- | --- | --- |
-| 对外叙事 | 医疗 AI 辅助决策闭环 | 全量工程联调与模块开发 |
-| 菜单/权限暴露 | 收束为 6 个比赛语义入口 | 保留更宽的业务与管理暴露 |
-| 关键开关 | `CARIES_COMPETITION_MODE_ENABLED=true` | `CARIES_COMPETITION_MODE_ENABLED=false` |
-| AI 运行模式 | 优先可复现演示，推荐 `mock` 或经验证的 `hybrid` | 允许更自由的本地联调 |
-| 样例数据 | 以脚本生成的脱敏 demo fixture 为主 | 以迁移基线和开发自建数据为主 |
-
-比赛模式不会删除模块代码，只会收缩权限和菜单暴露面。比赛版当前通过 competition mode 把菜单与权限暴露收束为 6 个比赛语义入口，底层复用现有病例、分析、结果、报告、影像和 AI runtime 页面。当前阶段已完成入口层收束，页面内容层持续向比赛语义对齐。
-
-### 比赛版当前完成度边界
-
-- **已完成**：仓库叙事统一、competition mode 运行时接入、菜单权限收束
-- **仍在推进**：比赛专用页面语义重构、静态 demo seed 套件、验收脚本闭环
-
-## 仓库结构
-
-- `backend-java/`：业务主链、状态权威、RAG 集成、review、dashboard 聚合
-- `backend-python/`：AI 推理、RAG、知识治理、LLM 网关、运行日志
-- `Documents/`：架构、契约、比赛导向说明、演示和验收文档
-- `scripts/`：现有 Docker E2E 与证据采集脚本
-- `infra/`：MySQL 初始化脚本和基础设施资源
-- `RELEASE_COMPETITION.md`：比赛版发布口径和已知边界
-
-## 比赛演示模式与快捷脚本
-
-若需将本地转化为能够即插即用的“比赛独立演示环境”，不需要再手动创建 `.env`，建议使用 `scripts/` 的标准化脚本集。这些脚本内置了自动化健康判断。
-
-**1. 启动演示环境（包含等待就绪及自动装载）：**
 ```powershell
-./scripts/competition-up.ps1
-# Mac/Linux: ./scripts/competition-up.sh
+docker compose up -d --build
+Invoke-RestMethod http://127.0.0.1:8080/actuator/health
+Invoke-RestMethod http://127.0.0.1:8001/ai/v1/health
 ```
 
-**2. 跑通验收测试（判定是否支持稳定 Demo）：**
+比赛演示模式：
+
 ```powershell
-./scripts/competition-acceptance.ps1
-# Mac/Linux: ./scripts/competition-acceptance.sh
+docker compose --env-file env/competition.env up -d --build
 ```
 
-**3. 清理测试环境及脏数据（避免下一次展示受到残余数据干扰）：**
-```powershell
-./scripts/competition-reset.ps1
-# Mac/Linux: ./scripts/competition-reset.sh
-```
-
-*若有特殊排查需要，仍可手动启动:*
-`docker compose --env-file env/competition.env up -d --build`
-（预设 `CARIES_COMPETITION_MODE_ENABLED=true` 和 `CG_AI_RUNTIME_MODE=mock` 等参数）
-
-默认基础超级管理员账号：
+默认管理员账号：
 
 - 用户名：`admin`
 - 密码：`123456`
 
-## 当前可复现的比赛演示入口
-
-仓库当前没有单独前端仓库，比赛演示以接口、任务闭环和证据脚本为主。最稳定的入口有三类：
-
-1. 影像分析闭环  
-   `scripts/phase5-analysis-docker-e2e.ps1` 会生成脱敏病例、影像、分析任务和 visual asset 证据。
-
-2. RAG 解释闭环  
-   `scripts/phase3-rag-docker-e2e.ps1` 会生成最小分析病例，调用 Java 的医生问答接口，并校验 citations / retrieval / llm 日志。
-
-3. 比赛说明与发布口径  
-   [RELEASE_COMPETITION.md](RELEASE_COMPETITION.md)、`Documents/07_...`、`Documents/13_...`、`Documents/15_...`
-
-推荐命令：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\phase5-analysis-docker-e2e.ps1 -SkipComposeUp -Phase5COnly -WaitSeconds 180
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\phase3-rag-docker-e2e.ps1 -SkipComposeUp
-```
-
-## 关键环境变量
-
-当前仓库中最重要的运行时变量如下：
-
-```env
-CARIES_COMPETITION_MODE_ENABLED=false
-CARIES_ANALYSIS_MODEL_VERSION=caries-v1
-
-CG_AI_RUNTIME_MODE=mock
-CG_MODEL_QUALITY_ENABLED=false
-CG_MODEL_TOOTH_DETECT_ENABLED=false
-CG_MODEL_SEGMENTATION_ENABLED=false
-CG_MODEL_GRADING_ENABLED=false
-CG_MODEL_RISK_ENABLED=false
-CG_UNCERTAINTY_REVIEW_THRESHOLD=0.35
-
-CG_RAG_KNOWLEDGE_VERSION=v1.0
-CG_LLM_PROVIDER_CODE=MOCK
-CG_LLM_MODEL_NAME=template-llm-v1
-```
-
-说明：
-
-- `CARIES_ANALYSIS_MODEL_VERSION` 由 Java 作为业务主链版本号下发，同时 Python 通过 `CG_MODEL_VERSION` 继承该值。
-- `CG_AI_RUNTIME_MODE` 支持 `mock`、`hybrid`、`real`。
-- 当前 Docker 默认最稳妥的可复现模式仍是 `mock`。
-
 ## 文档入口
 
-- [Documents/06_人工智能实践赛改造说明.md](Documents/06_人工智能实践赛改造说明.md)
-- [Documents/07_AI闭环演示脚本.md](Documents/07_AI闭环演示脚本.md)
-- [Documents/08_AI评估指标与实验设计.md](Documents/08_AI评估指标与实验设计.md)
-- [Documents/09_知识图库建设与治理规范.md](Documents/09_知识图库建设与治理规范.md)
-- [Documents/10_答辩问答与作品话术.md](Documents/10_答辩问答与作品话术.md)
-- [Documents/11_参赛作品说明书重构稿.md](Documents/11_参赛作品说明书重构稿.md)
-- [Documents/12_功能精简与赛道聚焦建议.md](Documents/12_功能精简与赛道聚焦建议.md)
-- [Documents/13_比赛版环境与演示运行说明.md](Documents/13_比赛版环境与演示运行说明.md)
-- [Documents/14_比赛版Demo数据说明.md](Documents/14_比赛版Demo数据说明.md)
-- [Documents/15_比赛版验收与回归说明.md](Documents/15_比赛版验收与回归说明.md)
+- [项目概览](Documents/01_项目概览.md)
+- [功能说明](Documents/02_功能说明.md)
+- [部署与运行](Documents/03_部署与运行.md)
+- [接口与集成说明](Documents/04_接口与集成说明.md)
+- [数据字典](Documents/05_数据字典.md)
+- [Java 后端说明](backend-java/README.md)
+- [Python 后端说明](backend-python/README.md)
 
-## 比赛版边界与非目标
+## 仓库结构
 
-以下表述是当前仓库的明确边界：
+- `backend-java/`：Java 业务后端，多模块 Maven 工程
+- `backend-python/`：Python AI/RAG 服务，FastAPI + MQ Worker
+- `Documents/`：保留后的项目正式文档
+- `scripts/`：启动、验收、演示和灌数脚本
+- `infra/`：基础设施初始化资源
+- `env/`：环境预设
 
-- 这不是一个“普通后台系统”的包装版本，核心展示面是 AI 主链，而不是系统管理能力。
-- 这也不是“高精度医学大模型”项目。当前 Python 侧提供的是可控的推理、解释、检索和日志治理能力。
-- AI 输出包含 `uncertainty`、`reviewReason`、`citations`、`knowledgeVersion` 和 `riskFactors`，目的是支持复核，不是替代医生结论。
-- 当前 Docker 演示最稳定的是脚本生成的脱敏样例，不是完整静态比赛 seed 套件。
-- 医生反馈回流是系统设计主线的一部分；当前自动化回归重点已覆盖 analysis 和 RAG，review / feedback 仍需结合接口或页面做人工验收。
+## 运行建议
 
-## 外部审查入口
-
-如果要快速判断这个仓库是不是围绕医疗 AI 主线组织，可以直接看：
-
-1. [README.md](README.md)
-2. [RELEASE_COMPETITION.md](RELEASE_COMPETITION.md)
-3. [backend-java/README.md](backend-java/README.md)
-4. [backend-python/README.md](backend-python/README.md)
-5. [Documents/07_AI闭环演示脚本.md](Documents/07_AI闭环演示脚本.md)
-6. [Documents/15_比赛版验收与回归说明.md](Documents/15_比赛版验收与回归说明.md)
+- 稳定演示优先使用 `mock`。
+- 需要验证真实适配能力时再切换到 `hybrid`。
+- `real` 模式应在模型、依赖和回调链路已确认时使用。

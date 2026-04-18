@@ -1,31 +1,31 @@
 # CariesGuard
 
-CariesGuard is a dental caries screening, AI-assisted analysis, reporting, review, and follow-up platform.
+CariesGuard is an AI-assisted decision support system for dental caries screening.
+
+Its mainline is:
+
+`image analysis -> uncertainty evaluation -> doctor review -> RAG explanation -> risk assessment -> report/follow-up`
+
+AI output is advisory and traceable. It does not replace a doctor's diagnosis.
 
 ## Architecture
 
 ```text
-Java Backend (caries_biz)
-  -> RabbitMQ -> Python AI/RAG (caries_ai)
-  -> MinIO / Redis / Vector Index / General LLM Provider
+Client / Script
+  -> Java Backend
+      -> caries_biz (MySQL)
+      -> Redis
+      -> RabbitMQ
+      -> MinIO
+      -> Python Backend
+          -> caries_ai (MySQL)
+          -> Vector Index
+          -> General LLM Provider
 ```
 
-Java owns the business workflow. Python provides AI and RAG capabilities.
+Java owns the business workflow and state. Python provides AI and RAG capabilities.
 
-- `caries_biz`: Java business domain (Flyway).
-- `caries_ai`: Python AI/RAG runtime domain (Alembic).
-- MinIO stores source images, visual assets, reports, and exports.
-
-## AI Strategy
-
-The current AI strategy is general LLM + knowledge-base RAG, not domain-specific fine-tuning.
-
-- Image analysis produces structured outputs through replaceable adapters.
-- RAG uses curated knowledge, citations, and structured case context.
-- General LLM output is advisory and cannot directly change clinical business state.
-- High uncertainty triggers review semantics.
-
-## Docker
+## Quick Start
 
 ```powershell
 docker compose up -d --build
@@ -33,12 +33,26 @@ Invoke-RestMethod http://127.0.0.1:8080/actuator/health
 Invoke-RestMethod http://127.0.0.1:8001/ai/v1/health
 ```
 
-## Docs
+Competition preset:
 
-All long-term design documents live under [Documents/](Documents/):
+```powershell
+docker compose --env-file env/competition.env up -d --build
+```
 
-- [01_架构设计.md](Documents/01_架构设计.md) — architecture, UML, flows
-- [02_数据库设计.md](Documents/02_数据库设计.md) — schema, ownership, migrations
-- [03_接口契约.md](Documents/03_接口契约.md) — API, callback, RAG, error codes
-- [04_AI与RAG规范.md](Documents/04_AI与RAG规范.md) — AI architecture, runtime modes, RAG
-- [05_开发规范.md](Documents/05_开发规范.md) — naming, logging, data annotation
+## Documentation
+
+Long-term project documents are kept under [Documents/](Documents/):
+
+- [Project Overview](Documents/01_项目概览.md)
+- [Feature Overview](Documents/02_功能说明.md)
+- [Deployment and Runbook](Documents/03_部署与运行.md)
+- [API and Integration](Documents/04_接口与集成说明.md)
+- [Data Dictionary](Documents/05_数据字典.md)
+- [Java Backend README](backend-java/README.md)
+- [Python Backend README](backend-python/README.md)
+
+## Notes
+
+- `mock` is the default and most reproducible demo mode.
+- `hybrid` is used when partial real adapters need to be demonstrated.
+- `real` should only be used when all model/runtime dependencies are ready.
