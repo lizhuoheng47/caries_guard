@@ -3,6 +3,7 @@ package com.cariesguard.dashboard.infrastructure.repository;
 import com.cariesguard.dashboard.interfaces.query.DashboardRangeQuery;
 import com.cariesguard.dashboard.interfaces.vo.BacklogSummaryVO;
 import com.cariesguard.dashboard.interfaces.vo.CaseStatusDistributionVO;
+import com.cariesguard.dashboard.interfaces.vo.CorrectionFeedbackStatsVO;
 import com.cariesguard.dashboard.interfaces.vo.DashboardOverviewVO;
 import com.cariesguard.dashboard.interfaces.vo.FollowupTaskSummaryVO;
 import com.cariesguard.dashboard.interfaces.vo.ModelRuntimeVO;
@@ -228,6 +229,37 @@ public class DashboardStatsRepository {
                 longValue(qualityRow.get("correction_feedback_count")),
                 modelVersions);
     }
+
+    public CorrectionFeedbackStatsVO queryCorrectionFeedbackStats(Long orgId) {
+        Map<String, Object> row = jdbcTemplate.queryForMap("""
+                SELECT
+                    COUNT(1) AS total_feedback_count,
+                    SUM(CASE WHEN training_candidate_flag = '1' THEN 1 ELSE 0 END) AS training_candidate_count,
+                    SUM(CASE WHEN review_status_code = 'PENDING' THEN 1 ELSE 0 END) AS pending_review_count,
+                    SUM(CASE WHEN review_status_code = 'APPROVED' THEN 1 ELSE 0 END) AS approved_review_count,
+                    SUM(CASE WHEN review_status_code = 'REJECTED' THEN 1 ELSE 0 END) AS rejected_review_count,
+                    SUM(CASE WHEN desensitized_export_flag = '1' OR exported_snapshot_no IS NOT NULL THEN 1 ELSE 0 END) AS exported_sample_count,
+                    SUM(CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(corrected_truth_json, '$.feedbackGovernance.acceptedAiConclusion')) = 'true' THEN 1 ELSE 0 END) AS ai_accepted_count,
+                    SUM(CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(corrected_truth_json, '$.feedbackGovernance.acceptedAiConclusion')) = 'false' THEN 1 ELSE 0 END) AS ai_corrected_count
+                FROM ana_correction_feedback
+                WHERE org_id = ?
+                  AND deleted_flag = 0
+                  AND status = 'ACTIVE'
+                """, orgId);
+        long aiAcceptedCount = longValue(row.get("ai_accepted_count"));
+        long aiCorrectedCount = longValue(row.get("ai_corrected_count"));
+        return new CorrectionFeedbackStatsVO(
+                longValue(row.get("total_feedback_count")),
+                longValue(row.get("training_candidate_count")),
+                longValue(row.get("pending_review_count")),
+                longValue(row.get("approved_review_count")),
+                longValue(row.get("rejected_review_count")),
+                longValue(row.get("exported_sample_count")),
+                aiAcceptedCount,
+                aiCorrectedCount,
+                rate(aiCorrectedCount, aiAcceptedCount + aiCorrectedCount));
+    }
+
     public List<DashboardTrendPointVO> queryTrend(Long orgId, DashboardRangeQuery rangeQuery) {
         LocalDateTime startDateTime = rangeQuery.startDate().atStartOfDay();
         LocalDateTime endExclusive = rangeQuery.endDate().plusDays(1).atStartOfDay();

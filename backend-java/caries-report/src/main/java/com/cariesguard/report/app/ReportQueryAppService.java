@@ -19,15 +19,21 @@ import com.cariesguard.report.interfaces.vo.ReportCorrectionVO;
 import com.cariesguard.report.interfaces.vo.ReportDetailVO;
 import com.cariesguard.report.interfaces.vo.ReportImageVO;
 import com.cariesguard.report.interfaces.vo.ReportListItemVO;
+import com.cariesguard.report.interfaces.vo.ReportRiskFactorVO;
 import com.cariesguard.report.interfaces.vo.ReportRiskAssessmentVO;
 import com.cariesguard.report.interfaces.vo.ReportToothRecordVO;
 import com.cariesguard.report.interfaces.vo.ReportVisualAssetVO;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ReportQueryAppService {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final ReportRecordRepository reportRecordRepository;
     private final ReportSourceQueryRepository reportSourceQueryRepository;
@@ -116,12 +122,25 @@ public class ReportQueryAppService {
     }
 
     private ReportRiskAssessmentVO toRiskAssessmentVO(ReportRiskAssessmentModel model) {
+        ParsedRiskAssessment parsed = parseRiskAssessment(model.assessmentReportJson());
         return new ReportRiskAssessmentVO(
                 model.riskAssessmentId(),
-                model.overallRiskLevelCode(),
+                firstText(parsed.riskLevel(), model.overallRiskLevelCode()),
+                firstDecimal(parsed.riskScore(), model.riskScore()),
                 model.assessmentReportJson(),
-                model.recommendedCycleDays(),
+                firstInt(parsed.recommendedCycleDays(), model.recommendedCycleDays()),
+                parsed.followupSuggestion(),
+                parsed.reviewSuggested(),
+                parsed.explanation(),
+                parsed.fusionVersion(),
+                parsed.riskFactors().isEmpty()
+                        ? model.riskFactors().stream().map(this::toRiskFactorVO).toList()
+                        : parsed.riskFactors(),
                 model.assessedAt());
+    }
+
+    private ReportRiskFactorVO toRiskFactorVO(ReportRiskAssessmentModel.RiskFactorModel model) {
+        return new ReportRiskFactorVO(model.code(), model.weight(), model.source(), model.evidence());
     }
 
     private ReportImageVO toImageVO(ReportImageModel model) {
@@ -176,6 +195,118 @@ public class ReportQueryAppService {
     private void ensureOrgAccess(AuthenticatedUser operator, Long recordOrgId) {
         if (!operator.hasAnyRole("ADMIN", "SYS_ADMIN") && !recordOrgId.equals(operator.getOrgId())) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
+        }
+    }
+
+    private ParsedRiskAssessment parseRiskAssessment(String assessmentReportJson) {
+        if (assessmentReportJson == null || assessmentReportJson.isBlank()) {
+            return ParsedRiskAssessment.empty();
+        }
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(assessmentReportJson);
+            JsonNode node = root.path("riskAssessment");
+            if (node.isMissingNode() || node.isNull()) {
+                node = root;
+            }
+            return new ParsedRiskAssessment(
+                    text(node, "riskLevel", "riskLevelCode", "overallRiskLevelCode"),
+                    decimal(node, "riskScore"),
+                    integer(node, "recommendedCycleDays"),
+                    text(node, "followupSuggestion"),
+                    bool(node, "reviewSuggested"),
+                    text(node, "explanation"),
+                    text(node, "fusionVersion"),
+                    riskFactors(node.path("riskFactors")));
+        } catch (Exception ignored) {
+            return ParsedRiskAssessment.empty();
+        }
+    }
+
+    private List<ReportRiskFactorVO> riskFactors(JsonNode node) {
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
+        java.util.ArrayList<ReportRiskFactorVO> factors = new java.util.ArrayList<>();
+        for (JsonNode item : node) {
+            factors.add(new ReportRiskFactorVO(
+                    text(item, "code", "featureCode"),
+                    decimal(item, "weight", "contribution"),
+                    text(item, "source"),
+                    text(item, "evidence")));
+        }
+        return factors;
+    }
+
+    private static String firstText(String first, String second) {
+        return first != null && !first.isBlank() ? first : second;
+    }
+
+    private static BigDecimal firstDecimal(BigDecimal first, BigDecimal second) {
+        return first != null ? first : second;
+    }
+
+    private static Integer firstInt(Integer first, Integer second) {
+        return first != null ? first : second;
+    }
+
+    private static String text(JsonNode node, String... fields) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        for (String field : fields) {
+            JsonNode value = node.get(field);
+            if (value != null && !value.isNull() && !value.asText().isBlank()) {
+                return value.asText();
+            }
+        }
+        return null;
+    }
+
+    private static BigDecimal decimal(JsonNode node, String... fields) {
+        String value = text(node, fields);
+        if (value == null) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private static Integer integer(JsonNode node, String... fields) {
+        String value = text(node, fields);
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private static Boolean bool(JsonNode node, String... fields) {
+        String value = text(node, fields);
+        return value == null ? null : Boolean.valueOf(value);
+    }
+
+    private record ParsedRiskAssessment(
+            String riskLevel,
+            BigDecimal riskScore,
+            Integer recommendedCycleDays,
+            String followupSuggestion,
+            Boolean reviewSuggested,
+            String explanation,
+            String fusionVersion,
+            List<ReportRiskFactorVO> riskFactors) {
+
+        private ParsedRiskAssessment {
+            riskFactors = riskFactors == null ? List.of() : List.copyOf(riskFactors);
+        }
+
+        private static ParsedRiskAssessment empty() {
+            return new ParsedRiskAssessment(null, null, null, null, null, null, null, List.of());
         }
     }
 }

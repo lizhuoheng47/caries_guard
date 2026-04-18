@@ -213,8 +213,14 @@ public class ReportSourceQueryRepositoryImpl implements ReportSourceQueryReposit
         return entity == null ? Optional.empty() : Optional.of(new ReportRiskAssessmentModel(
                 entity.getId(),
                 entity.getOverallRiskLevelCode(),
+                entity.getRiskScore(),
                 entity.getAssessmentReportJson(),
                 entity.getRecommendedCycleDays(),
+                null,
+                null,
+                null,
+                null,
+                List.of(),
                 entity.getAssessedAt()));
     }
 
@@ -231,8 +237,14 @@ public class ReportSourceQueryRepositoryImpl implements ReportSourceQueryReposit
         return entity == null ? Optional.empty() : Optional.of(new ReportRiskAssessmentModel(
                 entity.getId(),
                 entity.getOverallRiskLevelCode(),
+                entity.getRiskScore(),
                 entity.getAssessmentReportJson(),
                 entity.getRecommendedCycleDays(),
+                null,
+                null,
+                null,
+                null,
+                List.of(),
                 entity.getAssessedAt()));
     }
 

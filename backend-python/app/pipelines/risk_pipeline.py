@@ -13,6 +13,8 @@ from app.infra.model.model_registry import ModelRegistry
 from app.pipelines.grading_pipeline import GradingResult
 from app.schemas.callback import ExplanationFactor, RiskAssessment
 from app.schemas.request import PatientProfile
+from app.schemas.base import dump_camel
+from app.services.risk_fusion_service import RiskFusionService
 
 log = get_logger("cariesguard-ai.pipeline.risk")
 
@@ -31,6 +33,7 @@ class RiskPipeline:
     def __init__(self, registry: ModelRegistry, settings: Settings) -> None:
         self._registry = registry
         self._settings = settings
+        self._fusion_service = RiskFusionService(settings)
 
     def assess(
         self,
@@ -80,15 +83,21 @@ class RiskPipeline:
             for item in result.get("explanationFactors", [])
         ]
         risk_level = str(result.get("riskLevelCode") or "LOW")
-        risk_score = int(result.get("riskScore") or 0)
+        risk_score = float(result.get("riskScore") or 0.0)
         raw = dict(result.get("rawResult") or {})
         raw["source"] = "risk_pipeline"
+        risk_factors = result.get("riskFactors") or []
         assessment = RiskAssessment(
             overall_risk_level_code=risk_level,
             risk_level_code=risk_level,
             risk_score=risk_score,
             recommended_cycle_days=int(result.get("recommendedCycleDays") or 180),
             explanation_factors=factors,
+            risk_factors=risk_factors,
+            followup_suggestion=result.get("followupSuggestion"),
+            review_suggested=result.get("reviewSuggested"),
+            explanation=result.get("explanation"),
+            fusion_version=result.get("fusionVersion"),
             assessment_report_json=raw,
             model_version=self._settings.model_version,
         )
@@ -109,30 +118,50 @@ class RiskPipeline:
         previous_caries = patient_profile.previous_caries_count if patient_profile else None
         grade = grading_result.grading_label if grading_result else "C1"
         uncertainty = grading_result.uncertainty_score if grading_result else 0.1
-        risk_level = "MEDIUM" if previous_caries and previous_caries > 0 else "LOW"
-        if grade in {"C2", "C3"} or uncertainty >= self._settings.uncertainty_review_threshold:
-            risk_level = "MEDIUM" if risk_level == "LOW" else risk_level
-        risk_score = 62 if risk_level == "MEDIUM" else 25
+        structured = self._fusion_service.assess(
+            {
+                "grading_label": grade,
+                "uncertainty_score": uncertainty,
+                "needs_review": grading_result.needs_review if grading_result else False,
+                "lesion_region_count": len(segmentation_regions or []),
+                "quality_status_code": "PASS",
+            },
+            patient_profile,
+        )
+        risk_level = structured.risk_level
         raw = {
             "source": "mock",
             "riskLevelCode": risk_level,
-            "riskScore": risk_score,
+            "riskScore": structured.risk_score,
             "gradingLabel": grade,
             "uncertaintyScore": uncertainty,
             "lesionRegionCount": len(segmentation_regions or []),
+            "riskAssessment": dump_camel(structured),
+            "followupSuggestion": structured.followup_suggestion,
+            "reviewSuggested": structured.review_suggested,
+            "fusionVersion": structured.fusion_version,
         }
         if fallback_reason:
             raw["fallbackReason"] = fallback_reason
         assessment = RiskAssessment(
             overall_risk_level_code=risk_level,
             assessment_report_json=raw,
-            recommended_cycle_days=180,
+            recommended_cycle_days=self._cycle_days(structured.followup_suggestion),
             risk_level_code=risk_level,
-            risk_score=risk_score,
+            risk_score=structured.risk_score,
             explanation_factors=[
-                ExplanationFactor(feature_code="previous_caries_count", contribution=0.31, direction="POSITIVE"),
-                ExplanationFactor(feature_code="grading_label", contribution=0.27, direction="POSITIVE"),
+                ExplanationFactor(
+                    feature_code=item.code,
+                    contribution=item.weight,
+                    direction="POSITIVE" if item.weight >= 0 else "NEGATIVE",
+                )
+                for item in structured.risk_factors
             ],
+            risk_factors=structured.risk_factors,
+            followup_suggestion=structured.followup_suggestion,
+            review_suggested=structured.review_suggested,
+            explanation=structured.explanation,
+            fusion_version=structured.fusion_version,
             model_version=self._settings.model_version,
         )
         return RiskPipelineResult(
@@ -141,3 +170,11 @@ class RiskPipeline:
             assessment=assessment,
             raw_result=raw,
         )
+
+    @staticmethod
+    def _cycle_days(followup_suggestion: str) -> int:
+        if followup_suggestion == "3_MONTH_RECHECK":
+            return 90
+        if followup_suggestion == "6_MONTH_RECHECK":
+            return 180
+        return 365

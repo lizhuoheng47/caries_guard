@@ -1,6 +1,7 @@
 from typing import Any
 
 from app.schemas.base import CamelModel
+from app.schemas.risk_assessment import RiskFactor
 
 
 class Summary(CamelModel):
@@ -80,8 +81,13 @@ class RiskAssessment(CamelModel):
     assessment_report_json: dict[str, Any] = {}
     recommended_cycle_days: int = 180
     risk_level_code: str | None = None
-    risk_score: int | None = None
+    risk_score: int | float | None = None
     explanation_factors: list[ExplanationFactor] | None = None
+    risk_factors: list[RiskFactor] | None = None
+    followup_suggestion: str | None = None
+    review_suggested: bool | None = None
+    explanation: str | None = None
+    fusion_version: str | None = None
     model_version: str | None = None
 
 

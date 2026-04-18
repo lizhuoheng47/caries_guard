@@ -4,12 +4,14 @@ import com.cariesguard.common.api.ApiResponse;
 import com.cariesguard.common.util.TraceIdUtils;
 import com.cariesguard.dashboard.app.DashboardBacklogAppService;
 import com.cariesguard.dashboard.app.DashboardCaseStatsAppService;
+import com.cariesguard.dashboard.app.DashboardCorrectionFeedbackAppService;
 import com.cariesguard.dashboard.app.DashboardFollowupStatsAppService;
 import com.cariesguard.dashboard.app.DashboardOverviewAppService;
 import com.cariesguard.dashboard.app.DashboardRiskStatsAppService;
 import com.cariesguard.dashboard.app.DashboardTrendAppService;
 import com.cariesguard.dashboard.interfaces.vo.BacklogSummaryVO;
 import com.cariesguard.dashboard.interfaces.vo.CaseStatusDistributionVO;
+import com.cariesguard.dashboard.interfaces.vo.CorrectionFeedbackStatsVO;
 import com.cariesguard.dashboard.interfaces.vo.DashboardOverviewVO;
 import com.cariesguard.dashboard.interfaces.vo.FollowupTaskSummaryVO;
 import com.cariesguard.dashboard.interfaces.vo.RiskLevelDistributionVO;
@@ -31,19 +33,22 @@ public class DashboardController {
     private final DashboardFollowupStatsAppService dashboardFollowupStatsAppService;
     private final DashboardBacklogAppService dashboardBacklogAppService;
     private final DashboardTrendAppService dashboardTrendAppService;
+    private final DashboardCorrectionFeedbackAppService dashboardCorrectionFeedbackAppService;
 
     public DashboardController(DashboardOverviewAppService dashboardOverviewAppService,
                                DashboardCaseStatsAppService dashboardCaseStatsAppService,
                                DashboardRiskStatsAppService dashboardRiskStatsAppService,
                                DashboardFollowupStatsAppService dashboardFollowupStatsAppService,
                                DashboardBacklogAppService dashboardBacklogAppService,
-                               DashboardTrendAppService dashboardTrendAppService) {
+                               DashboardTrendAppService dashboardTrendAppService,
+                               DashboardCorrectionFeedbackAppService dashboardCorrectionFeedbackAppService) {
         this.dashboardOverviewAppService = dashboardOverviewAppService;
         this.dashboardCaseStatsAppService = dashboardCaseStatsAppService;
         this.dashboardRiskStatsAppService = dashboardRiskStatsAppService;
         this.dashboardFollowupStatsAppService = dashboardFollowupStatsAppService;
         this.dashboardBacklogAppService = dashboardBacklogAppService;
         this.dashboardTrendAppService = dashboardTrendAppService;
+        this.dashboardCorrectionFeedbackAppService = dashboardCorrectionFeedbackAppService;
     }
 
     @GetMapping("/api/v1/dashboard/overview")
@@ -74,6 +79,14 @@ public class DashboardController {
     @RequirePermission("dashboard:view")
     public ApiResponse<BacklogSummaryVO> getBacklogSummary() {
         return ApiResponse.success(dashboardBacklogAppService.getBacklogSummary(), TraceIdUtils.currentTraceId());
+    }
+
+    @GetMapping("/api/v1/dashboard/correction-feedback")
+    @RequirePermission("dashboard:view")
+    public ApiResponse<CorrectionFeedbackStatsVO> getCorrectionFeedbackStats() {
+        return ApiResponse.success(
+                dashboardCorrectionFeedbackAppService.getCorrectionFeedbackStats(),
+                TraceIdUtils.currentTraceId());
     }
 
     @GetMapping("/api/v1/dashboard/trend")

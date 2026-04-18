@@ -27,6 +27,16 @@ class RagSafetyGuardService:
         "programming",
         "politics",
     )
+    _prompt_injection_phrases = (
+        "ignore previous instructions",
+        "ignore the previous instructions",
+        "ignore all previous instructions",
+        "system prompt",
+        "developer message",
+        "reveal your prompt",
+        "show your prompt",
+        "jailbreak",
+    )
 
     def evaluate(self, scene: str, query: str, hits: list[dict], context_text: str | None) -> RagSafetyDecision:
         flags = ["MEDICAL_CAUTION"]
@@ -34,7 +44,11 @@ class RagSafetyGuardService:
         refusal_reason: str | None = None
         answer_text: str | None = None
 
-        if any(phrase in lowered for phrase in self._out_of_scope_phrases):
+        if any(phrase in lowered for phrase in self._prompt_injection_phrases):
+            flags.append("PROMPT_INJECTION")
+            refusal_reason = "PROMPT_INJECTION"
+            answer_text = "I cannot follow instructions that attempt to override safety rules or reveal internal prompts."
+        elif any(phrase in lowered for phrase in self._out_of_scope_phrases):
             flags.append("OUT_OF_SCOPE")
             refusal_reason = "OUT_OF_SCOPE"
             answer_text = "This question is outside the approved dental knowledge scope."

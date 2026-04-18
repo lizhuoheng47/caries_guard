@@ -18,10 +18,12 @@ public class AnaCorrectionFeedbackDO {
     private String originalInferenceJson;
     private String correctedTruthJson;
     private String feedbackTypeCode;
+    private String isExportedForTrain;
     private String exportCandidateFlag;
     private String exportedSnapshotNo;
     private String trainingCandidateFlag;
     private String desensitizedExportFlag;
+    private String datasetSnapshotNo;
     private String reviewStatusCode;
     private Long reviewedBy;
     private LocalDateTime reviewedAt;
@@ -50,6 +52,8 @@ public class AnaCorrectionFeedbackDO {
     public void setCorrectedTruthJson(String correctedTruthJson) { this.correctedTruthJson = correctedTruthJson; }
     public String getFeedbackTypeCode() { return feedbackTypeCode; }
     public void setFeedbackTypeCode(String feedbackTypeCode) { this.feedbackTypeCode = feedbackTypeCode; }
+    public String getIsExportedForTrain() { return isExportedForTrain; }
+    public void setIsExportedForTrain(String isExportedForTrain) { this.isExportedForTrain = isExportedForTrain; }
     public String getExportCandidateFlag() { return exportCandidateFlag; }
     public void setExportCandidateFlag(String exportCandidateFlag) { this.exportCandidateFlag = exportCandidateFlag; }
     public String getExportedSnapshotNo() { return exportedSnapshotNo; }
@@ -58,6 +62,8 @@ public class AnaCorrectionFeedbackDO {
     public void setTrainingCandidateFlag(String trainingCandidateFlag) { this.trainingCandidateFlag = trainingCandidateFlag; }
     public String getDesensitizedExportFlag() { return desensitizedExportFlag; }
     public void setDesensitizedExportFlag(String desensitizedExportFlag) { this.desensitizedExportFlag = desensitizedExportFlag; }
+    public String getDatasetSnapshotNo() { return datasetSnapshotNo; }
+    public void setDatasetSnapshotNo(String datasetSnapshotNo) { this.datasetSnapshotNo = datasetSnapshotNo; }
     public String getReviewStatusCode() { return reviewStatusCode; }
     public void setReviewStatusCode(String reviewStatusCode) { this.reviewStatusCode = reviewStatusCode; }
     public Long getReviewedBy() { return reviewedBy; }

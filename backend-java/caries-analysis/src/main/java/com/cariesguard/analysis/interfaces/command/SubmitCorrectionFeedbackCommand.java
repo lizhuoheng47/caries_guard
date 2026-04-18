@@ -10,5 +10,21 @@ public record SubmitCorrectionFeedbackCommand(
         Long sourceImageId,
         @NotBlank String feedbackTypeCode,
         JsonNode originalInferenceJson,
-        JsonNode correctedTruthJson) {
+        JsonNode correctedTruthJson,
+        String originalAiGrade,
+        String doctorCorrectedGrade,
+        Double originalUncertainty,
+        Boolean acceptedAiConclusion,
+        String correctionReason,
+        Boolean trainingCandidate) {
+
+    public SubmitCorrectionFeedbackCommand(Long caseId,
+                                           Long diagnosisId,
+                                           Long sourceImageId,
+                                           String feedbackTypeCode,
+                                           JsonNode originalInferenceJson,
+                                           JsonNode correctedTruthJson) {
+        this(caseId, diagnosisId, sourceImageId, feedbackTypeCode, originalInferenceJson, correctedTruthJson,
+                null, null, null, null, null, null);
+    }
 }

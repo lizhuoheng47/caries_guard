@@ -1,0 +1,63 @@
+CREATE TABLE IF NOT EXISTS `trn_dataset_snapshot` (
+  `id` BIGINT NOT NULL,
+  `dataset_version` VARCHAR(64) NOT NULL COMMENT 'Dataset snapshot version number',
+  `snapshot_type_code` VARCHAR(32) NOT NULL DEFAULT 'EVAL' COMMENT 'TRAIN/EVAL/GOLD',
+  `source_summary` VARCHAR(500) NULL COMMENT 'Snapshot source summary',
+  `sample_count` INT NULL COMMENT 'Number of samples in this snapshot',
+  `metadata_json` JSON NULL COMMENT 'Dataset card or governance metadata',
+  `dataset_card_path` VARCHAR(500) NULL COMMENT 'Dataset card object path',
+  `released_at` DATETIME NULL COMMENT 'Release time',
+  `org_id` BIGINT NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+  `deleted_flag` BIGINT NOT NULL DEFAULT 0,
+  `remark` VARCHAR(500) NULL,
+  `created_by` BIGINT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` BIGINT NULL,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_trn_dataset_snapshot_version` (`dataset_version`),
+  KEY `idx_trn_dataset_snapshot_type` (`snapshot_type_code`),
+  KEY `idx_trn_dataset_snapshot_org` (`org_id`, `deleted_flag`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Training and evaluation dataset snapshots';
+
+CREATE TABLE IF NOT EXISTS `trn_dataset_sample` (
+  `id` BIGINT NOT NULL,
+  `snapshot_id` BIGINT NOT NULL,
+  `sample_ref_no` VARCHAR(128) NOT NULL COMMENT 'External or feedback sample reference',
+  `patient_uuid` VARCHAR(128) NULL COMMENT 'Desensitized patient reference',
+  `image_ref_no` VARCHAR(128) NULL COMMENT 'Desensitized image reference',
+  `source_type_code` VARCHAR(32) NOT NULL DEFAULT 'CORRECTION' COMMENT 'CORRECTION/MANUAL/IMPORT',
+  `split_type_code` VARCHAR(32) NOT NULL DEFAULT 'EVAL' COMMENT 'TRAIN/VAL/TEST/EVAL',
+  `label_version` VARCHAR(64) NULL COMMENT 'Label or annotation version',
+  `label_json` JSON NULL COMMENT 'Desensitized label payload',
+  `org_id` BIGINT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_trn_dataset_sample_snapshot_ref` (`snapshot_id`, `sample_ref_no`),
+  KEY `idx_trn_dataset_sample_ref` (`sample_ref_no`),
+  KEY `idx_trn_dataset_sample_org` (`org_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Samples included in a dataset snapshot';
+
+CREATE TABLE IF NOT EXISTS `ana_model_eval_record` (
+  `id` BIGINT NOT NULL,
+  `model_version_id` BIGINT NOT NULL COMMENT 'ana_model_version_registry.id',
+  `dataset_snapshot_id` BIGINT NULL COMMENT 'trn_dataset_snapshot.id',
+  `eval_type_code` VARCHAR(32) NOT NULL DEFAULT 'OFFLINE' COMMENT 'OFFLINE/REGRESSION/ONLINE_SHADOW',
+  `metric_json` JSON NULL COMMENT 'Evaluation metrics',
+  `error_case_json` JSON NULL COMMENT 'Representative error cases',
+  `evidence_attachment_key` VARCHAR(500) NULL COMMENT 'Evidence artifact path',
+  `evaluated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `evaluator_user_id` BIGINT NULL,
+  `org_id` BIGINT NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+  `deleted_flag` BIGINT NOT NULL DEFAULT 0,
+  `remark` VARCHAR(500) NULL,
+  `created_by` BIGINT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` BIGINT NULL,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_ana_model_eval_model_dataset` (`model_version_id`, `dataset_snapshot_id`),
+  KEY `idx_ana_model_eval_org` (`org_id`, `deleted_flag`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI model evaluation records';

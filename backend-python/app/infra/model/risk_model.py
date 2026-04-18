@@ -9,8 +9,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.config import Settings
 from app.infra.model.base_model import BaseModelAdapter, ImplType
+from app.schemas.base import dump_camel
 from app.schemas.request import PatientProfile
+from app.services.risk_fusion_service import RiskFusionService
 
 
 class RiskFusionAdapter(BaseModelAdapter):
@@ -20,9 +23,11 @@ class RiskFusionAdapter(BaseModelAdapter):
     model_type_code = "RISK"
     impl_type = ImplType.HEURISTIC
 
-    def __init__(self, confidence_threshold: float = 0.5) -> None:
+    def __init__(self, confidence_threshold: float = 0.5, settings: Settings | None = None) -> None:
         self._loaded = False
         self._confidence_threshold = confidence_threshold
+        self._settings = settings or Settings(model_confidence_threshold=confidence_threshold)
+        self._fusion_service = RiskFusionService(self._settings)
 
     def load(self) -> None:
         self._loaded = True
@@ -45,115 +50,49 @@ class RiskFusionAdapter(BaseModelAdapter):
         uncertainty = float(getattr(grading_result, "uncertainty_score", 0.1) or 0.1)
         needs_review = bool(getattr(grading_result, "needs_review", False))
         regions = segmentation_regions or []
-
-        factors = self._factor_scores(patient_profile, grade, uncertainty, needs_review, len(regions))
-        risk_score = round(min(100.0, max(0.0, sum(item["points"] for item in factors))), 2)
-        risk_level = self._level(risk_score)
-        cycle_days = self._cycle_days(risk_level, needs_review)
-
-        return {
-            "riskLevelCode": risk_level,
-            "riskScore": int(round(risk_score)),
-            "recommendedCycleDays": cycle_days,
-            "implType": ImplType.HEURISTIC.value,
-            "explanationFactors": [
-                {
-                    "featureCode": item["featureCode"],
-                    "contribution": round(item["points"] / 100.0, 4),
-                    "direction": item["direction"],
-                }
-                for item in factors
-                if item["points"] != 0
-            ],
-            "rawResult": {
+        signals = {
+            "grading_label": grade,
+            "uncertainty_score": uncertainty,
+            "needs_review": needs_review,
+            "lesion_region_count": len(regions),
+            "tooth_detection_count": tooth_detection_count,
+            "quality_status_code": "PASS",
+        }
+        structured = self._fusion_service.assess(signals, patient_profile)
+        raw_result = self._fusion_service.to_legacy_callback_report(structured)
+        raw_result.update(
+            {
                 "modelCode": self.model_code,
                 "implType": ImplType.HEURISTIC.value,
-                "riskScore": int(round(risk_score)),
-                "riskLevelCode": risk_level,
-                "recommendedCycleDays": cycle_days,
-                "gradingLabel": grade,
-                "uncertaintyScore": round(uncertainty, 4),
-                "needsReview": needs_review,
-                "lesionRegionCount": len(regions),
-                "toothDetectionCount": tooth_detection_count,
                 "confidenceThreshold": self._confidence_threshold,
-                "factors": factors,
-            },
+                "riskFactors": [dump_camel(item) for item in structured.risk_factors],
+            }
+        )
+        return {
+            "riskLevelCode": structured.risk_level,
+            "riskScore": structured.risk_score,
+            "recommendedCycleDays": self._cycle_days(structured.followup_suggestion),
+            "implType": ImplType.HEURISTIC.value,
+            "followupSuggestion": structured.followup_suggestion,
+            "reviewSuggested": structured.review_suggested,
+            "explanation": structured.explanation,
+            "fusionVersion": structured.fusion_version,
+            "riskFactors": [dump_camel(item) for item in structured.risk_factors],
+            "explanationFactors": [
+                {
+                    "featureCode": item.code,
+                    "contribution": item.weight,
+                    "direction": "POSITIVE" if item.weight >= 0 else "NEGATIVE",
+                }
+                for item in structured.risk_factors
+            ],
+            "rawResult": raw_result,
         }
 
-    def _factor_scores(
-        self,
-        patient_profile: PatientProfile | None,
-        grade: str,
-        uncertainty: float,
-        needs_review: bool,
-        lesion_region_count: int,
-    ) -> list[dict[str, Any]]:
-        factors: list[dict[str, Any]] = [
-            {
-                "featureCode": "grading_label",
-                "points": {"C0": 4, "C1": 18, "C2": 34, "C3": 48}.get(grade, 18),
-                "direction": "POSITIVE",
-            },
-            {
-                "featureCode": "uncertainty_score",
-                "points": min(16.0, uncertainty * 28.0),
-                "direction": "POSITIVE",
-            },
-            {
-                "featureCode": "lesion_region_count",
-                "points": min(12.0, lesion_region_count * 4.0),
-                "direction": "POSITIVE",
-            },
-        ]
-        if needs_review:
-            factors.append({"featureCode": "needs_review", "points": 8.0, "direction": "POSITIVE"})
-
-        if patient_profile is None:
-            return factors
-
-        previous = patient_profile.previous_caries_count or 0
-        if previous > 0:
-            factors.append({
-                "featureCode": "previous_caries_count",
-                "points": min(16.0, previous * 4.0),
-                "direction": "POSITIVE",
-            })
-
-        sugar = (patient_profile.sugar_diet_level_code or "").upper()
-        if sugar in {"HIGH", "H", "HIGH_SUGAR"}:
-            factors.append({"featureCode": "sugar_diet_level", "points": 10.0, "direction": "POSITIVE"})
-        elif sugar in {"LOW", "L"}:
-            factors.append({"featureCode": "sugar_diet_level", "points": -4.0, "direction": "NEGATIVE"})
-
-        brushing = (patient_profile.brushing_frequency_code or "").upper()
-        if brushing in {"LOW", "ONCE", "LESS_THAN_DAILY"}:
-            factors.append({"featureCode": "brushing_frequency", "points": 8.0, "direction": "POSITIVE"})
-        elif brushing in {"TWICE_DAILY", "HIGH", "GOOD"}:
-            factors.append({"featureCode": "brushing_frequency", "points": -6.0, "direction": "NEGATIVE"})
-
-        fluoride = (patient_profile.fluoride_use_flag or "").upper()
-        if fluoride in {"1", "Y", "YES", "TRUE"}:
-            factors.append({"featureCode": "fluoride_use", "points": -5.0, "direction": "NEGATIVE"})
-
-        months = patient_profile.last_dental_check_months
-        if months is not None and months > 12:
-            factors.append({"featureCode": "last_dental_check_months", "points": 6.0, "direction": "POSITIVE"})
-
-        return factors
-
     @staticmethod
-    def _level(score: float) -> str:
-        if score >= 70:
-            return "HIGH"
-        if score >= 40:
-            return "MEDIUM"
-        return "LOW"
-
-    @staticmethod
-    def _cycle_days(risk_level: str, needs_review: bool) -> int:
-        if needs_review or risk_level == "HIGH":
+    def _cycle_days(followup_suggestion: str) -> int:
+        if followup_suggestion == "3_MONTH_RECHECK":
             return 90
-        if risk_level == "MEDIUM":
+        if followup_suggestion == "6_MONTH_RECHECK":
             return 180
         return 365

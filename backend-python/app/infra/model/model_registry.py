@@ -120,6 +120,7 @@ class ModelRegistry:
         if self.is_module_real("risk"):
             self._risk_model = RiskFusionAdapter(
                 confidence_threshold=self._settings.model_confidence_threshold,
+                settings=self._settings,
             )
             self._risk_model.load()
             log.info(

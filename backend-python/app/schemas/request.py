@@ -66,6 +66,7 @@ class ImageSummary(CamelModel):
     suspicious_tooth_count: int | None = None
     overall_uncertainty_score: float | None = None
     lesion_area_ratio: float | None = None
+    quality_status_code: str | None = None
 
 
 class RiskAssessmentRequest(CamelModel):
@@ -75,4 +76,3 @@ class RiskAssessmentRequest(CamelModel):
     image_summary: ImageSummary | None = None
     patient_profile: PatientProfile | None = None
     model_version: str | None = None
-

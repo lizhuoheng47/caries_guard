@@ -54,7 +54,9 @@ public class CaseAnalysisAliasController {
                                                                        @Valid @RequestBody SubmitCorrectionFeedbackCommand command) {
         SubmitCorrectionFeedbackCommand resolved = new SubmitCorrectionFeedbackCommand(
                 caseId, command.diagnosisId(), command.sourceImageId(), command.feedbackTypeCode(),
-                command.originalInferenceJson(), command.correctedTruthJson());
+                command.originalInferenceJson(), command.correctedTruthJson(),
+                command.originalAiGrade(), command.doctorCorrectedGrade(), command.originalUncertainty(),
+                command.acceptedAiConclusion(), command.correctionReason(), command.trainingCandidate());
         return ApiResponse.success(correctionFeedbackAppService.submit(resolved), TraceIdUtils.currentTraceId());
     }
 }

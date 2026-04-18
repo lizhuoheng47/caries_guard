@@ -54,7 +54,22 @@ class ReportQueryAppServiceTests {
         when(reportSourceQueryRepository.findSummaryById(9101L)).thenReturn(Optional.of(
                 new ReportAnalysisSummaryModel(9101L, 6001L, "{\"visualAssets\":[]}", "C2", new BigDecimal("0.22"), "1", 3, 2)));
         when(reportSourceQueryRepository.findRiskAssessmentById(9201L)).thenReturn(Optional.of(
-                new ReportRiskAssessmentModel(9201L, "HIGH", "{\"risk\":1}", 30, now)));
+                new ReportRiskAssessmentModel(9201L, "HIGH", """
+                        {
+                          "riskAssessment": {
+                            "riskLevel": "HIGH",
+                            "riskScore": 0.82,
+                            "riskFactors": [
+                              {"code": "HIGH_UNCERTAINTY", "weight": 0.12, "source": "businessRule", "evidence": "uncertaintyScore=0.45"},
+                              {"code": "HIGH_SUGAR_DIET", "weight": 0.12, "source": "patientProfile", "evidence": "sugarDietLevelCode=HIGH"}
+                            ],
+                            "followupSuggestion": "3_MONTH_RECHECK",
+                            "reviewSuggested": true,
+                            "explanation": "Risk level is HIGH.",
+                            "fusionVersion": "risk-fusion-v1"
+                          }
+                        }
+                        """, 30, now)));
         when(reportSourceQueryRepository.listCaseImages(3001L)).thenReturn(List.of(
                 new ReportImageModel(5001L, 6001L, "PANORAMIC", "PASS", "1", "caries-image", "image/a.jpg", "a.jpg")));
         when(reportSourceQueryRepository.listToothRecords(3001L)).thenReturn(List.of(
@@ -72,6 +87,13 @@ class ReportQueryAppServiceTests {
         assertThat(detail.sourceSummaryId()).isEqualTo(9101L);
         assertThat(detail.analysisSummary().taskId()).isEqualTo(6001L);
         assertThat(detail.riskAssessment().overallRiskLevelCode()).isEqualTo("HIGH");
+        assertThat(detail.riskAssessment().riskScore()).isEqualByComparingTo("0.82");
+        assertThat(detail.riskAssessment().followupSuggestion()).isEqualTo("3_MONTH_RECHECK");
+        assertThat(detail.riskAssessment().reviewSuggested()).isTrue();
+        assertThat(detail.riskAssessment().explanation()).isEqualTo("Risk level is HIGH.");
+        assertThat(detail.riskAssessment().fusionVersion()).isEqualTo("risk-fusion-v1");
+        assertThat(detail.riskAssessment().riskFactors()).hasSize(2);
+        assertThat(detail.riskAssessment().riskFactors().get(0).code()).isEqualTo("HIGH_UNCERTAINTY");
         assertThat(detail.images()).hasSize(1);
         assertThat(detail.toothRecords()).hasSize(1);
         assertThat(detail.visualAssets()).hasSize(1);

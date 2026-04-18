@@ -252,6 +252,7 @@ abstract class AnalysisReportE2EBaseTest {
                 patientId,
                 visitId,
                 caseId,
+                imageId,
                 imageAttachmentId,
                 visualAssetAttachmentId,
                 templateId);
@@ -505,6 +506,7 @@ abstract class AnalysisReportE2EBaseTest {
             jdbcTemplate.update("DELETE FROM fup_record WHERE case_id = ?", fixture.caseId());
             jdbcTemplate.update("DELETE FROM fup_task WHERE case_id = ?", fixture.caseId());
             jdbcTemplate.update("DELETE FROM fup_plan WHERE case_id = ?", fixture.caseId());
+            jdbcTemplate.update("DELETE FROM ana_correction_feedback WHERE case_id = ?", fixture.caseId());
             jdbcTemplate.update("DELETE FROM ana_visual_asset WHERE case_id = ?", fixture.caseId());
             jdbcTemplate.update("DELETE FROM ana_result_summary WHERE case_id = ?", fixture.caseId());
             jdbcTemplate.update("DELETE FROM med_risk_assessment_record WHERE case_id = ?", fixture.caseId());
@@ -529,6 +531,7 @@ abstract class AnalysisReportE2EBaseTest {
             Long patientId,
             Long visitId,
             Long caseId,
+            Long imageId,
             Long imageAttachmentId,
             Long visualAssetAttachmentId,
             Long templateId) {
