@@ -191,13 +191,14 @@ class SystemAdminQueryAppServiceTests {
                 new SystemMenuSummaryModel(4L, 0L, "Image", "MENU", "/images", "image/index", "image:view", 40, true, false, 100001L, "ACTIVE"),
                 new SystemMenuSummaryModel(5L, 0L, "Analysis", "MENU", "/analysis/tasks", "analysis/task-index", "analysis:view", 50, true, false, 100001L, "ACTIVE"),
                 new SystemMenuSummaryModel(6L, 0L, "Report", "MENU", "/reports", "report/index", "report:view", 60, true, false, 100001L, "ACTIVE"),
-                new SystemMenuSummaryModel(7L, 0L, "Follow-up", "MENU", "/followups", "followup/index", "followup:view", 70, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(7L, 0L, "Follow-up", "MENU", "/followups/all", "followup/index", "followup:view", 70, true, false, 100001L, "ACTIVE"),
                 new SystemMenuSummaryModel(8L, 0L, "Dashboard", "MENU", "/dashboard", "dashboard/index", "dashboard:view", 80, true, false, 100001L, "ACTIVE"),
-                new SystemMenuSummaryModel(9L, 0L, "AI Ops", "MENU", "/dashboard/model-runtime", "dashboard/model-runtime", "dashboard:ops:view", 90, true, false, 100001L, "ACTIVE")));
+                new SystemMenuSummaryModel(9L, 0L, "AI Ops", "MENU", "/dashboard/model-runtime", "dashboard/model-runtime", "dashboard:ops:view", 90, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(10L, 0L, "AI Ops Detail", "MENU", "/dashboard/model-runtime/detail", "dashboard/model-runtime/detail", "dashboard:ops:detail", 91, true, false, 100001L, "ACTIVE")));
 
         List<SystemMenuListItemVO> result = service.listMenus(null);
 
-        assertThat(result).hasSize(6);
+        assertThat(result).hasSize(7);
         assertThat(result).extracting(SystemMenuListItemVO::menuName)
                 .containsExactly(
                         "Cases & Imaging",
@@ -205,7 +206,8 @@ class SystemAdminQueryAppServiceTests {
                         "AI Result Detail",
                         "Knowledge & Citation",
                         "Review & Feedback",
-                        "AI Runtime & Evaluation");
+                        "AI Runtime & Evaluation",
+                        "AI Ops Detail");
         assertThat(result).extracting(SystemMenuListItemVO::routePath)
                 .containsExactly(
                         "/patients",
@@ -213,7 +215,8 @@ class SystemAdminQueryAppServiceTests {
                         "/cases",
                         "/reports",
                         "/images",
-                        "/dashboard/model-runtime");
+                        "/dashboard/model-runtime",
+                        "/dashboard/model-runtime/detail");
     }
 
     @Test

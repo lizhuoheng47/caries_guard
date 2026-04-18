@@ -9,5 +9,6 @@ public record CurrentUserVO(
         String userTypeCode,
         Long orgId,
         List<String> roles,
-        List<String> permissions) {
+        List<String> permissions,
+        boolean competitionModeEnabled) {
 }

@@ -8,9 +8,11 @@ echo "This will stop the containers and remove all associated data volumes."
 
 docker compose --env-file env/competition.env down -v --remove-orphans
 
-echo "### Pruning demo state (TODO) ###"
-# TODO: Remove any residual local cache data if stored outside volumes.
-echo "- Pruning pending implementation."
+echo "### Pruning demo state ###"
+if [ -d "evidence/generated/demo_assets" ]; then
+    rm -rf "evidence/generated/demo_assets"
+    echo "Cleared generated demo assets."
+fi
 
 echo ""
 echo "=================================================="

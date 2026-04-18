@@ -8,13 +8,18 @@ import org.springframework.stereotype.Service;
 @Service
 public class CompetitionMenuProjectionService {
 
+    public enum CompetitionReadyState {
+        READY,
+        PROJECTED_ONLY
+    }
+
     private static final Map<String, CompetitionMenuPresentation> MENU_PRESENTATIONS = Map.of(
-            "/patients", new CompetitionMenuPresentation("Cases & Imaging", 10),
-            "/analysis/tasks", new CompetitionMenuPresentation("AI Analysis Tasks", 20),
-            "/cases", new CompetitionMenuPresentation("AI Result Detail", 30),
-            "/reports", new CompetitionMenuPresentation("Knowledge & Citation", 40),
-            "/images", new CompetitionMenuPresentation("Review & Feedback", 50),
-            "/dashboard/model-runtime", new CompetitionMenuPresentation("AI Runtime & Evaluation", 60));
+            "/patients", new CompetitionMenuPresentation("Cases & Imaging", 10, CompetitionReadyState.PROJECTED_ONLY, null),
+            "/analysis/tasks", new CompetitionMenuPresentation("AI Analysis Tasks", 20, CompetitionReadyState.READY, null),
+            "/cases", new CompetitionMenuPresentation("AI Result Detail", 30, CompetitionReadyState.PROJECTED_ONLY, null),
+            "/reports", new CompetitionMenuPresentation("Knowledge & Citation", 40, CompetitionReadyState.PROJECTED_ONLY, null),
+            "/images", new CompetitionMenuPresentation("Review & Feedback", 50, CompetitionReadyState.PROJECTED_ONLY, null),
+            "/dashboard/model-runtime", new CompetitionMenuPresentation("AI Runtime & Evaluation", 60, CompetitionReadyState.READY, null));
 
     private final CompetitionExposureService competitionExposureService;
 
@@ -30,12 +35,13 @@ public class CompetitionMenuProjectionService {
         if (presentation == null) {
             return item;
         }
+        String finalRoutePath = presentation.overrideRoutePath() != null ? presentation.overrideRoutePath() : item.routePath();
         return new SystemMenuSummaryModel(
                 item.menuId(),
                 item.parentId(),
                 presentation.menuName(),
                 item.menuTypeCode(),
-                item.routePath(),
+                finalRoutePath,
                 item.componentPath(),
                 item.permissionCode(),
                 presentation.orderNum(),
@@ -53,12 +59,14 @@ public class CompetitionMenuProjectionService {
         if (presentation == null) {
             return item;
         }
+        String finalRoutePath = presentation.overrideRoutePath() != null ? presentation.overrideRoutePath() : item.routePath();
+        String finalRemark = "STATE:" + presentation.state();
         return new SystemMenuDetailModel(
                 item.menuId(),
                 item.parentId(),
                 presentation.menuName(),
                 item.menuTypeCode(),
-                item.routePath(),
+                finalRoutePath,
                 item.componentPath(),
                 item.permissionCode(),
                 item.icon(),
@@ -67,9 +75,9 @@ public class CompetitionMenuProjectionService {
                 item.cache(),
                 item.orgId(),
                 item.status(),
-                item.remark());
+                finalRemark);
     }
 
-    private record CompetitionMenuPresentation(String menuName, int orderNum) {
+    private record CompetitionMenuPresentation(String menuName, int orderNum, CompetitionReadyState state, String overrideRoutePath) {
     }
 }

@@ -55,6 +55,18 @@ Python 侧当前实现的是一条可追踪的 AI 能力链：
 - `hybrid`：开启的模块使用真实适配器，其余仍用 mock
 - `real`：所有模块都必须走真实适配器，失败时显式报错，不静默回退
 
+### 比赛展示模式：默认与增强演示
+
+- **默认比赛演示**：`mock`
+- **增强比赛演示**：`hybrid`
+- **说明**：
+  - `mock` 用于保证离线、稳定、可复现；
+  - `hybrid` 用于证明系统具备接入真实适配器的能力；
+  - 两者都**不能被表述为“自动诊断”**，仅为功能运转证明。
+
+比赛页和看板最终应展示 `runtimeMode`、`qualityImplType`、`gradingImplType`、`riskImplType` 等字段，使评审能清晰区分当前运行的是 mock 占位、heuristic 经验过滤还是 real adapter。
+
+---
 对应环境变量：
 
 ```env
@@ -68,7 +80,7 @@ CG_MODEL_RISK_ENABLED=false
 
 ## 知识与 LLM 默认值
 
-当前代码默认值来自 [config.py](/E:/caries_guard/backend-python/app/core/config.py)：
+当前代码默认值来自 [config.py](./app/core/config.py)：
 
 - `CG_RAG_KNOWLEDGE_VERSION=v1.0`
 - `CG_LLM_PROVIDER_CODE=MOCK`
@@ -85,7 +97,7 @@ CG_MODEL_RISK_ENABLED=false
 
 ## Docker 启动行为
 
-容器入口是 [scripts/entrypoint.sh](/E:/caries_guard/backend-python/scripts/entrypoint.sh)：
+容器入口是 [scripts/entrypoint.sh](./scripts/entrypoint.sh)：
 
 1. 根据 `CG_DB_MIGRATION_ENABLED` 决定是否执行 Alembic
 2. 在已有业务表但无 `alembic_version` 时先 `stamp`

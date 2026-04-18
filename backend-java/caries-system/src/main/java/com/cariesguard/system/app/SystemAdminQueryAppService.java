@@ -21,10 +21,15 @@ import com.cariesguard.system.interfaces.vo.SystemUserListItemVO;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SystemAdminQueryAppService {
+
+    private static final Logger log = LoggerFactory.getLogger(SystemAdminQueryAppService.class);
 
     private static final String MODULE_CODE = "SYSTEM";
 
@@ -71,13 +76,19 @@ public class SystemAdminQueryAppService {
     }
 
     public List<SystemMenuListItemVO> listMenus(String status) {
-        return systemAdminQueryRepository.listMenus(systemDataScopeService.currentScope(MODULE_CODE), status).stream()
+        List<SystemMenuListItemVO> result = systemAdminQueryRepository.listMenus(systemDataScopeService.currentScope(MODULE_CODE), status).stream()
                 .filter(this::isMenuExposed)
                 .map(competitionMenuProjectionService::project)
                 .sorted(Comparator.comparingInt(SystemMenuSummaryModel::orderNum)
                         .thenComparing(SystemMenuSummaryModel::menuId))
                 .map(this::toMenuVO)
                 .toList();
+
+        if (competitionExposureService.isEnabled()) {
+            log.info("Competition Mode Menu Snapshot - Total: {}", result.size());
+            result.forEach(m -> log.info(" - Menu: [{}] Route: [{}]", m.menuName(), m.routePath()));
+        }
+        return result;
     }
 
     public SystemUserDetailVO getUser(Long userId) {

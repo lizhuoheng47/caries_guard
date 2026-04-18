@@ -15,6 +15,7 @@ import com.cariesguard.analysis.interfaces.vo.CorrectionFeedbackExportSampleVO;
 import com.cariesguard.analysis.interfaces.vo.CorrectionFeedbackExportVO;
 import com.cariesguard.analysis.interfaces.vo.CorrectionFeedbackReviewVO;
 import com.cariesguard.analysis.interfaces.vo.CorrectionFeedbackVO;
+import com.cariesguard.analysis.interfaces.vo.CorrectionReasonCategoryLabels;
 import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
@@ -92,6 +93,7 @@ public class CorrectionFeedbackAppService {
                 null,
                 null,
                 medicalCase.orgId()));
+        String correctionReasonCategory = trimToNull(command.correctionReasonCategory());
         return new CorrectionFeedbackVO(
                 feedbackId,
                 medicalCase.caseId(),
@@ -105,7 +107,13 @@ public class CorrectionFeedbackAppService {
                 null,
                 trainingCandidateFlag,
                 "0",
-                "PENDING");
+                "PENDING",
+                trimToNull(command.doctorConfirmedGrade()),
+                command.agreedWithAi(),
+                correctionReasonCategory,
+                CorrectionReasonCategoryLabels.toLabel(correctionReasonCategory),
+                command.agreedWithAiExplanation(),
+                trimToNull(command.followUpSuggestion()));
     }
 
     @Transactional
@@ -172,7 +180,17 @@ public class CorrectionFeedbackAppService {
         }
         putText(governance, "correctionReason", command.correctionReason());
         governance.put("trainingCandidate", !Boolean.FALSE.equals(command.trainingCandidate()));
-        governance.put("schemaVersion", "feedback-governance-v1");
+        // ── 新增结构化复核字段持久化 ──
+        putText(governance, "doctorConfirmedGrade", command.doctorConfirmedGrade());
+        if (command.agreedWithAi() != null) {
+            governance.put("agreedWithAi", command.agreedWithAi());
+        }
+        putText(governance, "correctionReasonCategory", command.correctionReasonCategory());
+        if (command.agreedWithAiExplanation() != null) {
+            governance.put("agreedWithAiExplanation", command.agreedWithAiExplanation());
+        }
+        putText(governance, "followUpSuggestion", command.followUpSuggestion());
+        governance.put("schemaVersion", "feedback-governance-v2");
         return root;
     }
 

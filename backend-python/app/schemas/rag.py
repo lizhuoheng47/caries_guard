@@ -72,6 +72,8 @@ class RagRetrievedChunk(CamelModel):
     chunk_id: int
     document_code: str | None = None
     score: float
+    chunk_text: str | None = None
+    doc_title: str | None = None
 
 
 class RagAnswer(CamelModel):

@@ -5,8 +5,14 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class CompetitionExposureService {
+
+    private static final Logger log = LoggerFactory.getLogger(CompetitionExposureService.class);
 
     private static final List<String> RETAINED_ENTRIES = List.of(
             "analysis",
@@ -24,6 +30,19 @@ public class CompetitionExposureService {
 
     public CompetitionExposureService(CompetitionModeProperties properties) {
         this.properties = properties;
+    }
+
+    @PostConstruct
+    public void init() {
+        if (properties.isEnabled()) {
+            log.info("### CARIES COMPETITION MODE ENABLED ###");
+            log.info("Hidden Permission Prefixes: {}", properties.getHiddenPermissionPrefixes());
+            log.info("Hidden Route Prefixes: {}", properties.getHiddenRoutePrefixes());
+            log.info("Force Visible Route Prefixes: {}", properties.getForceVisibleRoutePrefixes());
+            log.info("Retained Entries: {}", RETAINED_ENTRIES);
+        } else {
+            log.info("### CARIES COMPETITION MODE DISABLED ###");
+        }
     }
 
     public List<String> filterPermissions(List<String> permissions) {
@@ -52,8 +71,13 @@ public class CompetitionExposureService {
             return true;
         }
         String normalizedRoutePath = normalize(routePath);
-        if (normalizedRoutePath != null && properties.getForceVisibleRoutePaths().contains(normalizedRoutePath)) {
-            return true;
+        if (normalizedRoutePath != null) {
+            if (properties.getForceVisibleRoutePaths().contains(normalizedRoutePath)) {
+                return true;
+            }
+            if (properties.getForceVisibleRoutePrefixes().stream().anyMatch(normalizedRoutePath::startsWith)) {
+                return true;
+            }
         }
         if (StringUtils.hasText(permissionCode) && !isPermissionExposed(permissionCode)) {
             return false;
@@ -61,7 +85,13 @@ public class CompetitionExposureService {
         if (normalizedRoutePath == null) {
             return true;
         }
-        return !properties.getHiddenRoutePaths().contains(normalizedRoutePath);
+        if (properties.getHiddenRoutePaths().contains(normalizedRoutePath)) {
+            return false;
+        }
+        if (properties.getHiddenRoutePrefixes().stream().anyMatch(normalizedRoutePath::startsWith)) {
+            return false;
+        }
+        return true;
     }
 
     public boolean isEnabled() {
@@ -73,7 +103,9 @@ public class CompetitionExposureService {
                 properties.isEnabled(),
                 properties.getHiddenPermissionPrefixes(),
                 properties.getHiddenPermissionCodes(),
+                properties.getHiddenRoutePrefixes(),
                 properties.getHiddenRoutePaths(),
+                properties.getForceVisibleRoutePrefixes(),
                 properties.getForceVisibleRoutePaths(),
                 RETAINED_ENTRIES,
                 ENFORCEMENT_SURFACES);

@@ -187,6 +187,8 @@ public class RagAppService {
         return new RagRetrievedChunkVO(
                 chunk.chunkId(),
                 chunk.documentCode(),
-                chunk.score());
+                chunk.score(),
+                chunk.chunkText(),
+                chunk.docTitle());
     }
 }

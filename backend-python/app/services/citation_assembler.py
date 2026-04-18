@@ -28,6 +28,8 @@ class CitationAssembler:
                 chunk_id=hit["chunk_id"],
                 document_code=hit.get("doc_no"),
                 score=hit["score"],
+                chunk_text=hit.get("chunk_text"),
+                doc_title=hit.get("doc_title"),
             )
             for hit in hits
         ]

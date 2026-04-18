@@ -3,6 +3,10 @@
 ## 1. 当前比赛版基线
 
 - 仓库基线版本：`0.1.0-SNAPSHOT`
+- 发布版本号：`v1.0.0-competition-release`
+- Git commit hash：`[LATEST_COMMIT_HASH]`
+- 发布日期：`2026-04-18`
+- 适用分支：`main`
 - 作品定位：面向龋病筛查场景的医疗 AI 辅助决策系统
 - 业务主线：影像分析 -> uncertainty 复核 -> RAG 解释 -> 风险融合 -> 医生反馈回流
 
@@ -49,20 +53,18 @@
 
 ## 4. 默认 demo 样例
 
-当前仓库没有静态内置“比赛 seed 包”，默认 demo 依赖现有 E2E 脚本按需生成临时样例：
+当前仓库已经内置标准的“比赛 seed 包”，不再依赖由于耗时不稳定所导致的老版本 E2E 生成临时数据。默认 demo 数据包含：
 
-### 分析主链
+### 分析与复核主链
 
-- `scripts/phase5-analysis-docker-e2e.ps1`
-- 推荐场景：
-  - `5c-b-hybrid-grading-low-uncertainty`
-  - `5c-c-hybrid-grading-high-uncertainty`
+- `demo-doctor-01`：默认掩码演示医生
+- `demo-case-low-uncertainty`：低 uncertainty 正常筛查闭环场景
+- `demo-case-high-uncertainty`：高 uncertainty 触发人工复核场景
 
-### RAG 主链
+### 知识库与问答主链
 
-- `scripts/phase3-rag-docker-e2e.ps1`
-- 默认知识库编码：`caries-default`
-- 默认问题类型：医生问答 `doctor-qa`
+- `demo-kb-caries-default`：内置基于龋病指南的预计算索引
+- `demo-rag-question-set-v1`：预置演示用标准问答包
 
 ## 5. 比赛模式下已隐藏的暴露面
 
@@ -70,16 +72,22 @@
 
 - `system:*`
 - `followup:*`
+- `visit:*`
 - `report:template:*`
 - `report:export`
 - 通用 `/dashboard`
+- `/visits`
 
-同时保留：
+同时保留的 6 个比赛语义入口及底层复用关系如下表所示：
 
-- `analysis`
-- `review`
-- `rag`
-- `/dashboard/model-runtime`
+| 比赛入口 | 当前承接页面/路由 | 状态 |
+| --- | --- | --- |
+| Cases & Imaging | `/patients` | 需继续做比赛语义重构 |
+| AI Analysis Tasks | `/analysis/tasks` | 已可用 |
+| AI Result Detail | `/cases` | 需增强 AI 结果展示 |
+| Knowledge & Citation | `/reports` | 需重构为 RAG 引用页 |
+| Review & Feedback | `/images` | 需重构为 review 语义页 |
+| AI Runtime & Evaluation | `/dashboard/model-runtime` | 需增强治理指标 |
 
 ## 6. 当前已知边界
 

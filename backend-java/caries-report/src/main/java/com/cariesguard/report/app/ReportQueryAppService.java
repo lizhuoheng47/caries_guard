@@ -23,6 +23,7 @@ import com.cariesguard.report.interfaces.vo.ReportRiskFactorVO;
 import com.cariesguard.report.interfaces.vo.ReportRiskAssessmentVO;
 import com.cariesguard.report.interfaces.vo.ReportToothRecordVO;
 import com.cariesguard.report.interfaces.vo.ReportVisualAssetVO;
+import com.cariesguard.report.interfaces.vo.RiskLevelLabels;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -123,9 +124,10 @@ public class ReportQueryAppService {
 
     private ReportRiskAssessmentVO toRiskAssessmentVO(ReportRiskAssessmentModel model) {
         ParsedRiskAssessment parsed = parseRiskAssessment(model.assessmentReportJson());
+        String resolvedRiskLevel = firstText(parsed.riskLevel(), model.overallRiskLevelCode());
         return new ReportRiskAssessmentVO(
                 model.riskAssessmentId(),
-                firstText(parsed.riskLevel(), model.overallRiskLevelCode()),
+                resolvedRiskLevel,
                 firstDecimal(parsed.riskScore(), model.riskScore()),
                 model.assessmentReportJson(),
                 firstInt(parsed.recommendedCycleDays(), model.recommendedCycleDays()),
@@ -136,7 +138,10 @@ public class ReportQueryAppService {
                 parsed.riskFactors().isEmpty()
                         ? model.riskFactors().stream().map(this::toRiskFactorVO).toList()
                         : parsed.riskFactors(),
-                model.assessedAt());
+                model.assessedAt(),
+                RiskLevelLabels.toLabel(resolvedRiskLevel),
+                parsed.followupSuggestion(),
+                parsed.explanation());
     }
 
     private ReportRiskFactorVO toRiskFactorVO(ReportRiskAssessmentModel.RiskFactorModel model) {

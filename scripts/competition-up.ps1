@@ -37,14 +37,25 @@ while ($true) {
     }
 }
 
-Write-Host "### Setting up Demo Data (TODO) ###" -ForegroundColor Cyan
-# TODO: Import demo database dump, patients, files.
-# Connect to mysql container or execute SQL scripts here.
-Write-Host "- Demo data setup pending implementation." -ForegroundColor Yellow
+Write-Host "### Setting up Demo Data (SQL) ###" -ForegroundColor Cyan
+$ContainerName = docker compose ps -q mysql
+if ($ContainerName) {
+    Write-Host "Injecting demo seed data into MySQL..."
+    docker exec -i $ContainerName mysql -u root -p123456 smbms < scripts/seed_demo_data.sql
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Demo data injected successfully." -ForegroundColor Green
+    } else {
+        Write-Host "Failed to inject demo data via mysql CLI." -ForegroundColor Red
+    }
+} else {
+    Write-Host "Could not locate running MySQL container." -ForegroundColor Yellow
+}
 
-Write-Host "### Importing Knowledge Base (TODO) ###" -ForegroundColor Cyan
-# TODO: Inject vector database data or copy files to RAG directory.
-Write-Host "- Knowledge base import pending implementation." -ForegroundColor Yellow
+Write-Host "### Seeding Demo Assets ###" -ForegroundColor Cyan
+powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/seed_demo_assets.ps1"
+
+Write-Host "### Importing Knowledge Base ###" -ForegroundColor Cyan
+python scripts/seed_demo_knowledge.py
 
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Green

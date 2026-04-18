@@ -85,7 +85,8 @@ public class AuthAppService {
                 user.userTypeCode(),
                 user.orgId(),
                 user.roleCodes(),
-                permissions);
+                permissions,
+                competitionExposureService.isEnabled());
     }
 
     public CurrentUserPermissionsVO currentPermissions() {

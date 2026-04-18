@@ -122,7 +122,9 @@ public class HttpRagClient implements RagClient {
                 retrievedChunks.add(new RagRetrievedChunkModel(
                         longValue(chunk, "chunkId"),
                         text(chunk, "documentCode"),
-                        doubleValue(chunk, "score")));
+                        doubleValue(chunk, "score"),
+                        text(chunk, "chunkText"),
+                        text(chunk, "docTitle")));
             }
         }
 

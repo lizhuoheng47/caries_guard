@@ -13,3 +13,19 @@ __pycache__/
 
 # Docker runtime artifacts
 .docker/
+
+# Evidence & Logs
+*.log
+evidence/**/generated/
+evidence/generated/
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+
+# Testing & Coverage
+coverage/
+htmlcov/
+.coverage
+.mypy_cache/

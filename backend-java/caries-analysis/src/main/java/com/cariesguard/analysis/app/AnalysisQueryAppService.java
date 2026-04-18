@@ -6,18 +6,24 @@ import com.cariesguard.analysis.domain.repository.AnaResultSummaryRepository;
 import com.cariesguard.analysis.domain.repository.AnaTaskRecordRepository;
 import com.cariesguard.analysis.domain.repository.AnaVisualAssetRepository;
 import com.cariesguard.analysis.interfaces.query.AnalysisTaskPageQuery;
+import com.cariesguard.analysis.interfaces.vo.AnalysisCitationVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisSummaryVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskDetailVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskPageVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisVisualAssetVO;
+import com.cariesguard.analysis.interfaces.vo.EvidenceRefItemVO;
+import com.cariesguard.analysis.interfaces.vo.ReviewReasonLabels;
 import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -103,6 +109,8 @@ public class AnalysisQueryAppService {
         }
     }
 
+    // ─── AI 证据展示：核心组装逻辑 ───
+
     private AnalysisSummaryVO toSummaryVO(AnalysisResultSummaryModel summary) {
         String severity = summary.overallHighestSeverity();
         Double uncertainty = summary.uncertaintyScore() == null ? null : summary.uncertaintyScore().doubleValue();
@@ -117,13 +125,25 @@ public class AnalysisQueryAppService {
         String knowledgeVersion = null;
         JsonNode riskFactors = null;
         JsonNode evidenceRefs = null;
+
+        // 新增字段
+        String gradingLabel = null;
+        Double confidenceScore = null;
+        Boolean needsReview = null;
+        String followUpRecommendation = null;
+        JsonNode rawResultJsonNode = null;
+        List<AnalysisCitationVO> citations = null;
+
         if (!StringUtils.hasText(summary.rawResultJson())) {
             return new AnalysisSummaryVO(
                     severity, uncertainty, reviewFlag, lesionCount, abnormalToothCount, summaryVersionNo, null,
-                    null, null, null, null, null, null);
+                    null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null);
         }
         try {
             JsonNode root = objectMapper.readTree(summary.rawResultJson());
+            rawResultJsonNode = root;
+
             if (!StringUtils.hasText(severity)) {
                 severity = textValue(root, "overallHighestSeverity", "overall_highest_severity");
             }
@@ -146,6 +166,21 @@ public class AnalysisQueryAppService {
             knowledgeVersion = textValue(root, "knowledgeVersion", "knowledge_version");
             riskFactors = jsonValue(root, "riskFactors", "risk_factors");
             evidenceRefs = jsonValue(root, "evidenceRefs", "evidence_refs");
+
+            // ── 新增字段提取 ──
+            gradingLabel = textValue(root, "gradingLabel", "grading_label");
+            confidenceScore = doubleValue(root, "confidenceScore", "confidence_score");
+            needsReview = booleanValue(root, "needsReview", "needs_review");
+            followUpRecommendation = textValue(root, "followUpRecommendation", "follow_up_recommendation",
+                    "followupSuggestion", "followup_suggestion");
+            citations = extractCitations(root);
+
+            // reviewReason → 人可读标签
+            String reviewReasonLabel = ReviewReasonLabels.toLabel(reviewReason);
+
+            // evidenceRefs → 分类展示
+            Map<String, List<EvidenceRefItemVO>> classifiedEvidenceRefs = classifyEvidenceRefs(evidenceRefs);
+
             return new AnalysisSummaryVO(
                     severity,
                     uncertainty,
@@ -159,16 +194,71 @@ public class AnalysisQueryAppService {
                     doctorReviewRequiredReason,
                     knowledgeVersion,
                     riskFactors,
-                    evidenceRefs);
+                    evidenceRefs,
+                    gradingLabel,
+                    confidenceScore,
+                    needsReview,
+                    followUpRecommendation,
+                    reviewReasonLabel,
+                    classifiedEvidenceRefs,
+                    citations,
+                    rawResultJsonNode);
         } catch (Exception exception) {
             if (StringUtils.hasText(severity) || uncertainty != null || StringUtils.hasText(reviewFlag)) {
                 return new AnalysisSummaryVO(
                         severity, uncertainty, reviewFlag, lesionCount, abnormalToothCount, summaryVersionNo, null,
-                        riskLevel, reviewReason, doctorReviewRequiredReason, knowledgeVersion, riskFactors, evidenceRefs);
+                        riskLevel, reviewReason, doctorReviewRequiredReason, knowledgeVersion, riskFactors, evidenceRefs,
+                        gradingLabel, confidenceScore, needsReview, followUpRecommendation,
+                        ReviewReasonLabels.toLabel(reviewReason),
+                        classifyEvidenceRefs(evidenceRefs), citations, rawResultJsonNode);
             }
             throw new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "AI summary payload is invalid");
         }
     }
+
+    // ─── evidenceRefs 分类展示 ───
+
+    private Map<String, List<EvidenceRefItemVO>> classifyEvidenceRefs(JsonNode evidenceRefs) {
+        if (evidenceRefs == null || !evidenceRefs.isArray() || evidenceRefs.isEmpty()) {
+            return null;
+        }
+        Map<String, List<EvidenceRefItemVO>> classified = new LinkedHashMap<>();
+        for (JsonNode ref : evidenceRefs) {
+            String refType = textValue(ref, "refType", "ref_type");
+            if (refType == null) {
+                refType = "OTHER";
+            }
+            String refCode = textValue(ref, "refCode", "ref_code");
+            String refSummary = textValue(ref, "summary");
+            String source = textValue(ref, "source");
+            classified.computeIfAbsent(refType, k -> new ArrayList<>())
+                    .add(new EvidenceRefItemVO(refType, refCode, refSummary, source));
+        }
+        return classified;
+    }
+
+    // ─── citations 提取 ───
+
+    private List<AnalysisCitationVO> extractCitations(JsonNode root) {
+        JsonNode citationsNode = jsonValue(root, "citations");
+        if (citationsNode == null || !citationsNode.isArray() || citationsNode.isEmpty()) {
+            return null;
+        }
+        List<AnalysisCitationVO> result = new ArrayList<>();
+        int rank = 1;
+        for (JsonNode c : citationsNode) {
+            result.add(new AnalysisCitationVO(
+                    intValue(c, "rankNo", "rank_no") != null ? intValue(c, "rankNo", "rank_no") : rank,
+                    textValue(c, "docTitle", "doc_title"),
+                    textValue(c, "chunkText", "chunk_text"),
+                    doubleValue(c, "score"),
+                    textValue(c, "sourceUri", "source_uri")));
+            rank++;
+        }
+        return result;
+    }
+
+    // ─── JSON 字段提取工具方法 ───
 
     private String textValue(JsonNode root, String... fields) {
         for (String field : fields) {
@@ -203,6 +293,16 @@ public class AnalysisQueryAppService {
         return null;
     }
 
+    private Boolean booleanValue(JsonNode root, String... fields) {
+        for (String field : fields) {
+            JsonNode value = root.get(field);
+            if (value != null && value.isBoolean()) {
+                return value.booleanValue();
+            }
+        }
+        return null;
+    }
+
     private JsonNode jsonValue(JsonNode root, String... fields) {
         for (String field : fields) {
             JsonNode value = root.get(field);
@@ -213,6 +313,3 @@ public class AnalysisQueryAppService {
         return null;
     }
 }
-
-
-

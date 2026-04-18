@@ -8,9 +8,11 @@ Write-Host "This will stop the containers and remove all associated data volumes
 
 docker compose --env-file env/competition.env down -v --remove-orphans
 
-Write-Host "### Pruning demo state (TODO) ###" -ForegroundColor Cyan
-# TODO: Remove any residual local cache data if stored outside volumes.
-Write-Host "- Pruning pending implementation." -ForegroundColor Yellow
+Write-Host "### Pruning demo state ###" -ForegroundColor Cyan
+if (Test-Path "evidence/generated/demo_assets") {
+    Remove-Item -Recurse -Force "evidence/generated/demo_assets"
+    Write-Host "Cleared generated demo assets." -ForegroundColor Green
+}
 
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Green

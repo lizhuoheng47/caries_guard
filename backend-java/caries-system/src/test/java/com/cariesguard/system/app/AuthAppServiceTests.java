@@ -137,6 +137,7 @@ class AuthAppServiceTests {
         assertThat(result.roles()).containsExactly("SYS_ADMIN");
         assertThat(result.permissions()).containsExactly("system:user:list", "patient:create");
         assertThat(result.nickName()).isEqualTo("Admin");
+        assertThat(result.competitionModeEnabled()).isFalse();
     }
 
     @Test
