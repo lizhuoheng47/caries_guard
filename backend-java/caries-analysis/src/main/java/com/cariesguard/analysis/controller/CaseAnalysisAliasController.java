@@ -56,7 +56,10 @@ public class CaseAnalysisAliasController {
                 caseId, command.diagnosisId(), command.sourceImageId(), command.feedbackTypeCode(),
                 command.originalInferenceJson(), command.correctedTruthJson(),
                 command.originalAiGrade(), command.doctorCorrectedGrade(), command.originalUncertainty(),
-                command.acceptedAiConclusion(), command.correctionReason(), command.trainingCandidate());
+                command.acceptedAiConclusion(), command.correctionReason(), command.trainingCandidate(),
+                command.doctorConfirmedGrade(), command.agreedWithAi(),
+                command.correctionReasonCategory(), command.agreedWithAiExplanation(),
+                command.followUpSuggestion());
         return ApiResponse.success(correctionFeedbackAppService.submit(resolved), TraceIdUtils.currentTraceId());
     }
 }

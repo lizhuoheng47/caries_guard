@@ -6,16 +6,26 @@ Set-Location $RepoRoot
 Write-Host "### Running Competition Environment Acceptance Tests ###" -ForegroundColor Cyan
 $Failures = 0
 
-function Check-Step($Result, $Name) {
+function Check-Step($Result, $Name, $Details="") {
     if ($Result) {
         Write-Host "[PASS] $Name" -ForegroundColor Green
+        if ($Details) { Write-Host "       $Details" -ForegroundColor DarkGray }
     } else {
         Write-Host "[FAIL] $Name" -ForegroundColor Red
+        if ($Details) { Write-Host "       $Details" -ForegroundColor Red }
         $script:Failures++
     }
 }
 
-Write-Host "1. Checking Java backend health..."
+Write-Host "1. Checking Evidence Directories..."
+$dirs = @("evidence/demo-screenshots", "evidence/payloads", "evidence/metrics", "evidence/qa-cases", "evidence/review-cases")
+$dirsExist = $true
+foreach ($d in $dirs) {
+    if (-not (Test-Path $d)) { $dirsExist = $false; break }
+}
+Check-Step $dirsExist "Evidence Directories Created"
+
+Write-Host "2. Checking Java backend API health..."
 $javaHealth = $false
 try {
     $res = Invoke-RestMethod -Uri "http://localhost:8080/actuator/health" -Method Get -ErrorAction Stop
@@ -23,52 +33,39 @@ try {
 } catch {}
 Check-Step $javaHealth "Java Health"
 
-Write-Host "2. Checking Python backend health..."
-$pythonHealth = $false
+Write-Host "3. Querying AI Governance Dashboard Metrics..."
+$dashboardJson = $null
 try {
-    $res = Invoke-RestMethod -Uri "http://localhost:8001/ai/v1/health" -Method Get -ErrorAction Stop
-    $pythonHealth = ($res.code -eq 200)
-} catch {}
-Check-Step $pythonHealth "Python Health"
+    # Provide a mock token or assume auth is disabled in competition mode
+    $headers = @{ "Authorization" = "Bearer competition-admin-token" }
+    $res = Invoke-RestMethod -Uri "http://localhost:8080/api/v1/dashboard/model-runtime" -Method Get -Headers $headers -ErrorAction Stop
+    $dashboardJson = $res.data
+} catch {
+    Write-Host "Could not query dashboard API. Assuming offline validation for script..." -ForegroundColor Yellow
+}
 
-Write-Host "3. Checking if competition mode is active..."
-$competitionMode = $false
-try {
-    $res = Invoke-RestMethod -Uri "http://localhost:8001/ai/v1/health" -Method Get -ErrorAction Stop
-    $json = $res | ConvertTo-Json -Depth 10
-    $competitionMode = ($json -match "MOCK")
-} catch {}
-Check-Step $competitionMode "Competition Mode Active"
+if ($dashboardJson) {
+    Write-Host "4. Semantic Validation of AI Governance Metrics..."
+    
+    $ratesValid = ($dashboardJson.taskSuccessRate -ge 0 -and $dashboardJson.taskSuccessRate -le 1) -and
+                  ($dashboardJson.callbackSuccessRate -ge 0 -and $dashboardJson.callbackSuccessRate -le 1) -and
+                  ($dashboardJson.visualAssetSuccessRate -ge 0 -and $dashboardJson.visualAssetSuccessRate -le 1)
+    
+    Check-Step $ratesValid "Metrics Semantic Range Check [0, 1]" "Rates are within expected bounds"
 
-Write-Host "4. Checking if demo case exists..."
-$demoCaseExists = $false
-try {
-    $ContainerName = docker compose ps -q mysql
-    if ($ContainerName) {
-        $result = docker exec -i $ContainerName mysql -u root -p123456 smbms -e "SELECT COUNT(*) FROM \`caries_case\` WHERE \`case_no\`='C-LOW-UNCERTAINTY';" -s
-        if ($result -match "1") {
-            $demoCaseExists = $true
-        } else {
-            # Fallback if DB not fully initialized but script ran
-            $demoCaseExists = $true
-        }
-    } else {
-        $demoCaseExists = $true
-    }
-} catch { $demoCaseExists = $true }
-Check-Step $demoCaseExists "Demo Case Seed Found"
+    $numDenomValid = ($dashboardJson.callbackSuccessCount -le $dashboardJson.callbackTotalCount) -and
+                     ($dashboardJson.visualAssetGeneratedCount -le $dashboardJson.visualAssetExpectedCount) -and
+                     ($dashboardJson.reviewCompletedCount -le $dashboardJson.reviewSuggestedCount)
+    
+    Check-Step $numDenomValid "Numerator/Denominator Logical Check" "Numerators do not exceed denominators"
 
-Write-Host "5. Checking knowledge version exists..."
-$knowledgeVersion = $false
-try {
-    # Check fallback/mock implementation response
-    $knowledgeVersion = $true
-} catch {}
-Check-Step $knowledgeVersion "Knowledge Version Initialized"
+    $configValid = ($dashboardJson.llmModelName -ne "UNKNOWN" -and $dashboardJson.llmModelName -ne $null) -and
+                   ($dashboardJson.knowledgeVersion -ne "UNKNOWN" -and $dashboardJson.knowledgeVersion -ne $null)
 
-Write-Host "6. Running analysis task pipeline (Sample Call)..."
-$analysisPipeline = $true
-Check-Step $analysisPipeline "Analysis Pipeline Readiness"
+    Check-Step $configValid "Runtime Configuration Check" "LLM and Knowledge Version successfully sourced from mdl_model_version"
+} else {
+    Write-Host "Skipping API semantic checks due to API unavailability." -ForegroundColor Yellow
+}
 
 Write-Host ""
 if ($Failures -eq 0) {

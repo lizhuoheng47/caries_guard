@@ -189,6 +189,15 @@ class RagService:
         )
         payload = dump_camel(answer)
         payload["answer"] = payload["answerText"]
+
+        # ── 比赛展示增强 ──
+        payload["safetyFlagLabels"] = [self._safety_flag_label(f) for f in safety_decision.safety_flags]
+        conf = payload.get("confidence")
+        payload["confidenceLabel"] = self._confidence_label(conf)
+        if safety_decision.refusal_reason:
+            payload["refusalReasonLabel"] = self._refusal_reason_label(safety_decision.refusal_reason)
+        payload["rawResultJsonCollapsed"] = True
+
         return payload
 
     @staticmethod
@@ -198,3 +207,38 @@ class RagService:
             "Generate a patient-friendly caries analysis explanation, home care advice, "
             f"and follow-up recommendation. Risk level: {risk}."
         )
+
+    # ── 比赛展示标签工具 ──
+
+    _SAFETY_FLAG_LABELS: dict[str, str] = {
+        "DENTAL_SCOPE": "仅限口腔领域",
+        "NO_DIAGNOSIS": "不构成诊断",
+        "AGE_APPROPRIATE": "年龄适配检查",
+        "PRESCRIPTION_FORBIDDEN": "禁止开具处方",
+        "SAFE": "安全",
+    }
+
+    _REFUSAL_REASON_LABELS: dict[str, str] = {
+        "OUT_OF_SCOPE": "超出口腔领域范围",
+        "INSUFFICIENT_EVIDENCE": "证据不足",
+        "SAFETY_RISK": "存在安全风险",
+        "PRIVACY_CONCERN": "涉及隐私信息",
+    }
+
+    @staticmethod
+    def _safety_flag_label(flag: str) -> str:
+        return RagService._SAFETY_FLAG_LABELS.get(flag, flag)
+
+    @staticmethod
+    def _confidence_label(confidence: float | None) -> str:
+        if confidence is None:
+            return "未知"
+        if confidence >= 0.8:
+            return "高置信度"
+        if confidence >= 0.5:
+            return "中置信度"
+        return "低置信度"
+
+    @staticmethod
+    def _refusal_reason_label(reason: str) -> str:
+        return RagService._REFUSAL_REASON_LABELS.get(reason, reason)

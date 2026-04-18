@@ -1,31 +1,20 @@
-#!/usr/bin/env bash
-# Seeding Demo Assets for Competition Mode
-
+#!/bin/sh
 set -e
 
-REPO_ROOT=$(dirname "$(dirname "$0")")
-cd "$REPO_ROOT"
+echo "### Seeding MinIO Demo Assets ###"
 
-echo -e "\033[1;36m### Seeding Demo Assets for Competition Mode ###\033[0m"
-echo -e "\033[1;33mThis script provisions baseline visual assets for the predefined demo cases.\033[0m"
+CONTAINER="caries-minio-init"
+FILES="demo_assets/pano_CA-2026-LOW.jpg demo_assets/peri1_CA-2026-LOW.jpg demo_assets/pano_CA-2026-HIGH.jpg demo_assets/peri1_CA-2026-HIGH.jpg demo_assets/peri2_CA-2026-HIGH.jpg"
 
-DEMO_ASSET_DIR="evidence/generated/demo_assets"
-mkdir -p "$DEMO_ASSET_DIR"
+# 1x1 JPEG in base64
+B64_1x1_JPG="/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="
 
-TARGET_ASSETS=(
-    "pano_CA-2026-LOW.jpg"
-    "peri1_CA-2026-LOW.jpg"
-    "pano_CA-2026-HIGH.jpg"
-    "peri1_CA-2026-HIGH.jpg"
-    "peri2_CA-2026-HIGH.jpg"
-)
-
-for target in "${TARGET_ASSETS[@]}"; do
-    FILE_PATH="$DEMO_ASSET_DIR/$target"
-    echo -e "\033[0;37mGenerating placeholder asset at $FILE_PATH\033[0m"
-    echo "DEMO_ASSET_PAYLOAD_FOR_$target" > "$FILE_PATH"
+for FILE in $FILES; do
+    echo "Uploading mock image to $FILE..."
+    # Creating the dummy image in tmp and using 'mc cp' to upload
+    CMD="echo '$B64_1x1_JPG' | base64 -d > /tmp/dummy.jpg && mc cp /tmp/dummy.jpg caries/caries-image/$FILE > /dev/null"
+    
+    docker exec -i $CONTAINER sh -c "$CMD"
 done
 
-echo -e "\033[1;32mAssets seeded locally.\033[0m"
-echo -e "\033[1;33mIf running inside Docker, ensure volume mappings cover evidence/generated.\033[0m"
-echo -e "\033[1;36m--- Asset Seeding Complete ---\033[0m"
+echo "Demo assets seeded successfully!"

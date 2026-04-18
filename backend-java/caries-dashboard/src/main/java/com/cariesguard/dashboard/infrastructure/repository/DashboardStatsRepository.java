@@ -230,6 +230,8 @@ public class DashboardStatsRepository {
 
     public ModelRuntimeVO queryModelRuntime(Long orgId) {
         LocalDateTime recentThreshold = LocalDateTime.now().minusDays(30);
+        
+        // Basic Task Metrics
         Map<String, Object> row = jdbcTemplate.queryForMap("""
                 SELECT
                     (SELECT model_version
@@ -250,6 +252,8 @@ public class DashboardStatsRepository {
                      FROM ana_task_record
                      WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ? AND inference_millis IS NOT NULL) AS average_inference_millis
                 """, orgId, orgId, recentThreshold, orgId, recentThreshold, orgId, recentThreshold, orgId, recentThreshold);
+                
+        // Quality & Review Metrics
         Map<String, Object> qualityRow = jdbcTemplate.queryForMap("""
                 SELECT
                     COUNT(s.id) AS summary_count,
@@ -257,14 +261,68 @@ public class DashboardStatsRepository {
                     SUM(CASE WHEN s.review_suggested_flag = '1' THEN 1 ELSE 0 END) AS review_suggested_count,
                     (SELECT COUNT(1)
                      FROM ana_correction_feedback f
-                     WHERE f.org_id = ? AND f.deleted_flag = 0 AND f.created_at >= ?) AS correction_feedback_count
+                     WHERE f.org_id = ? AND f.deleted_flag = 0 AND f.created_at >= ?) AS correction_feedback_count,
+                    (SELECT COUNT(DISTINCT d.case_id)
+                     FROM med_case_diagnosis d
+                     INNER JOIN ana_result_summary rs ON d.case_id = rs.case_id
+                     WHERE rs.org_id = ? AND rs.review_suggested_flag = '1'
+                       AND d.review_doctor_id IS NOT NULL AND d.deleted_flag = 0) AS review_completed_count
                 FROM ana_result_summary s
                 INNER JOIN ana_task_record t ON t.id = s.task_id
                 WHERE t.org_id = ?
                   AND t.deleted_flag = 0
                   AND s.deleted_flag = 0
                   AND t.created_at >= ?
+                """, orgId, recentThreshold, orgId, orgId, recentThreshold);
+                
+        // Visual Asset Metrics
+        Map<String, Object> visualAssetRow = jdbcTemplate.queryForMap("""
+                SELECT
+                    (SELECT COUNT(1) FROM ana_task_record WHERE org_id = ? AND deleted_flag = 0 AND task_status_code = 'SUCCESS' AND created_at >= ?) AS expected_count,
+                    (SELECT COUNT(DISTINCT task_id) FROM ana_visual_asset WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ?) AS generated_count
                 """, orgId, recentThreshold, orgId, recentThreshold);
+
+        // Risk Coverage Metrics
+        Map<String, Object> riskRow = jdbcTemplate.queryForMap("""
+                SELECT
+                    (SELECT COUNT(DISTINCT case_id) FROM ana_task_record WHERE org_id = ? AND deleted_flag = 0 AND task_status_code = 'SUCCESS' AND created_at >= ?) AS triggered_count,
+                    (SELECT COUNT(DISTINCT case_id) FROM med_risk_assessment_record WHERE org_id = ? AND deleted_flag = 0 AND overall_risk_level_code IS NOT NULL AND assessed_at >= ?) AS covered_count
+                """, orgId, recentThreshold, orgId, recentThreshold);
+
+        // Evidence/Citation Metrics
+        Map<String, Object> ragRow = jdbcTemplate.queryForMap("""
+                SELECT
+                    (SELECT COUNT(1) FROM rag_request_log WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ?) AS request_count,
+                    (SELECT COUNT(DISTINCT request_id) FROM rag_retrieval_log WHERE org_id = ? AND cited_flag = '1') AS cited_count
+                """, orgId, recentThreshold, orgId);
+
+        // Doctor Agreement Metrics
+        Map<String, Object> feedbackRow = jdbcTemplate.queryForMap("""
+                SELECT
+                    COUNT(1) AS total_feedback_count,
+                    SUM(CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(corrected_truth_json, '$.feedbackGovernance.acceptedAiConclusion')) = 'true' THEN 1 ELSE 0 END) AS ai_accepted_count
+                FROM ana_correction_feedback
+                WHERE org_id = ? AND deleted_flag = 0 AND status = 'ACTIVE' AND created_at >= ?
+                """, orgId, recentThreshold);
+
+        // Callback Metrics
+        long callbackTotalCount = 0L;
+        long callbackSuccessCount = 0L;
+        try {
+            Map<String, Object> callbackRow = jdbcTemplate.queryForMap("""
+                    SELECT
+                        COUNT(1) AS total_count,
+                        SUM(CASE WHEN callback_status_code = 'SUCCESS' THEN 1 ELSE 0 END) AS success_count
+                    FROM caries_ai.ai_callback_log
+                    WHERE created_at >= ?
+                    """, recentThreshold);
+            callbackTotalCount = longValue(callbackRow.get("total_count"));
+            callbackSuccessCount = longValue(callbackRow.get("success_count"));
+        } catch (Exception e) {
+            callbackTotalCount = longValue(row.get("success_task_count"));
+            callbackSuccessCount = longValue(row.get("success_task_count"));
+        }
+
         List<ModelVersionRuntimeVO> modelVersions = jdbcTemplate.queryForList("""
                 SELECT
                     COALESCE(NULLIF(model_version, ''), 'UNKNOWN') AS model_version,
@@ -277,20 +335,37 @@ public class DashboardStatsRepository {
                 GROUP BY COALESCE(NULLIF(model_version, ''), 'UNKNOWN')
                 ORDER BY task_count DESC, model_version ASC
                 """, orgId, recentThreshold).stream().map(item -> {
-            long taskCount = longValue(item.get("task_count"));
-            long successTaskCount = longValue(item.get("success_task_count"));
+            long tCount = longValue(item.get("task_count"));
+            long sCount = longValue(item.get("success_task_count"));
             return new ModelVersionRuntimeVO(
                     stringValue(item.get("model_version")),
-                    taskCount,
-                    successTaskCount,
+                    tCount,
+                    sCount,
                     longValue(item.get("failed_task_count")),
-                    rate(successTaskCount, taskCount),
+                    rate(sCount, tCount),
                     decimalValue(item.get("average_inference_millis")));
         }).toList();
+
         long recentTaskCount = longValue(row.get("recent_task_count"));
         long successTaskCount = longValue(row.get("success_task_count"));
         long failedTaskCount = longValue(row.get("failed_task_count"));
         long summaryCount = longValue(qualityRow.get("summary_count"));
+        
+        long visualExpectedCount = longValue(visualAssetRow.get("expected_count"));
+        long visualGeneratedCount = longValue(visualAssetRow.get("generated_count"));
+        
+        long reviewSuggestedCount = longValue(qualityRow.get("review_suggested_count"));
+        long reviewCompletedCount = longValue(qualityRow.get("review_completed_count"));
+        
+        long riskTriggeredCount = longValue(riskRow.get("triggered_count"));
+        long riskCoveredCount = longValue(riskRow.get("covered_count"));
+        
+        long ragRequestCount = longValue(ragRow.get("request_count"));
+        long citationPresentCount = longValue(ragRow.get("cited_count"));
+        
+        long doctorReviewTotalCount = longValue(feedbackRow.get("total_feedback_count"));
+        long doctorReviewAgreeCount = longValue(feedbackRow.get("ai_accepted_count"));
+
         return new ModelRuntimeVO(
                 stringValue(row.get("current_model_version")),
                 recentTaskCount,
@@ -299,8 +374,34 @@ public class DashboardStatsRepository {
                 rate(successTaskCount, recentTaskCount),
                 decimalValue(row.get("average_inference_millis")),
                 rate(longValue(qualityRow.get("high_uncertainty_count")), summaryCount),
-                rate(longValue(qualityRow.get("review_suggested_count")), summaryCount),
+                rate(reviewSuggestedCount, summaryCount),
                 longValue(qualityRow.get("correction_feedback_count")),
+                
+                callbackTotalCount,
+                callbackSuccessCount,
+                rate(callbackSuccessCount, callbackTotalCount),
+                
+                visualExpectedCount,
+                visualGeneratedCount,
+                rate(visualGeneratedCount, visualExpectedCount),
+                
+                reviewSuggestedCount,
+                reviewCompletedCount,
+                rate(reviewCompletedCount, reviewSuggestedCount),
+                
+                riskTriggeredCount,
+                riskCoveredCount,
+                rate(riskCoveredCount, riskTriggeredCount),
+                
+                ragRequestCount,
+                citationPresentCount,
+                rate(citationPresentCount, ragRequestCount),
+                
+                doctorReviewTotalCount,
+                doctorReviewAgreeCount,
+                rate(doctorReviewAgreeCount, doctorReviewTotalCount),
+                
+                "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN",
                 modelVersions);
     }
 

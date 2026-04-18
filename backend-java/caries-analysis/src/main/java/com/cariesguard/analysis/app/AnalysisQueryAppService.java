@@ -14,6 +14,7 @@ import com.cariesguard.analysis.interfaces.vo.AnalysisTaskVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisVisualAssetVO;
 import com.cariesguard.analysis.interfaces.vo.EvidenceRefItemVO;
 import com.cariesguard.analysis.interfaces.vo.ReviewReasonLabels;
+import com.cariesguard.analysis.interfaces.vo.RiskLevelLabels;
 import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
@@ -138,7 +139,7 @@ public class AnalysisQueryAppService {
             return new AnalysisSummaryVO(
                     severity, uncertainty, reviewFlag, lesionCount, abnormalToothCount, summaryVersionNo, null,
                     null, null, null, null, null, null,
-                    null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, true, null);
         }
         try {
             JsonNode root = objectMapper.readTree(summary.rawResultJson());
@@ -202,7 +203,9 @@ public class AnalysisQueryAppService {
                     reviewReasonLabel,
                     classifiedEvidenceRefs,
                     citations,
-                    rawResultJsonNode);
+                    rawResultJsonNode,
+                    true,
+                    RiskLevelLabels.toLabel(riskLevel));
         } catch (Exception exception) {
             if (StringUtils.hasText(severity) || uncertainty != null || StringUtils.hasText(reviewFlag)) {
                 return new AnalysisSummaryVO(
@@ -210,7 +213,8 @@ public class AnalysisQueryAppService {
                         riskLevel, reviewReason, doctorReviewRequiredReason, knowledgeVersion, riskFactors, evidenceRefs,
                         gradingLabel, confidenceScore, needsReview, followUpRecommendation,
                         ReviewReasonLabels.toLabel(reviewReason),
-                        classifyEvidenceRefs(evidenceRefs), citations, rawResultJsonNode);
+                        classifyEvidenceRefs(evidenceRefs), citations, rawResultJsonNode,
+                        true, RiskLevelLabels.toLabel(riskLevel));
             }
             throw new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "AI summary payload is invalid");
         }

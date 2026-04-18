@@ -42,7 +42,11 @@ public record AnalysisSummaryVO(
         /** 知识库引用 citations */
         List<AnalysisCitationVO> citations,
         /** 折叠展示的原始 JSON（前端默认折叠） */
-        JsonNode rawResultJson) {
+        JsonNode rawResultJson,
+        /** 前端展示提示：rawResultJson 默认折叠 */
+        Boolean rawResultJsonCollapsed,
+        /** 风险等级中文标签 */
+        String riskLevelLabel) {
 
     /** 向后兼容的简化构造器 */
     public AnalysisSummaryVO(String overallHighestSeverity,
@@ -52,6 +56,6 @@ public record AnalysisSummaryVO(
         this(overallHighestSeverity, uncertaintyScore, reviewSuggestedFlag,
                 null, null, null, teethCount,
                 null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, true, null);
     }
 }
