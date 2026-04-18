@@ -34,6 +34,8 @@ public class DashboardStatsRepository {
     }
 
     public DashboardOverviewVO queryOverview(Long orgId) {
+        LocalDateTime recentThreshold = LocalDateTime.now().minusDays(30);
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
         Map<String, Object> row = jdbcTemplate.queryForMap("""
                 SELECT
                     (SELECT COUNT(1) FROM pat_patient WHERE org_id = ? AND deleted_flag = 0) AS patient_count,
@@ -41,15 +43,87 @@ public class DashboardStatsRepository {
                     (SELECT COUNT(DISTINCT case_id) FROM ana_task_record WHERE org_id = ? AND deleted_flag = 0 AND task_status_code = 'SUCCESS') AS analyzed_case_count,
                     (SELECT COUNT(DISTINCT case_id) FROM rpt_record WHERE org_id = ? AND deleted_flag = 0) AS generated_report_count,
                     (SELECT COUNT(1) FROM med_case WHERE org_id = ? AND deleted_flag = 0 AND (case_status_code = 'FOLLOWUP_REQUIRED' OR followup_required_flag = '1')) AS followup_required_case_count,
-                    (SELECT COUNT(1) FROM med_case WHERE org_id = ? AND deleted_flag = 0 AND case_status_code = 'CLOSED') AS closed_case_count
-                """, orgId, orgId, orgId, orgId, orgId, orgId);
+                    (SELECT COUNT(1) FROM med_case WHERE org_id = ? AND deleted_flag = 0 AND case_status_code = 'CLOSED') AS closed_case_count,
+                    (SELECT COUNT(1)
+                     FROM ana_task_record
+                     WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ?) AS today_analysis_task_count,
+                    (SELECT AVG(inference_millis)
+                     FROM ana_task_record
+                     WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ? AND inference_millis IS NOT NULL) AS average_inference_millis,
+                    (
+                        SELECT COUNT(1)
+                        FROM rag_request_log
+                        WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ?
+                    ) AS today_rag_request_count
+                """, orgId, orgId, orgId, orgId, orgId, orgId, orgId, todayStart, orgId, recentThreshold, orgId, todayStart);
+        Map<String, Object> aiRow = jdbcTemplate.queryForMap("""
+                SELECT
+                    COUNT(s.id) AS summary_count,
+                    SUM(CASE WHEN s.uncertainty_score IS NOT NULL AND s.uncertainty_score >= 0.5000 THEN 1 ELSE 0 END) AS high_uncertainty_count
+                FROM ana_result_summary s
+                INNER JOIN ana_task_record t ON t.id = s.task_id
+                WHERE t.org_id = ?
+                  AND t.deleted_flag = 0
+                  AND s.deleted_flag = 0
+                  AND t.created_at >= ?
+                """, orgId, recentThreshold);
+        Map<String, Object> reviewRow = jdbcTemplate.queryForMap("""
+                SELECT
+                    COUNT(1) AS review_required_count,
+                    SUM(CASE WHEN c.case_status_code IN ('REPORT_READY', 'FOLLOWUP_REQUIRED', 'CLOSED') THEN 1 ELSE 0 END) AS review_passed_count
+                FROM (
+                    SELECT s.case_id, MAX(s.id) AS max_id
+                    FROM ana_result_summary s
+                    INNER JOIN ana_task_record t ON t.id = s.task_id
+                    WHERE t.org_id = ?
+                      AND t.deleted_flag = 0
+                      AND s.deleted_flag = 0
+                      AND s.review_suggested_flag = '1'
+                      AND t.created_at >= ?
+                    GROUP BY s.case_id
+                ) latest
+                INNER JOIN med_case c ON c.id = latest.case_id
+                WHERE c.org_id = ? AND c.deleted_flag = 0
+                """, orgId, recentThreshold, orgId);
+        Map<String, Object> knowledgeRow = jdbcTemplate.queryForMap("""
+                SELECT
+                    COUNT(1) AS rag_request_count,
+                    COUNT(DISTINCT rl.request_id) AS hit_request_count
+                FROM rag_request_log r
+                LEFT JOIN rag_retrieval_log rl ON rl.request_id = r.id
+                WHERE r.org_id = ?
+                  AND r.deleted_flag = 0
+                  AND r.created_at >= ?
+                """, orgId, recentThreshold);
+        Map<String, Object> feedbackRow = jdbcTemplate.queryForMap("""
+                SELECT
+                    SUM(CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(corrected_truth_json, '$.feedbackGovernance.acceptedAiConclusion')) = 'true' THEN 1 ELSE 0 END) AS ai_accepted_count,
+                    SUM(CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(corrected_truth_json, '$.feedbackGovernance.acceptedAiConclusion')) = 'false' THEN 1 ELSE 0 END) AS ai_corrected_count
+                FROM ana_correction_feedback
+                WHERE org_id = ?
+                  AND deleted_flag = 0
+                  AND status = 'ACTIVE'
+                  AND created_at >= ?
+                """, orgId, recentThreshold);
+        long summaryCount = longValue(aiRow.get("summary_count"));
+        long reviewRequiredCount = longValue(reviewRow.get("review_required_count"));
+        long ragRequestCount = longValue(knowledgeRow.get("rag_request_count"));
+        long aiAcceptedCount = longValue(feedbackRow.get("ai_accepted_count"));
+        long aiCorrectedCount = longValue(feedbackRow.get("ai_corrected_count"));
         return new DashboardOverviewVO(
                 longValue(row.get("patient_count")),
                 longValue(row.get("case_count")),
                 longValue(row.get("analyzed_case_count")),
                 longValue(row.get("generated_report_count")),
                 longValue(row.get("followup_required_case_count")),
-                longValue(row.get("closed_case_count")));
+                longValue(row.get("closed_case_count")),
+                longValue(row.get("today_analysis_task_count")),
+                decimalValue(row.get("average_inference_millis")),
+                rate(longValue(aiRow.get("high_uncertainty_count")), summaryCount),
+                rate(longValue(reviewRow.get("review_passed_count")), reviewRequiredCount),
+                longValue(row.get("today_rag_request_count")),
+                rate(longValue(knowledgeRow.get("hit_request_count")), ragRequestCount),
+                rate(aiAcceptedCount, aiAcceptedCount + aiCorrectedCount));
     }
 
     public CaseStatusDistributionVO queryCaseStatusDistribution(Long orgId) {

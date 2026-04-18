@@ -76,6 +76,13 @@ class ExplanationFactor(CamelModel):
     direction: str
 
 
+class EvidenceRef(CamelModel):
+    ref_type: str
+    ref_code: str
+    summary: str
+    source: str | None = None
+
+
 class RiskAssessment(CamelModel):
     overall_risk_level_code: str = "LOW"
     assessment_report_json: dict[str, Any] = {}
@@ -106,6 +113,12 @@ class AnalysisCallbackPayload(CamelModel):
     trace_id: str | None = None
     inference_millis: int | None = None
     uncertainty_score: float | None = None
+    risk_level: str | None = None
+    risk_factors: list[RiskFactor] = []
+    review_reason: str | None = None
+    knowledge_version: str | None = None
+    evidence_refs: list[EvidenceRef] = []
+    doctor_review_required_reason: str | None = None
 
 
 class FailureCallbackPayload(CamelModel):

@@ -1,45 +1,66 @@
 # CariesGuard
 
-CariesGuard 是一个龋病筛查、AI 辅助分析、报告生成、复核和随访管理平台。
+CariesGuard 是一个面向龋病筛查场景的多模态医疗 AI 辅助决策系统。项目保留 Java 业务主链与 Python AI/RAG 双后端协作架构，把影像分析、uncertainty 复核、RAG 解释、风险评估与医生反馈回流组织成可追踪的 AI 闭环。
 
 > English version: [README.en.md](README.en.md)
 
-## 架构
+## 当前定位
+
+- 场景：口腔龋病筛查、解释与随访建议
+- 方法：影像分析 + 检索增强生成 + 风险融合 + 医生复核反馈
+- 边界：AI 用于辅助决策，不替代医生最终诊断
+
+## 核心链路
 
 ```text
-Java Backend (caries_biz)
-  -> RabbitMQ -> Python AI/RAG (caries_ai)
-  -> MinIO / Redis / Vector Index / General LLM Provider
+脱敏口腔影像 / 病例上下文 / 医学知识文档 / 医生反馈
+  -> Java Backend (业务主链、状态权威、任务调度)
+  -> RabbitMQ
+  -> Python AI/RAG (影像推理、风险融合、RAG、治理日志)
+  -> callback 回传结构化结果
+  -> 医生复核 / 报告 / 随访 / 反馈回流
 ```
 
-Java 负责业务主链，Python 负责 AI / RAG 能力。
+## 已落地能力
 
-## AI 路线
+- 影像分析流水线：quality / detection / segmentation / grading / uncertainty
+- 高 uncertainty 自动触发复核语义
+- 风险融合输出：`riskLevel` / `riskFactors` / `followUpRecommendation`
+- RAG 输出：回答、引用、命中 chunk、安全标志、上下文摘要
+- 医生修正反馈闭环与训练候选导出
+- AI 运行日志、知识库日志、模型版本治理
+- MinIO visual assets 留痕与 callback 契约落库
 
-- 通用大模型 + 知识图库检索增强；
-- 不采用业务专用大模型微调作为当前主路线；
-- 影像质量、检测、分割、分级由可替换算法适配器输出结构化结果；
-- 高 uncertainty 触发复核；
-- 所有 AI / RAG 结果留痕可审计。
+## 工程原则
 
-## 已完成能力
+- Java 仍是业务主链和状态权威
+- Python 仍是 AI / RAG 能力提供方
+- MQ + callback 主链保持不变
+- `rawResultJson` 作为 AI 扩展字段主入口
+- `real` 模式失败必须显式失败，不允许静默回退
 
-- Java / Python analysis callback 主链；
-- MinIO 原始影像和 visual asset；
-- Phase 5A quality / detection；
-- Phase 5B segmentation；
-- Phase 5C grading + uncertainty；
-- RAG 基础服务和知识库结构。
+## 目录
+
+- `backend-java/`: 业务主链、报告、复核、仪表盘与集成层
+- `backend-python/`: AI 推理、RAG、知识治理、运行日志
+- `Documents/`: 架构、接口、AI 规范与比赛导向文档
+- `scripts/`: E2E 与工程脚本
+- `infra/`: 部署与基础设施配置
 
 ## 文档
 
-所有长期设计文档位于 [Documents/](Documents/)：
+长期设计与比赛导向文档位于 `Documents/`：
 
-- [01_架构设计.md](Documents/01_架构设计.md) — 系统架构、UML、核心链路、状态机
-- [02_数据库设计.md](Documents/02_数据库设计.md) — 双库设计、数据字典、归属矩阵、迁移规范
-- [03_接口契约.md](Documents/03_接口契约.md) — API、callback、RAG、错误码、Phase 5C 字段
-- [04_AI与RAG规范.md](Documents/04_AI与RAG规范.md) — AI 架构、运行模式、grading、知识图库
-- [05_开发规范.md](Documents/05_开发规范.md) — 命名、分层、日志、数据标注、合规
+- `01_架构设计.md`
+- `02_数据库设计.md`
+- `03_接口契约.md`
+- `04_AI与RAG规范.md`
+- `05_开发规范.md`
+- `06_人工智能实践赛改造说明.md`
+- `07_AI闭环演示脚本.md`
+- `08_AI评估指标与实验设计.md`
+- `09_知识图库建设与治理规范.md`
+- `10_答辩问答与作品话术.md`
 
 ## Docker
 
@@ -50,13 +71,20 @@ docker compose up -d --build
 docker compose ps
 ```
 
-核心服务：`mysql` / `redis` / `rabbitmq` / `minio` / `backend-java` / `backend-python`。
+健康检查：
 
-Docker 默认执行 Java Flyway 和 Python Alembic 迁移。
+```powershell
+Invoke-RestMethod http://127.0.0.1:8080/actuator/health
+Invoke-RestMethod http://127.0.0.1:8001/ai/v1/health
+```
 
-### 关键环境变量
+Phase 5 分析链路 E2E：
 
-AI 运行模式：
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\phase5-analysis-docker-e2e.ps1 -SkipComposeUp -Phase5COnly -WaitSeconds 180
+```
+
+## 关键环境变量
 
 ```env
 CG_AI_RUNTIME_MODE=mock
@@ -64,34 +92,19 @@ CG_MODEL_QUALITY_ENABLED=false
 CG_MODEL_TOOTH_DETECT_ENABLED=false
 CG_MODEL_SEGMENTATION_ENABLED=false
 CG_MODEL_GRADING_ENABLED=false
+CG_MODEL_RISK_ENABLED=false
 CG_UNCERTAINTY_REVIEW_THRESHOLD=0.35
+CG_RAG_KNOWLEDGE_VERSION=v1.0
 ```
 
-故障验证：
+## 项目目标
 
-```env
-CG_SEGMENTATION_FORCE_FAIL=false
-CG_GRADING_FORCE_FAIL=false
-```
+这个仓库当前的目标不是继续堆后台页面，而是把现有系统稳定收敛成一个：
 
-### 健康检查
+- 可解释
+- 可追踪
+- 可评估
+- 可治理
+- 可演示
 
-```powershell
-Invoke-RestMethod http://127.0.0.1:8080/actuator/health
-Invoke-RestMethod http://127.0.0.1:8001/ai/v1/health
-```
-
-### Phase 5C E2E
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\phase5-analysis-docker-e2e.ps1 -SkipComposeUp -Phase5COnly -WaitSeconds 180
-```
-
-验证内容：mock grading / hybrid 低 uncertainty / hybrid 高 uncertainty / real grading failure / callback 契约 / Java 落库 / MinIO visual assets。
-
-## 数据库
-
-- Java：`caries_biz`（Flyway 迁移）
-- Python：`caries_ai`（Alembic 迁移）
-
-两库物理隔离，通过 `task_no` / `case_id` / `image_id` / `trace_id` 建立弱引用。
+的医疗 AI 实践闭环。

@@ -111,8 +111,16 @@ public class AnalysisQueryAppService {
         Integer abnormalToothCount = summary.abnormalToothCount();
         Integer summaryVersionNo = summary.summaryVersionNo();
         Integer teethCount = null;
+        String riskLevel = null;
+        String reviewReason = null;
+        String doctorReviewRequiredReason = null;
+        String knowledgeVersion = null;
+        JsonNode riskFactors = null;
+        JsonNode evidenceRefs = null;
         if (!StringUtils.hasText(summary.rawResultJson())) {
-            return new AnalysisSummaryVO(severity, uncertainty, reviewFlag, lesionCount, abnormalToothCount, summaryVersionNo, null);
+            return new AnalysisSummaryVO(
+                    severity, uncertainty, reviewFlag, lesionCount, abnormalToothCount, summaryVersionNo, null,
+                    null, null, null, null, null, null);
         }
         try {
             JsonNode root = objectMapper.readTree(summary.rawResultJson());
@@ -132,6 +140,12 @@ public class AnalysisQueryAppService {
                 abnormalToothCount = intValue(root, "abnormalToothCount", "abnormal_tooth_count");
             }
             teethCount = intValue(root, "teethCount", "teeth_count");
+            riskLevel = textValue(root, "riskLevel", "risk_level");
+            reviewReason = textValue(root, "reviewReason", "review_reason");
+            doctorReviewRequiredReason = textValue(root, "doctorReviewRequiredReason", "doctor_review_required_reason");
+            knowledgeVersion = textValue(root, "knowledgeVersion", "knowledge_version");
+            riskFactors = jsonValue(root, "riskFactors", "risk_factors");
+            evidenceRefs = jsonValue(root, "evidenceRefs", "evidence_refs");
             return new AnalysisSummaryVO(
                     severity,
                     uncertainty,
@@ -139,10 +153,18 @@ public class AnalysisQueryAppService {
                     lesionCount,
                     abnormalToothCount,
                     summaryVersionNo,
-                    teethCount);
+                    teethCount,
+                    riskLevel,
+                    reviewReason,
+                    doctorReviewRequiredReason,
+                    knowledgeVersion,
+                    riskFactors,
+                    evidenceRefs);
         } catch (Exception exception) {
             if (StringUtils.hasText(severity) || uncertainty != null || StringUtils.hasText(reviewFlag)) {
-                return new AnalysisSummaryVO(severity, uncertainty, reviewFlag, lesionCount, abnormalToothCount, summaryVersionNo, null);
+                return new AnalysisSummaryVO(
+                        severity, uncertainty, reviewFlag, lesionCount, abnormalToothCount, summaryVersionNo, null,
+                        riskLevel, reviewReason, doctorReviewRequiredReason, knowledgeVersion, riskFactors, evidenceRefs);
             }
             throw new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "AI summary payload is invalid");
         }
@@ -176,6 +198,16 @@ public class AnalysisQueryAppService {
             JsonNode value = root.get(field);
             if (value != null && value.isInt()) {
                 return value.asInt();
+            }
+        }
+        return null;
+    }
+
+    private JsonNode jsonValue(JsonNode root, String... fields) {
+        for (String field : fields) {
+            JsonNode value = root.get(field);
+            if (value != null && !value.isNull()) {
+                return value;
             }
         }
         return null;

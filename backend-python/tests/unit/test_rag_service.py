@@ -238,8 +238,11 @@ def test_rag_ask_unified_endpoint_contract(tmp_path: Path) -> None:
     )
 
     assert answer["traceId"] == "trace-rag-1"
+    assert answer["answer"] == answer["answerText"]
     assert answer["citations"]
     assert answer["retrievedChunks"]
+    assert answer["knowledgeBaseCode"] == "test-kb"
+    assert "CASE-1" in answer["caseContextSummary"]
     assert answer.get("refusalReason") is None
 
 
@@ -320,4 +323,5 @@ def test_rag_context_builder_excludes_patient_identity_and_redacts_sensitive_val
 
     assert answer.get("refusalReason") is None
     assert "SENSITIVE_INPUT_REDACTED" in answer["safetyFlags"]
+    assert "[REDACTED_PHONE]" in answer["caseContextSummary"]
     assert repository.llm_logs[0]["prompt_text"].endswith("context=redacted")

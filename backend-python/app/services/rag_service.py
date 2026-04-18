@@ -176,16 +176,20 @@ class RagService:
             answer_text=answer_text,
             citations=self.citation_assembler.citations(kb, hits),
             retrieved_chunks=self.citation_assembler.retrieved_chunks(hits),
+            knowledge_base_code=kb["kb_code"],
             knowledge_version=kb["knowledge_version"],
             model_name=self.settings.llm_model_name,
             safety_flag=safety_flag,
             safety_flags=safety_decision.safety_flags,
             refusal_reason=safety_decision.refusal_reason,
             confidence=self.safety_guard_service.confidence(hits, safety_decision.refusal_reason),
+            case_context_summary=context_text,
             trace_id=trace_id,
             latency_ms=total_latency_ms,
         )
-        return dump_camel(answer)
+        payload = dump_camel(answer)
+        payload["answer"] = payload["answerText"]
+        return payload
 
     @staticmethod
     def _patient_query(request: PatientExplanationRequest) -> str:

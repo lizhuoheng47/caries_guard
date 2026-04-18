@@ -6,5 +6,12 @@ public record DashboardOverviewVO(
         long analyzedCaseCount,
         long generatedReportCount,
         long followupRequiredCaseCount,
-        long closedCaseCount) {
+        long closedCaseCount,
+        long todayAnalysisTaskCount,
+        java.math.BigDecimal averageInferenceMillis,
+        java.math.BigDecimal highUncertaintyRate,
+        java.math.BigDecimal reviewPassRate,
+        long todayRagRequestCount,
+        java.math.BigDecimal knowledgeHitRate,
+        java.math.BigDecimal doctorAdoptionRate) {
 }

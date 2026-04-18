@@ -9,6 +9,7 @@ import com.cariesguard.report.domain.model.RagAskRequestModel;
 import com.cariesguard.report.domain.model.RagCitationModel;
 import com.cariesguard.report.domain.model.RagDoctorQaRequestModel;
 import com.cariesguard.report.domain.model.RagPatientExplanationRequestModel;
+import com.cariesguard.report.domain.model.RagRetrievedChunkModel;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -114,18 +115,31 @@ public class HttpRagClient implements RagClient {
                         text(citation, "chunkText")));
             }
         }
+        List<RagRetrievedChunkModel> retrievedChunks = new ArrayList<>();
+        JsonNode retrievedChunkNodes = data.path("retrievedChunks");
+        if (retrievedChunkNodes.isArray()) {
+            for (JsonNode chunk : retrievedChunkNodes) {
+                retrievedChunks.add(new RagRetrievedChunkModel(
+                        longValue(chunk, "chunkId"),
+                        text(chunk, "documentCode"),
+                        doubleValue(chunk, "score")));
+            }
+        }
 
         return new RagAnswerModel(
                 text(data, "sessionNo"),
                 text(data, "requestNo"),
                 coalesce(text(data, "answerText"), text(data, "answer")),
                 citations,
+                retrievedChunks,
+                text(data, "knowledgeBaseCode"),
                 text(data, "knowledgeVersion"),
                 text(data, "modelName"),
                 text(data, "safetyFlag"),
                 stringList(data, "safetyFlags"),
                 text(data, "refusalReason"),
                 doubleValue(data, "confidence"),
+                text(data, "caseContextSummary"),
                 text(data, "traceId"),
                 intValue(data, "latencyMs"),
                 false);

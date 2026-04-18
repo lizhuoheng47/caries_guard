@@ -80,11 +80,13 @@ class RagAnswer(CamelModel):
     answer_text: str
     citations: list[RagCitation]
     retrieved_chunks: list[RagRetrievedChunk] = []
+    knowledge_base_code: str | None = None
     knowledge_version: str
     model_name: str
     safety_flag: str = "0"
     safety_flags: list[str] = []
     refusal_reason: str | None = None
     confidence: float | None = None
+    case_context_summary: str | None = None
     trace_id: str | None = None
     latency_ms: int

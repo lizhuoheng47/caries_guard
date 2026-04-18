@@ -143,6 +143,9 @@ def test_phase5b_pipeline_uploads_segmentation_visual_assets(tmp_path: Path):
     assert raw["riskMode"] == "mock"
     assert raw["riskImplType"] == "MOCK"
     assert raw["riskRawResult"]["gradingLabel"] == raw["gradingLabel"]
+    assert raw["riskLevel"] in {"LOW", "MEDIUM", "HIGH"}
+    assert raw["knowledgeVersion"] == settings.rag_knowledge_version
+    assert isinstance(raw["evidenceRefs"], list)
     assert len(raw["segmentationRegions"]) >= 1
     assert [item["assetTypeCode"] for item in visual_assets] == ["MASK", "OVERLAY", "HEATMAP"]
     for item in visual_assets:

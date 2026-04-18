@@ -9,6 +9,7 @@ import com.cariesguard.report.domain.model.RagCitationModel;
 import com.cariesguard.report.domain.model.RagAskRequestModel;
 import com.cariesguard.report.domain.model.RagDoctorQaRequestModel;
 import com.cariesguard.report.domain.model.RagPatientExplanationRequestModel;
+import com.cariesguard.report.domain.model.RagRetrievedChunkModel;
 import com.cariesguard.report.domain.model.ReportRenderDataModel;
 import com.cariesguard.report.domain.model.ReportToothRecordModel;
 import com.cariesguard.report.interfaces.command.DoctorQaCommand;
@@ -16,6 +17,7 @@ import com.cariesguard.report.interfaces.command.PatientExplanationCommand;
 import com.cariesguard.report.interfaces.command.RagAskCommand;
 import com.cariesguard.report.interfaces.vo.RagAnswerVO;
 import com.cariesguard.report.interfaces.vo.RagCitationVO;
+import com.cariesguard.report.interfaces.vo.RagRetrievedChunkVO;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -150,13 +152,17 @@ public class RagAppService {
                 answer.sessionNo(),
                 answer.requestNo(),
                 answer.answerText(),
+                answer.answerText(),
                 answer.citations().stream().map(this::toCitationVO).toList(),
+                answer.retrievedChunks().stream().map(this::toRetrievedChunkVO).toList(),
+                answer.knowledgeBaseCode(),
                 answer.knowledgeVersion(),
                 answer.modelName(),
                 answer.safetyFlag(),
                 answer.safetyFlags(),
                 answer.refusalReason(),
                 answer.confidence(),
+                answer.caseContextSummary(),
                 answer.traceId(),
                 answer.latencyMs(),
                 answer.fallback());
@@ -175,5 +181,12 @@ public class RagAppService {
                 citation.retrievalScore(),
                 citation.sourceUri(),
                 citation.chunkText());
+    }
+
+    private RagRetrievedChunkVO toRetrievedChunkVO(RagRetrievedChunkModel chunk) {
+        return new RagRetrievedChunkVO(
+                chunk.chunkId(),
+                chunk.documentCode(),
+                chunk.score());
     }
 }

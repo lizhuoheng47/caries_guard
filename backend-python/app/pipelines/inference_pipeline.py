@@ -22,6 +22,7 @@ from app.schemas.base import dump_camel
 from app.schemas.callback import (
     AnalysisCallbackPayload,
     AssetRef,
+    EvidenceRef,
     FailureCallbackPayload,
     LesionResult,
     Summary,
@@ -108,6 +109,13 @@ class InferencePipeline:
                 tooth_detections,
             )
             risk_assessment = risk_result.assessment
+            review_reason = self._review_reason(
+                grading_result.uncertainty_score,
+                grading_result.needs_review,
+                quality_results,
+                risk_assessment.review_suggested,
+            )
+            evidence_refs = self._evidence_refs(risk_assessment, visual_assets)
 
         completed_at = local_naive_iso_now()
         inference_millis = int((time.perf_counter() - started) * 1000)
@@ -164,6 +172,12 @@ class InferencePipeline:
             "riskMode": risk_result.risk_mode,
             "riskImplType": risk_result.risk_impl_type,
             "riskRawResult": risk_result.raw_result,
+            "riskLevel": risk_assessment.risk_level_code or risk_assessment.overall_risk_level_code,
+            "riskFactors": [dump_camel(item) for item in (risk_assessment.risk_factors or [])],
+            "reviewReason": review_reason,
+            "knowledgeVersion": self.settings.rag_knowledge_version,
+            "evidenceRefs": [dump_camel(item) for item in evidence_refs],
+            "doctorReviewRequiredReason": review_reason if grading_result.needs_review else None,
             "qualityCheckResults": [dump_camel(item) for item in quality_results],
             "toothDetections": [dump_camel(td) for td in tooth_detections],
             "lesionResults": [
@@ -206,6 +220,12 @@ class InferencePipeline:
             trace_id=trace_id,
             inference_millis=inference_millis,
             uncertainty_score=grading_result.uncertainty_score,
+            risk_level=risk_assessment.risk_level_code or risk_assessment.overall_risk_level_code,
+            risk_factors=risk_assessment.risk_factors or [],
+            review_reason=review_reason,
+            knowledge_version=self.settings.rag_knowledge_version,
+            evidence_refs=evidence_refs,
+            doctor_review_required_reason=review_reason if grading_result.needs_review else None,
         )
         log.info(
             "pipeline completed taskNo=%s traceId=%s millis=%s qualityMode=%s toothMode=%s segmentationMode=%s gradingMode=%s riskMode=%s",
@@ -576,3 +596,47 @@ class InferencePipeline:
             if tooth_code:
                 return str(tooth_code)
         return "16"
+
+    def _review_reason(
+        self,
+        uncertainty_score: float,
+        needs_review: bool,
+        quality_results: list[Any],
+        risk_review_suggested: bool | None,
+    ) -> str | None:
+        if not needs_review and not risk_review_suggested:
+            return None
+        reasons: list[str] = []
+        if uncertainty_score >= self.settings.uncertainty_review_threshold:
+            reasons.append("HIGH_UNCERTAINTY")
+        if any(getattr(item, "check_result_code", "PASS") != "PASS" for item in quality_results):
+            reasons.append("QUALITY_ALERT")
+        if risk_review_suggested:
+            reasons.append("RISK_RULE_REVIEW")
+        return ",".join(reasons) if reasons else "MANUAL_REVIEW_REQUIRED"
+
+    @staticmethod
+    def _evidence_refs(
+        risk_assessment: Any,
+        visual_assets: list[VisualAsset],
+    ) -> list[EvidenceRef]:
+        refs: list[EvidenceRef] = []
+        for item in (risk_assessment.risk_factors or [])[:3]:
+            refs.append(
+                EvidenceRef(
+                    ref_type="RISK_FACTOR",
+                    ref_code=item.code,
+                    summary=item.evidence,
+                    source=item.source,
+                )
+            )
+        for asset in visual_assets:
+            refs.append(
+                EvidenceRef(
+                    ref_type="VISUAL_ASSET",
+                    ref_code=asset.asset_type_code,
+                    summary=asset.file_name or asset.object_key,
+                    source=f"{asset.bucket_name}/{asset.object_key}",
+                )
+            )
+        return refs
