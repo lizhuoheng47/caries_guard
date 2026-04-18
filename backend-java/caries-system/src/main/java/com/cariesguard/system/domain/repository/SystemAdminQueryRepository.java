@@ -8,6 +8,7 @@ import com.cariesguard.system.domain.model.SystemRoleDetailModel;
 import com.cariesguard.system.domain.model.SystemRoleSummaryModel;
 import com.cariesguard.system.domain.model.SystemUserDetailModel;
 import com.cariesguard.system.domain.model.SystemUserSummaryModel;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +26,8 @@ public interface SystemAdminQueryRepository {
     List<SystemRoleSummaryModel> listRoles(DataScopeContext dataScopeContext, String status);
 
     List<SystemMenuSummaryModel> listMenus(DataScopeContext dataScopeContext, String status);
+
+    List<SystemMenuSummaryModel> findMenusByIds(DataScopeContext dataScopeContext, Collection<Long> menuIds);
 
     Optional<SystemUserDetailModel> findUserDetail(DataScopeContext dataScopeContext, Long userId);
 

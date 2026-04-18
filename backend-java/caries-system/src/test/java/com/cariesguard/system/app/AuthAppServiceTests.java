@@ -216,10 +216,16 @@ class AuthAppServiceTests {
         SecurityContextHolder.setContext(context);
         when(systemUserAuthRepository.findByUserId(100001L)).thenReturn(Optional.of(user));
         when(systemPermissionRepository.findPermissionCodesByUserId(100001L))
-                .thenReturn(List.of("analysis:view", "system:user:list", "followup:task:view", "report:view"));
+                .thenReturn(List.of(
+                        "analysis:view",
+                        "dashboard:view",
+                        "dashboard:ops:view",
+                        "system:user:list",
+                        "followup:task:view",
+                        "report:view"));
 
         CurrentUserPermissionsVO result = authAppService.currentPermissions();
 
-        assertThat(result.permissions()).containsExactly("analysis:view", "report:view");
+        assertThat(result.permissions()).containsExactly("analysis:view", "dashboard:ops:view", "report:view");
     }
 }

@@ -105,6 +105,37 @@ class SystemAdminQueryAppServiceTests {
     }
 
     @Test
+    void competitionModeShouldFilterHiddenRoleMenuIds() {
+        SystemAdminQueryAppService service = new SystemAdminQueryAppService(
+                systemAdminQueryRepository,
+                systemDataScopeService,
+                competitionExposureService(true));
+        DataScopeContext scope = new DataScopeContext(100001L, 100001L, List.of("ORG_ADMIN"), DataScopeType.ORG, Set.of());
+        when(systemDataScopeService.currentScope("SYSTEM")).thenReturn(scope);
+        when(systemAdminQueryRepository.findRoleDetail(scope, 5001L)).thenReturn(Optional.of(
+                new SystemRoleDetailModel(
+                        5001L,
+                        "CASE_REVIEWER",
+                        "Case Reviewer",
+                        10,
+                        "ORG",
+                        false,
+                        100001L,
+                        "ACTIVE",
+                        "remark",
+                        List.of(101L, 102L, 103L, 104L))));
+        when(systemAdminQueryRepository.findMenusByIds(scope, List.of(101L, 102L, 103L, 104L))).thenReturn(List.of(
+                new SystemMenuSummaryModel(101L, 0L, "Analysis", "MENU", "/analysis/tasks", "analysis/task-index", "analysis:view", 10, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(102L, 0L, "Follow-up", "MENU", "/followups", "followup/index", "followup:view", 20, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(103L, 0L, "Dashboard", "MENU", "/dashboard", "dashboard/index", "dashboard:view", 30, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(104L, 0L, "AI Ops", "MENU", "/dashboard/model-runtime", "dashboard/model-runtime", "dashboard:ops:view", 40, true, false, 100001L, "ACTIVE")));
+
+        SystemRoleDetailVO result = service.getRole(5001L);
+
+        assertThat(result.menuIds()).containsExactly(101L, 104L);
+    }
+
+    @Test
     void getMenuShouldReturnIconAndFlags() {
         SystemAdminQueryAppService service = new SystemAdminQueryAppService(
                 systemAdminQueryRepository,

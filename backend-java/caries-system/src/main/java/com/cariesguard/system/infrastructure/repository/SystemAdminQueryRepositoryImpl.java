@@ -20,6 +20,8 @@ import com.cariesguard.system.infrastructure.mapper.SysRoleMapper;
 import com.cariesguard.system.infrastructure.mapper.SysRoleMenuMapper;
 import com.cariesguard.system.infrastructure.mapper.SysUserMapper;
 import com.cariesguard.system.infrastructure.mapper.SysUserRoleMapper;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -99,6 +101,23 @@ public class SystemAdminQueryRepositoryImpl implements SystemAdminQueryRepositor
         if (StringUtils.hasText(status)) {
             query.eq(SysMenuDO::getStatus, status);
         }
+        return sysMenuMapper.selectList(query).stream()
+                .map(this::toMenuSummary)
+                .toList();
+    }
+
+    @Override
+    public List<SystemMenuSummaryModel> findMenusByIds(DataScopeContext dataScopeContext, Collection<Long> menuIds) {
+        if (menuIds == null || menuIds.isEmpty()) {
+            return List.of();
+        }
+        LambdaQueryWrapper<SysMenuDO> query = Wrappers.<SysMenuDO>lambdaQuery()
+                .in(SysMenuDO::getId, new LinkedHashSet<>(menuIds))
+                .eq(SysMenuDO::getDeletedFlag, 0L)
+                .orderByAsc(SysMenuDO::getParentId)
+                .orderByAsc(SysMenuDO::getOrderNum)
+                .orderByAsc(SysMenuDO::getId);
+        applyOrgFilter(query, dataScopeContext, SysMenuDO::getOrgId);
         return sysMenuMapper.selectList(query).stream()
                 .map(this::toMenuSummary)
                 .toList();

@@ -52,4 +52,17 @@ class SystemPermissionAuthorityServiceTests {
 
         assertThat(result).isFalse();
     }
+
+    @Test
+    void competitionModeShouldDenyGeneralDashboardButKeepOpsDashboard() {
+        SystemPermissionAuthorityService service =
+                new SystemPermissionAuthorityService(systemPermissionRepository, competitionExposureService(true));
+        when(systemPermissionRepository.hasPermissionCode(100001L, "dashboard:ops:view")).thenReturn(true);
+
+        boolean hiddenResult = service.hasPermission(100001L, "dashboard:view");
+        boolean exposedResult = service.hasPermission(100001L, "dashboard:ops:view");
+
+        assertThat(hiddenResult).isFalse();
+        assertThat(exposedResult).isTrue();
+    }
 }

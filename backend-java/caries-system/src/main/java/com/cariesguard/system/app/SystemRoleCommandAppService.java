@@ -6,12 +6,14 @@ import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
 import com.cariesguard.system.domain.model.SystemManagedRoleModel;
+import com.cariesguard.system.domain.model.SystemMenuSummaryModel;
 import com.cariesguard.system.domain.model.SystemRoleUpsertModel;
 import com.cariesguard.system.domain.repository.SystemRoleCommandRepository;
 import com.cariesguard.system.interfaces.command.CreateSystemRoleCommand;
 import com.cariesguard.system.interfaces.command.UpdateSystemRoleCommand;
 import com.cariesguard.system.interfaces.vo.SystemRoleMutationVO;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,9 +23,12 @@ import org.springframework.util.StringUtils;
 public class SystemRoleCommandAppService {
 
     private final SystemRoleCommandRepository systemRoleCommandRepository;
+    private final CompetitionExposureService competitionExposureService;
 
-    public SystemRoleCommandAppService(SystemRoleCommandRepository systemRoleCommandRepository) {
+    public SystemRoleCommandAppService(SystemRoleCommandRepository systemRoleCommandRepository,
+                                       CompetitionExposureService competitionExposureService) {
         this.systemRoleCommandRepository = systemRoleCommandRepository;
+        this.competitionExposureService = competitionExposureService;
     }
 
     @Transactional
@@ -88,6 +93,18 @@ public class SystemRoleCommandAppService {
     private void validateMenus(Set<Long> menuIds, Long orgId) {
         if (systemRoleCommandRepository.findActiveMenuIds(menuIds, orgId).size() != menuIds.size()) {
             throw new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Menu selection contains invalid or inactive records");
+        }
+        if (!competitionExposureService.isEnabled() || menuIds.isEmpty()) {
+            return;
+        }
+        List<Long> hiddenMenuIds = systemRoleCommandRepository.findMenusByIds(menuIds, orgId).stream()
+                .filter(item -> !competitionExposureService.isMenuExposed(item.routePath(), item.permissionCode()))
+                .map(SystemMenuSummaryModel::menuId)
+                .toList();
+        if (!hiddenMenuIds.isEmpty()) {
+            throw new BusinessException(
+                    CommonErrorCode.BUSINESS_ERROR.code(),
+                    "Competition mode does not allow hidden menus to be assigned: " + hiddenMenuIds);
         }
     }
 

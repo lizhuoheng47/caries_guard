@@ -3,6 +3,7 @@ package com.cariesguard.system.infrastructure.repository;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.cariesguard.system.domain.model.SystemManagedRoleModel;
+import com.cariesguard.system.domain.model.SystemMenuSummaryModel;
 import com.cariesguard.system.domain.model.SystemRoleUpsertModel;
 import com.cariesguard.system.domain.repository.SystemRoleCommandRepository;
 import com.cariesguard.system.infrastructure.dataobject.SysMenuDO;
@@ -60,6 +61,23 @@ public class SystemRoleCommandRepositoryImpl implements SystemRoleCommandReposit
                 .stream()
                 .map(SysMenuDO::getId)
                 .toList());
+    }
+
+    @Override
+    public List<SystemMenuSummaryModel> findMenusByIds(Set<Long> menuIds, Long orgId) {
+        if (menuIds == null || menuIds.isEmpty()) {
+            return List.of();
+        }
+        return sysMenuMapper.selectList(Wrappers.<SysMenuDO>lambdaQuery()
+                        .in(SysMenuDO::getId, menuIds)
+                        .eq(SysMenuDO::getOrgId, orgId)
+                        .eq(SysMenuDO::getDeletedFlag, 0L)
+                        .orderByAsc(SysMenuDO::getParentId)
+                        .orderByAsc(SysMenuDO::getOrderNum)
+                        .orderByAsc(SysMenuDO::getId))
+                .stream()
+                .map(this::toMenuSummary)
+                .toList();
     }
 
     @Override
@@ -139,5 +157,21 @@ public class SystemRoleCommandRepositoryImpl implements SystemRoleCommandReposit
         role.setUpdatedBy(model.operatorUserId());
         role.setDeletedFlag(0L);
         return role;
+    }
+
+    private SystemMenuSummaryModel toMenuSummary(SysMenuDO item) {
+        return new SystemMenuSummaryModel(
+                item.getId(),
+                item.getParentId(),
+                item.getMenuName(),
+                item.getMenuTypeCode(),
+                item.getRoutePath(),
+                item.getComponentPath(),
+                item.getPermissionCode(),
+                item.getOrderNum() == null ? 0 : item.getOrderNum(),
+                "1".equals(item.getVisibleFlag()),
+                "1".equals(item.getCacheFlag()),
+                item.getOrgId(),
+                item.getStatus());
     }
 }

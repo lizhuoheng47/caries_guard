@@ -14,7 +14,8 @@ public class CompetitionModeProperties {
             "report:template:");
 
     private List<String> hiddenPermissionCodes = List.of(
-            "report:export");
+            "report:export",
+            "dashboard:view");
 
     private List<String> hiddenRoutePaths = List.of(
             "/followups",

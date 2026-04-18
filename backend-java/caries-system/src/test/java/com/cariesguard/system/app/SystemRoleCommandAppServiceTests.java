@@ -1,11 +1,14 @@
 package com.cariesguard.system.app;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
+import com.cariesguard.system.config.CompetitionModeProperties;
 import com.cariesguard.system.domain.model.SystemManagedRoleModel;
+import com.cariesguard.system.domain.model.SystemMenuSummaryModel;
 import com.cariesguard.system.domain.model.SystemRoleUpsertModel;
 import com.cariesguard.system.domain.repository.SystemRoleCommandRepository;
 import com.cariesguard.system.interfaces.command.CreateSystemRoleCommand;
@@ -37,7 +40,9 @@ class SystemRoleCommandAppServiceTests {
 
     @Test
     void createRoleShouldPersistMenuBindings() {
-        SystemRoleCommandAppService service = new SystemRoleCommandAppService(systemRoleCommandRepository);
+        SystemRoleCommandAppService service = new SystemRoleCommandAppService(
+                systemRoleCommandRepository,
+                competitionExposureService(false));
         prepareAuthenticatedUser(100001L, 100001L, "ORG_ADMIN");
 
         CreateSystemRoleCommand command = new CreateSystemRoleCommand();
@@ -63,7 +68,9 @@ class SystemRoleCommandAppServiceTests {
 
     @Test
     void updateBuiltInRoleShouldKeepCodeAndStatusActive() {
-        SystemRoleCommandAppService service = new SystemRoleCommandAppService(systemRoleCommandRepository);
+        SystemRoleCommandAppService service = new SystemRoleCommandAppService(
+                systemRoleCommandRepository,
+                competitionExposureService(false));
         prepareAuthenticatedUser(100001L, 100001L, "SYS_ADMIN");
 
         UpdateSystemRoleCommand command = new UpdateSystemRoleCommand();
@@ -83,6 +90,38 @@ class SystemRoleCommandAppServiceTests {
 
         assertThat(result.status()).isEqualTo("ACTIVE");
         verify(systemRoleCommandRepository).updateRole(org.mockito.ArgumentMatchers.any(SystemRoleUpsertModel.class));
+    }
+
+    @Test
+    void competitionModeShouldRejectHiddenMenusInRoleBinding() {
+        SystemRoleCommandAppService service = new SystemRoleCommandAppService(
+                systemRoleCommandRepository,
+                competitionExposureService(true));
+        prepareAuthenticatedUser(100001L, 100001L, "ORG_ADMIN");
+
+        CreateSystemRoleCommand command = new CreateSystemRoleCommand();
+        command.setRoleCode("CASE_REVIEWER");
+        command.setRoleName("Case Reviewer");
+        command.setRoleSort(10);
+        command.setDataScopeCode("ORG");
+        command.setStatus("ACTIVE");
+        command.setMenuIds(List.of(3001L, 3002L));
+
+        when(systemRoleCommandRepository.existsRoleCode("CASE_REVIEWER", null)).thenReturn(false);
+        when(systemRoleCommandRepository.findActiveMenuIds(Set.of(3001L, 3002L), 100001L))
+                .thenReturn(Set.of(3001L, 3002L));
+        when(systemRoleCommandRepository.findMenusByIds(Set.of(3001L, 3002L), 100001L)).thenReturn(List.of(
+                new SystemMenuSummaryModel(3001L, 0L, "Analysis", "MENU", "/analysis/tasks", "analysis/task-index", "analysis:view", 10, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(3002L, 0L, "Dashboard", "MENU", "/dashboard", "dashboard/index", "dashboard:view", 20, true, false, 100001L, "ACTIVE")));
+
+        assertThatThrownBy(() -> service.createRole(command))
+                .hasMessageContaining("Competition mode does not allow hidden menus");
+    }
+
+    private CompetitionExposureService competitionExposureService(boolean enabled) {
+        CompetitionModeProperties properties = new CompetitionModeProperties();
+        properties.setEnabled(enabled);
+        return new CompetitionExposureService(properties);
     }
 
     private void prepareAuthenticatedUser(Long userId, Long orgId, String roleCode) {

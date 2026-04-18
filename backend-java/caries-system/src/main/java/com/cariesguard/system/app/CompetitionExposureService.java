@@ -8,6 +8,18 @@ import org.springframework.util.StringUtils;
 @Service
 public class CompetitionExposureService {
 
+    private static final List<String> RETAINED_ENTRIES = List.of(
+            "analysis",
+            "review",
+            "rag",
+            "/dashboard/model-runtime");
+
+    private static final List<String> ENFORCEMENT_SURFACES = List.of(
+            "current-user permissions",
+            "@RequirePermission authorization",
+            "system menu queries",
+            "role menu bindings");
+
     private final CompetitionModeProperties properties;
 
     public CompetitionExposureService(CompetitionModeProperties properties) {
@@ -24,10 +36,10 @@ public class CompetitionExposureService {
     }
 
     public boolean isPermissionExposed(String permissionCode) {
-        if (!properties.isEnabled() || !StringUtils.hasText(permissionCode)) {
-            return StringUtils.hasText(permissionCode);
+        String normalized = normalize(permissionCode);
+        if (!properties.isEnabled() || normalized == null) {
+            return normalized != null;
         }
-        String normalized = permissionCode.trim();
         if (properties.getHiddenPermissionCodes().contains(normalized)) {
             return false;
         }
@@ -39,19 +51,35 @@ public class CompetitionExposureService {
         if (!properties.isEnabled()) {
             return true;
         }
-        if (StringUtils.hasText(routePath) && properties.getForceVisibleRoutePaths().contains(routePath.trim())) {
+        String normalizedRoutePath = normalize(routePath);
+        if (normalizedRoutePath != null && properties.getForceVisibleRoutePaths().contains(normalizedRoutePath)) {
             return true;
         }
         if (StringUtils.hasText(permissionCode) && !isPermissionExposed(permissionCode)) {
             return false;
         }
-        if (!StringUtils.hasText(routePath)) {
+        if (normalizedRoutePath == null) {
             return true;
         }
-        return !properties.getHiddenRoutePaths().contains(routePath.trim());
+        return !properties.getHiddenRoutePaths().contains(normalizedRoutePath);
     }
 
     public boolean isEnabled() {
         return properties.isEnabled();
+    }
+
+    public CompetitionModeSnapshot snapshot() {
+        return new CompetitionModeSnapshot(
+                properties.isEnabled(),
+                properties.getHiddenPermissionPrefixes(),
+                properties.getHiddenPermissionCodes(),
+                properties.getHiddenRoutePaths(),
+                properties.getForceVisibleRoutePaths(),
+                RETAINED_ENTRIES,
+                ENFORCEMENT_SURFACES);
+    }
+
+    private String normalize(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 }

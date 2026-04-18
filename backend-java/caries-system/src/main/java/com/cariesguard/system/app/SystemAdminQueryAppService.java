@@ -2,6 +2,7 @@ package com.cariesguard.system.app;
 
 import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
+import com.cariesguard.framework.security.datascope.DataScopeContext;
 import com.cariesguard.system.domain.model.SystemMenuDetailModel;
 import com.cariesguard.system.domain.model.PageQueryResult;
 import com.cariesguard.system.domain.model.SystemRoleDetailModel;
@@ -17,6 +18,7 @@ import com.cariesguard.system.interfaces.vo.SystemRoleDetailVO;
 import com.cariesguard.system.interfaces.vo.SystemRoleListItemVO;
 import com.cariesguard.system.interfaces.vo.SystemUserDetailVO;
 import com.cariesguard.system.interfaces.vo.SystemUserListItemVO;
+import java.util.LinkedHashSet;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -78,8 +80,9 @@ public class SystemAdminQueryAppService {
     }
 
     public SystemRoleDetailVO getRole(Long roleId) {
-        return systemAdminQueryRepository.findRoleDetail(systemDataScopeService.currentScope(MODULE_CODE), roleId)
-                .map(this::toRoleDetailVO)
+        DataScopeContext scope = systemDataScopeService.currentScope(MODULE_CODE);
+        return systemAdminQueryRepository.findRoleDetail(scope, roleId)
+                .map(item -> toRoleDetailVO(scope, item))
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "System role does not exist"));
     }
 
@@ -165,7 +168,7 @@ public class SystemAdminQueryAppService {
                 item.roleCodes());
     }
 
-    private SystemRoleDetailVO toRoleDetailVO(SystemRoleDetailModel item) {
+    private SystemRoleDetailVO toRoleDetailVO(DataScopeContext scope, SystemRoleDetailModel item) {
         return new SystemRoleDetailVO(
                 item.roleId(),
                 item.roleCode(),
@@ -176,7 +179,20 @@ public class SystemAdminQueryAppService {
                 item.orgId(),
                 item.status(),
                 item.remark(),
-                item.menuIds());
+                filterExposedMenuIds(scope, item.menuIds()));
+    }
+
+    private List<Long> filterExposedMenuIds(DataScopeContext scope, List<Long> menuIds) {
+        if (!competitionExposureService.isEnabled() || menuIds == null || menuIds.isEmpty()) {
+            return menuIds == null ? List.of() : menuIds;
+        }
+        LinkedHashSet<Long> exposedMenuIds = systemAdminQueryRepository.findMenusByIds(scope, menuIds).stream()
+                .filter(this::isMenuExposed)
+                .map(SystemMenuSummaryModel::menuId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        return menuIds.stream()
+                .filter(exposedMenuIds::contains)
+                .toList();
     }
 
     private SystemMenuDetailVO toMenuDetailVO(SystemMenuDetailModel item) {
