@@ -22,29 +22,29 @@
 
 说明：仓库默认值以“可复现、可离线演示”为优先，不以追求外部大模型效果为优先。
 
-## 3. 推荐比赛版启动方式
+## 3. 推荐比赛版启动流程与验收方式
 
-推荐在仓库根目录执行：
+相比于早期开发版需要手动配置环境变量，当前基线提供了明确的“比赛流预设”脚本编排。请在代码库根目录下使用以下命令流：
 
+**步骤一：一键部署比赛专版**
+这将会基于 `env/competition.env` 加载内置离线 demo 配置与约束模式，并监控组件直至稳定：
 ```powershell
-Copy-Item .env.docker.example .env
+./scripts/competition-up.ps1
+# Mac/Linux 用户执行 ./scripts/competition-up.sh
 ```
 
-然后至少确认以下值：
-
-```env
-CARIES_COMPETITION_MODE_ENABLED=true
-CG_AI_RUNTIME_MODE=mock
-CARIES_ANALYSIS_MODEL_VERSION=caries-v1
-CG_RAG_KNOWLEDGE_VERSION=v1.0
-CG_LLM_PROVIDER_CODE=MOCK
-CG_LLM_MODEL_NAME=template-llm-v1
+**步骤二：自动化基础验收**
+在给验收专家展示前检测环境可用性（目前会评估 Java/Python 状态及比赛模式是否就绪）：
+```powershell
+./scripts/competition-acceptance.ps1
+# Mac/Linux 用户执行 ./scripts/competition-acceptance.sh
 ```
 
-启动：
-
+**步骤三：演示完成后的彻底隔离销毁**
+如果需要清理整个现场防止历史遗留对评审产生影响，使用：
 ```powershell
-docker compose up -d --build
+./scripts/competition-reset.ps1
+# Mac/Linux 用户执行 ./scripts/competition-reset.sh
 ```
 
 ## 4. 默认 demo 样例
