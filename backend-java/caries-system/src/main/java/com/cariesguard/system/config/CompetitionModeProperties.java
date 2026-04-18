@@ -10,6 +10,7 @@ public class CompetitionModeProperties {
 
     private List<String> hiddenPermissionPrefixes = List.of(
             "system:",
+            "visit:",
             "followup:",
             "report:template:");
 
@@ -18,6 +19,7 @@ public class CompetitionModeProperties {
             "dashboard:view");
 
     private List<String> hiddenRoutePaths = List.of(
+            "/visits",
             "/followups",
             "/dashboard");
 

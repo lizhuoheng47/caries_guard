@@ -39,12 +39,17 @@ class SystemAdminQueryAppServiceTests {
         return new CompetitionExposureService(properties);
     }
 
+    private CompetitionMenuProjectionService competitionMenuProjectionService(boolean enabled) {
+        return new CompetitionMenuProjectionService(competitionExposureService(enabled));
+    }
+
     @Test
     void getUserShouldReturnMaskedDetail() {
         SystemAdminQueryAppService service = new SystemAdminQueryAppService(
                 systemAdminQueryRepository,
                 systemDataScopeService,
-                competitionExposureService(false));
+                competitionExposureService(false),
+                competitionMenuProjectionService(false));
         DataScopeContext scope = new DataScopeContext(100001L, 100001L, List.of("ORG_ADMIN"), DataScopeType.ORG, Set.of());
         when(systemDataScopeService.currentScope("SYSTEM")).thenReturn(scope);
         when(systemAdminQueryRepository.findUserDetail(scope, 2001L)).thenReturn(Optional.of(
@@ -82,7 +87,8 @@ class SystemAdminQueryAppServiceTests {
         SystemAdminQueryAppService service = new SystemAdminQueryAppService(
                 systemAdminQueryRepository,
                 systemDataScopeService,
-                competitionExposureService(false));
+                competitionExposureService(false),
+                competitionMenuProjectionService(false));
         DataScopeContext scope = new DataScopeContext(100001L, 100001L, List.of("ORG_ADMIN"), DataScopeType.ORG, Set.of());
         when(systemDataScopeService.currentScope("SYSTEM")).thenReturn(scope);
         when(systemAdminQueryRepository.findRoleDetail(scope, 5001L)).thenReturn(Optional.of(
@@ -109,7 +115,8 @@ class SystemAdminQueryAppServiceTests {
         SystemAdminQueryAppService service = new SystemAdminQueryAppService(
                 systemAdminQueryRepository,
                 systemDataScopeService,
-                competitionExposureService(true));
+                competitionExposureService(true),
+                competitionMenuProjectionService(true));
         DataScopeContext scope = new DataScopeContext(100001L, 100001L, List.of("ORG_ADMIN"), DataScopeType.ORG, Set.of());
         when(systemDataScopeService.currentScope("SYSTEM")).thenReturn(scope);
         when(systemAdminQueryRepository.findRoleDetail(scope, 5001L)).thenReturn(Optional.of(
@@ -140,7 +147,8 @@ class SystemAdminQueryAppServiceTests {
         SystemAdminQueryAppService service = new SystemAdminQueryAppService(
                 systemAdminQueryRepository,
                 systemDataScopeService,
-                competitionExposureService(false));
+                competitionExposureService(false),
+                competitionMenuProjectionService(false));
         DataScopeContext scope = new DataScopeContext(100001L, 100001L, List.of("ORG_ADMIN"), DataScopeType.ORG, Set.of());
         when(systemDataScopeService.currentScope("SYSTEM")).thenReturn(scope);
         when(systemAdminQueryRepository.findMenuDetail(scope, 6001L)).thenReturn(Optional.of(
@@ -172,19 +180,71 @@ class SystemAdminQueryAppServiceTests {
         SystemAdminQueryAppService service = new SystemAdminQueryAppService(
                 systemAdminQueryRepository,
                 systemDataScopeService,
-                competitionExposureService(true));
+                competitionExposureService(true),
+                competitionMenuProjectionService(true));
         DataScopeContext scope = new DataScopeContext(100001L, 100001L, List.of("ORG_ADMIN"), DataScopeType.ORG, Set.of());
         when(systemDataScopeService.currentScope("SYSTEM")).thenReturn(scope);
         when(systemAdminQueryRepository.listMenus(scope, null)).thenReturn(List.of(
-                new SystemMenuSummaryModel(1L, 0L, "Analysis", "MENU", "/analysis/tasks", "analysis/task-index", "analysis:view", 10, true, false, 100001L, "ACTIVE"),
-                new SystemMenuSummaryModel(2L, 0L, "Follow-up", "MENU", "/followups", "followup/index", "followup:view", 20, true, false, 100001L, "ACTIVE"),
-                new SystemMenuSummaryModel(3L, 0L, "Dashboard", "MENU", "/dashboard", "dashboard/index", "dashboard:view", 30, true, false, 100001L, "ACTIVE"),
-                new SystemMenuSummaryModel(4L, 0L, "AI Ops", "MENU", "/dashboard/model-runtime", "dashboard/model-runtime", "dashboard:ops:view", 40, true, false, 100001L, "ACTIVE")));
+                new SystemMenuSummaryModel(1L, 0L, "Patient", "MENU", "/patients", "patient/index", "patient:view", 10, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(2L, 0L, "Visit", "MENU", "/visits", "visit/index", "visit:view", 20, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(3L, 0L, "Case", "MENU", "/cases", "case/index", "case:view", 30, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(4L, 0L, "Image", "MENU", "/images", "image/index", "image:view", 40, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(5L, 0L, "Analysis", "MENU", "/analysis/tasks", "analysis/task-index", "analysis:view", 50, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(6L, 0L, "Report", "MENU", "/reports", "report/index", "report:view", 60, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(7L, 0L, "Follow-up", "MENU", "/followups", "followup/index", "followup:view", 70, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(8L, 0L, "Dashboard", "MENU", "/dashboard", "dashboard/index", "dashboard:view", 80, true, false, 100001L, "ACTIVE"),
+                new SystemMenuSummaryModel(9L, 0L, "AI Ops", "MENU", "/dashboard/model-runtime", "dashboard/model-runtime", "dashboard:ops:view", 90, true, false, 100001L, "ACTIVE")));
 
         List<SystemMenuListItemVO> result = service.listMenus(null);
 
-        assertThat(result).hasSize(2);
+        assertThat(result).hasSize(6);
+        assertThat(result).extracting(SystemMenuListItemVO::menuName)
+                .containsExactly(
+                        "Cases & Imaging",
+                        "AI Analysis Tasks",
+                        "AI Result Detail",
+                        "Knowledge & Citation",
+                        "Review & Feedback",
+                        "AI Runtime & Evaluation");
         assertThat(result).extracting(SystemMenuListItemVO::routePath)
-                .containsExactly("/analysis/tasks", "/dashboard/model-runtime");
+                .containsExactly(
+                        "/patients",
+                        "/analysis/tasks",
+                        "/cases",
+                        "/reports",
+                        "/images",
+                        "/dashboard/model-runtime");
+    }
+
+    @Test
+    void competitionModeShouldProjectMenuDetailCopy() {
+        SystemAdminQueryAppService service = new SystemAdminQueryAppService(
+                systemAdminQueryRepository,
+                systemDataScopeService,
+                competitionExposureService(true),
+                competitionMenuProjectionService(true));
+        DataScopeContext scope = new DataScopeContext(100001L, 100001L, List.of("ORG_ADMIN"), DataScopeType.ORG, Set.of());
+        when(systemDataScopeService.currentScope("SYSTEM")).thenReturn(scope);
+        when(systemAdminQueryRepository.findMenuDetail(scope, 6001L)).thenReturn(Optional.of(
+                new SystemMenuDetailModel(
+                        6001L,
+                        0L,
+                        "Report Management",
+                        "MENU",
+                        "/reports",
+                        "report/index",
+                        "report:view",
+                        "report",
+                        60,
+                        true,
+                        false,
+                        100001L,
+                        "ACTIVE",
+                        "remark")));
+
+        SystemMenuDetailVO result = service.getMenu(6001L);
+
+        assertThat(result.menuName()).isEqualTo("Knowledge & Citation");
+        assertThat(result.orderNum()).isEqualTo(40);
     }
 }

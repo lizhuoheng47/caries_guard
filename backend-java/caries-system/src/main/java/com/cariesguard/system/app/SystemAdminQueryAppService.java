@@ -18,6 +18,7 @@ import com.cariesguard.system.interfaces.vo.SystemRoleDetailVO;
 import com.cariesguard.system.interfaces.vo.SystemRoleListItemVO;
 import com.cariesguard.system.interfaces.vo.SystemUserDetailVO;
 import com.cariesguard.system.interfaces.vo.SystemUserListItemVO;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -30,13 +31,16 @@ public class SystemAdminQueryAppService {
     private final SystemAdminQueryRepository systemAdminQueryRepository;
     private final SystemDataScopeService systemDataScopeService;
     private final CompetitionExposureService competitionExposureService;
+    private final CompetitionMenuProjectionService competitionMenuProjectionService;
 
     public SystemAdminQueryAppService(SystemAdminQueryRepository systemAdminQueryRepository,
                                       SystemDataScopeService systemDataScopeService,
-                                      CompetitionExposureService competitionExposureService) {
+                                      CompetitionExposureService competitionExposureService,
+                                      CompetitionMenuProjectionService competitionMenuProjectionService) {
         this.systemAdminQueryRepository = systemAdminQueryRepository;
         this.systemDataScopeService = systemDataScopeService;
         this.competitionExposureService = competitionExposureService;
+        this.competitionMenuProjectionService = competitionMenuProjectionService;
     }
 
     public PageResultVO<SystemUserListItemVO> pageUsers(int pageNo,
@@ -69,6 +73,9 @@ public class SystemAdminQueryAppService {
     public List<SystemMenuListItemVO> listMenus(String status) {
         return systemAdminQueryRepository.listMenus(systemDataScopeService.currentScope(MODULE_CODE), status).stream()
                 .filter(this::isMenuExposed)
+                .map(competitionMenuProjectionService::project)
+                .sorted(Comparator.comparingInt(SystemMenuSummaryModel::orderNum)
+                        .thenComparing(SystemMenuSummaryModel::menuId))
                 .map(this::toMenuVO)
                 .toList();
     }
@@ -89,6 +96,7 @@ public class SystemAdminQueryAppService {
     public SystemMenuDetailVO getMenu(Long menuId) {
         return systemAdminQueryRepository.findMenuDetail(systemDataScopeService.currentScope(MODULE_CODE), menuId)
                 .filter(this::isMenuExposed)
+                .map(competitionMenuProjectionService::project)
                 .map(this::toMenuDetailVO)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "System menu does not exist"));
     }

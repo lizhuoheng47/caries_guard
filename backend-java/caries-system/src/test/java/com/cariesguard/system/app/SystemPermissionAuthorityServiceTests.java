@@ -65,4 +65,14 @@ class SystemPermissionAuthorityServiceTests {
         assertThat(hiddenResult).isFalse();
         assertThat(exposedResult).isTrue();
     }
+
+    @Test
+    void competitionModeShouldDenyHiddenVisitPermissions() {
+        SystemPermissionAuthorityService service =
+                new SystemPermissionAuthorityService(systemPermissionRepository, competitionExposureService(true));
+
+        boolean result = service.hasPermission(100001L, "visit:view");
+
+        assertThat(result).isFalse();
+    }
 }

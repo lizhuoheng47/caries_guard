@@ -221,6 +221,7 @@ class AuthAppServiceTests {
                         "dashboard:view",
                         "dashboard:ops:view",
                         "system:user:list",
+                        "visit:view",
                         "followup:task:view",
                         "report:view"));
 
