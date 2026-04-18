@@ -27,11 +27,14 @@ public class SystemAdminQueryAppService {
 
     private final SystemAdminQueryRepository systemAdminQueryRepository;
     private final SystemDataScopeService systemDataScopeService;
+    private final CompetitionExposureService competitionExposureService;
 
     public SystemAdminQueryAppService(SystemAdminQueryRepository systemAdminQueryRepository,
-                                      SystemDataScopeService systemDataScopeService) {
+                                      SystemDataScopeService systemDataScopeService,
+                                      CompetitionExposureService competitionExposureService) {
         this.systemAdminQueryRepository = systemAdminQueryRepository;
         this.systemDataScopeService = systemDataScopeService;
+        this.competitionExposureService = competitionExposureService;
     }
 
     public PageResultVO<SystemUserListItemVO> pageUsers(int pageNo,
@@ -63,6 +66,7 @@ public class SystemAdminQueryAppService {
 
     public List<SystemMenuListItemVO> listMenus(String status) {
         return systemAdminQueryRepository.listMenus(systemDataScopeService.currentScope(MODULE_CODE), status).stream()
+                .filter(this::isMenuExposed)
                 .map(this::toMenuVO)
                 .toList();
     }
@@ -81,8 +85,17 @@ public class SystemAdminQueryAppService {
 
     public SystemMenuDetailVO getMenu(Long menuId) {
         return systemAdminQueryRepository.findMenuDetail(systemDataScopeService.currentScope(MODULE_CODE), menuId)
+                .filter(this::isMenuExposed)
                 .map(this::toMenuDetailVO)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "System menu does not exist"));
+    }
+
+    private boolean isMenuExposed(SystemMenuSummaryModel item) {
+        return competitionExposureService.isMenuExposed(item.routePath(), item.permissionCode());
+    }
+
+    private boolean isMenuExposed(SystemMenuDetailModel item) {
+        return competitionExposureService.isMenuExposed(item.routePath(), item.permissionCode());
     }
 
     private SystemUserListItemVO toUserVO(SystemUserSummaryModel item) {

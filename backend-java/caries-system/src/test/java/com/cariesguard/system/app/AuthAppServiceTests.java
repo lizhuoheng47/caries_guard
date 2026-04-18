@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
 import com.cariesguard.framework.security.jwt.JwtTokenProvider;
+import com.cariesguard.system.config.CompetitionModeProperties;
 import com.cariesguard.system.domain.model.SystemUserAuthModel;
 import com.cariesguard.system.domain.repository.SystemPermissionRepository;
 import com.cariesguard.system.domain.repository.SystemUserAuthRepository;
@@ -49,6 +50,12 @@ class AuthAppServiceTests {
     @Mock
     private HttpServletRequest httpServletRequest;
 
+    private CompetitionExposureService competitionExposureService(boolean enabled) {
+        CompetitionModeProperties properties = new CompetitionModeProperties();
+        properties.setEnabled(enabled);
+        return new CompetitionExposureService(properties);
+    }
+
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
@@ -61,7 +68,8 @@ class AuthAppServiceTests {
                 systemPermissionRepository,
                 loginAuditService,
                 passwordEncoder,
-                jwtTokenProvider);
+                jwtTokenProvider,
+                competitionExposureService(false));
         SystemUserAuthModel user = new SystemUserAuthModel(
                 100001L,
                 100001L,
@@ -95,7 +103,8 @@ class AuthAppServiceTests {
                 systemPermissionRepository,
                 loginAuditService,
                 passwordEncoder,
-                jwtTokenProvider);
+                jwtTokenProvider,
+                competitionExposureService(false));
         SystemUserAuthModel user = new SystemUserAuthModel(
                 100001L,
                 100001L,
@@ -137,7 +146,8 @@ class AuthAppServiceTests {
                 systemPermissionRepository,
                 loginAuditService,
                 passwordEncoder,
-                jwtTokenProvider);
+                jwtTokenProvider,
+                competitionExposureService(false));
         SystemUserAuthModel user = new SystemUserAuthModel(
                 100001L,
                 100001L,
@@ -170,5 +180,46 @@ class AuthAppServiceTests {
         assertThat(result.userId()).isEqualTo(100001L);
         assertThat(result.roles()).containsExactly("SYS_ADMIN");
         assertThat(result.permissions()).containsExactly("system:user:list", "system:role:list");
+    }
+
+    @Test
+    void competitionModeShouldFilterSystemAndFollowupPermissions() {
+        AuthAppService authAppService = new AuthAppService(
+                systemUserAuthRepository,
+                systemPermissionRepository,
+                loginAuditService,
+                passwordEncoder,
+                jwtTokenProvider,
+                competitionExposureService(true));
+        SystemUserAuthModel user = new SystemUserAuthModel(
+                100001L,
+                100001L,
+                "admin",
+                "hash",
+                "Admin",
+                "ADMIN",
+                "ACTIVE",
+                List.of("SYS_ADMIN"));
+        AuthenticatedUser principal = new AuthenticatedUser(
+                user.userId(),
+                user.orgId(),
+                user.username(),
+                user.passwordHash(),
+                user.nickName(),
+                "ACTIVE".equals(user.status()),
+                user.roleCodes());
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                principal.getAuthorities()));
+        SecurityContextHolder.setContext(context);
+        when(systemUserAuthRepository.findByUserId(100001L)).thenReturn(Optional.of(user));
+        when(systemPermissionRepository.findPermissionCodesByUserId(100001L))
+                .thenReturn(List.of("analysis:view", "system:user:list", "followup:task:view", "report:view"));
+
+        CurrentUserPermissionsVO result = authAppService.currentPermissions();
+
+        assertThat(result.permissions()).containsExactly("analysis:view", "report:view");
     }
 }

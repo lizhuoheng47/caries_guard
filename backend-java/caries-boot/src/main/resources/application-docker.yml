@@ -76,3 +76,5 @@ caries:
     base-url: ${CARIES_RAG_BASE_URL:http://backend-python:8001/ai/v1}
     connect-timeout-millis: ${CARIES_RAG_CONNECT_TIMEOUT_MS:${CARIES_RAG_CONNECT_TIMEOUT_MILLIS:3000}}
     request-timeout-millis: ${CARIES_RAG_READ_TIMEOUT_MS:${CARIES_RAG_REQUEST_TIMEOUT_MILLIS:10000}}
+  competition:
+    enabled: ${CARIES_COMPETITION_MODE_ENABLED:false}

@@ -28,17 +28,20 @@ public class AuthAppService {
     private final LoginAuditService loginAuditService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final CompetitionExposureService competitionExposureService;
 
     public AuthAppService(SystemUserAuthRepository systemUserAuthRepository,
                           SystemPermissionRepository systemPermissionRepository,
                           LoginAuditService loginAuditService,
                           PasswordEncoder passwordEncoder,
-                          JwtTokenProvider jwtTokenProvider) {
+                          JwtTokenProvider jwtTokenProvider,
+                          CompetitionExposureService competitionExposureService) {
         this.systemUserAuthRepository = systemUserAuthRepository;
         this.systemPermissionRepository = systemPermissionRepository;
         this.loginAuditService = loginAuditService;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.competitionExposureService = competitionExposureService;
     }
 
     public LoginTokenVO login(LoginCommand command, HttpServletRequest request) {
@@ -73,7 +76,8 @@ public class AuthAppService {
 
     public CurrentUserVO currentUser() {
         SystemUserAuthModel user = loadCurrentUser();
-        List<String> permissions = systemPermissionRepository.findPermissionCodesByUserId(user.userId());
+        List<String> permissions = competitionExposureService.filterPermissions(
+                systemPermissionRepository.findPermissionCodesByUserId(user.userId()));
         return new CurrentUserVO(
                 user.userId(),
                 user.username(),
@@ -89,7 +93,8 @@ public class AuthAppService {
         return new CurrentUserPermissionsVO(
                 user.userId(),
                 user.roleCodes(),
-                systemPermissionRepository.findPermissionCodesByUserId(user.userId()));
+                competitionExposureService.filterPermissions(
+                        systemPermissionRepository.findPermissionCodesByUserId(user.userId())));
     }
 
     private SystemUserAuthModel loadCurrentUser() {

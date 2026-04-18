@@ -3,6 +3,7 @@ package com.cariesguard.system.app;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.cariesguard.system.config.CompetitionModeProperties;
 import com.cariesguard.system.domain.repository.SystemPermissionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,9 +16,16 @@ class SystemPermissionAuthorityServiceTests {
     @Mock
     private SystemPermissionRepository systemPermissionRepository;
 
+    private CompetitionExposureService competitionExposureService(boolean enabled) {
+        CompetitionModeProperties properties = new CompetitionModeProperties();
+        properties.setEnabled(enabled);
+        return new CompetitionExposureService(properties);
+    }
+
     @Test
     void shouldReturnTrueWhenPermissionExists() {
-        SystemPermissionAuthorityService service = new SystemPermissionAuthorityService(systemPermissionRepository);
+        SystemPermissionAuthorityService service =
+                new SystemPermissionAuthorityService(systemPermissionRepository, competitionExposureService(false));
         when(systemPermissionRepository.hasPermissionCode(100001L, "system:user:list")).thenReturn(true);
 
         boolean result = service.hasPermission(100001L, "system:user:list");
@@ -27,9 +35,20 @@ class SystemPermissionAuthorityServiceTests {
 
     @Test
     void shouldReturnFalseWhenPermissionCodeBlank() {
-        SystemPermissionAuthorityService service = new SystemPermissionAuthorityService(systemPermissionRepository);
+        SystemPermissionAuthorityService service =
+                new SystemPermissionAuthorityService(systemPermissionRepository, competitionExposureService(false));
 
         boolean result = service.hasPermission(100001L, " ");
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void competitionModeShouldDenyHiddenPermissions() {
+        SystemPermissionAuthorityService service =
+                new SystemPermissionAuthorityService(systemPermissionRepository, competitionExposureService(true));
+
+        boolean result = service.hasPermission(100001L, "followup:task:view");
 
         assertThat(result).isFalse();
     }
