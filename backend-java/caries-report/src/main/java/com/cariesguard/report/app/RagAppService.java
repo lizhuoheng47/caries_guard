@@ -6,12 +6,14 @@ import com.cariesguard.framework.security.principal.AuthenticatedUser;
 import com.cariesguard.report.domain.client.RagClient;
 import com.cariesguard.report.domain.model.RagAnswerModel;
 import com.cariesguard.report.domain.model.RagCitationModel;
+import com.cariesguard.report.domain.model.RagAskRequestModel;
 import com.cariesguard.report.domain.model.RagDoctorQaRequestModel;
 import com.cariesguard.report.domain.model.RagPatientExplanationRequestModel;
 import com.cariesguard.report.domain.model.ReportRenderDataModel;
 import com.cariesguard.report.domain.model.ReportToothRecordModel;
 import com.cariesguard.report.interfaces.command.DoctorQaCommand;
 import com.cariesguard.report.interfaces.command.PatientExplanationCommand;
+import com.cariesguard.report.interfaces.command.RagAskCommand;
 import com.cariesguard.report.interfaces.vo.RagAnswerVO;
 import com.cariesguard.report.interfaces.vo.RagCitationVO;
 import java.util.LinkedHashMap;
@@ -65,6 +67,22 @@ public class RagAppService {
                 command.caseSummary(),
                 command.riskLevelCode());
         return toVO(safeAnswer(() -> ragClient.patientExplanation(request)));
+    }
+
+    public RagAnswerVO ask(RagAskCommand command) {
+        AuthenticatedUser operator = SecurityContextUtils.currentUser();
+        RagAskRequestModel request = new RagAskRequestModel(
+                TraceIdUtils.currentTraceId(),
+                command.question(),
+                command.scene(),
+                command.kbCode(),
+                command.topK(),
+                command.relatedBizNo(),
+                command.patientUuid(),
+                operator.getUserId(),
+                operator.getOrgId(),
+                command.caseContext());
+        return toVO(safeAnswer(() -> ragClient.ask(request)));
     }
 
     public String generatePatientReportExplanation(String reportNo, ReportRenderDataModel renderData) {
@@ -136,6 +154,10 @@ public class RagAppService {
                 answer.knowledgeVersion(),
                 answer.modelName(),
                 answer.safetyFlag(),
+                answer.safetyFlags(),
+                answer.refusalReason(),
+                answer.confidence(),
+                answer.traceId(),
                 answer.latencyMs(),
                 answer.fallback());
     }
@@ -143,10 +165,14 @@ public class RagAppService {
     private RagCitationVO toCitationVO(RagCitationModel citation) {
         return new RagCitationVO(
                 citation.rankNo(),
+                citation.knowledgeBaseCode(),
+                citation.documentCode(),
+                citation.documentVersion(),
                 citation.docId(),
                 citation.docTitle(),
                 citation.chunkId(),
                 citation.score(),
+                citation.retrievalScore(),
                 citation.sourceUri(),
                 citation.chunkText());
     }

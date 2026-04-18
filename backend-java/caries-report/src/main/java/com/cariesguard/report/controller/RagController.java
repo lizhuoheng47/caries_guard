@@ -6,6 +6,7 @@ import com.cariesguard.framework.security.authorization.RequirePermission;
 import com.cariesguard.report.app.RagAppService;
 import com.cariesguard.report.interfaces.command.DoctorQaCommand;
 import com.cariesguard.report.interfaces.command.PatientExplanationCommand;
+import com.cariesguard.report.interfaces.command.RagAskCommand;
 import com.cariesguard.report.interfaces.vo.RagAnswerVO;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,5 +34,11 @@ public class RagController {
     @RequirePermission("report:view")
     public ApiResponse<RagAnswerVO> patientExplanation(@Valid @RequestBody PatientExplanationCommand command) {
         return ApiResponse.success(ragAppService.patientExplanation(command), TraceIdUtils.currentTraceId());
+    }
+
+    @PostMapping("/ask")
+    @RequirePermission("report:view")
+    public ApiResponse<RagAnswerVO> ask(@Valid @RequestBody RagAskCommand command) {
+        return ApiResponse.success(ragAppService.ask(command), TraceIdUtils.currentTraceId());
     }
 }

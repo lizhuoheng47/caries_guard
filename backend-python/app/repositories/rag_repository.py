@@ -206,6 +206,7 @@ class RagRepository:
             {
                 "doc_title": doc.doc_title,
                 "doc_no": doc.doc_no,
+                "doc_version": doc.doc_version,
                 "source_uri": doc.source_uri,
                 "doc_source_code": doc.doc_source_code,
             }

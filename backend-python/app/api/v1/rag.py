@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.container import get_container
 from app.schemas.common import success_response
-from app.schemas.rag import DoctorQaRequest, PatientExplanationRequest
+from app.schemas.rag import DoctorQaRequest, PatientExplanationRequest, RagAskRequest
 
 router = APIRouter(tags=["rag"])
 
@@ -18,4 +18,11 @@ def patient_explanation(request: PatientExplanationRequest) -> dict:
 def doctor_qa(request: DoctorQaRequest) -> dict:
     container = get_container()
     result = container.rag_service.doctor_qa(request)
+    return success_response(data=result, trace_id=request.trace_id)
+
+
+@router.post("/rag/ask")
+def ask(request: RagAskRequest) -> dict:
+    container = get_container()
+    result = container.rag_service.ask(request)
     return success_response(data=result, trace_id=request.trace_id)

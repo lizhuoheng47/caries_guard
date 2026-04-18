@@ -5,6 +5,7 @@ import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.report.config.RagProperties;
 import com.cariesguard.report.domain.client.RagClient;
 import com.cariesguard.report.domain.model.RagAnswerModel;
+import com.cariesguard.report.domain.model.RagAskRequestModel;
 import com.cariesguard.report.domain.model.RagCitationModel;
 import com.cariesguard.report.domain.model.RagDoctorQaRequestModel;
 import com.cariesguard.report.domain.model.RagPatientExplanationRequestModel;
@@ -55,6 +56,11 @@ public class HttpRagClient implements RagClient {
         return post("/rag/patient-explanation", request);
     }
 
+    @Override
+    public RagAnswerModel ask(RagAskRequestModel request) {
+        return post("/rag/ask", request);
+    }
+
     private RagAnswerModel post(String path, Object requestPayload) {
         try {
             String requestBody = objectMapper.writeValueAsString(requestPayload);
@@ -96,10 +102,14 @@ public class HttpRagClient implements RagClient {
             for (JsonNode citation : citationNodes) {
                 citations.add(new RagCitationModel(
                         intValue(citation, "rankNo"),
+                        text(citation, "knowledgeBaseCode"),
+                        text(citation, "documentCode"),
+                        text(citation, "documentVersion"),
                         longValue(citation, "docId"),
                         text(citation, "docTitle"),
                         longValue(citation, "chunkId"),
                         doubleValue(citation, "score"),
+                        doubleValue(citation, "retrievalScore"),
                         text(citation, "sourceUri"),
                         text(citation, "chunkText")));
             }
@@ -108,11 +118,15 @@ public class HttpRagClient implements RagClient {
         return new RagAnswerModel(
                 text(data, "sessionNo"),
                 text(data, "requestNo"),
-                text(data, "answerText"),
+                coalesce(text(data, "answerText"), text(data, "answer")),
                 citations,
                 text(data, "knowledgeVersion"),
                 text(data, "modelName"),
                 text(data, "safetyFlag"),
+                stringList(data, "safetyFlags"),
+                text(data, "refusalReason"),
+                doubleValue(data, "confidence"),
+                text(data, "traceId"),
                 intValue(data, "latencyMs"),
                 false);
     }
@@ -150,6 +164,24 @@ public class HttpRagClient implements RagClient {
     private static Double doubleValue(JsonNode node, String fieldName) {
         JsonNode value = node.get(fieldName);
         return value == null || value.isNull() ? null : value.asDouble();
+    }
+
+    private static List<String> stringList(JsonNode node, String fieldName) {
+        JsonNode value = node.get(fieldName);
+        if (value == null || !value.isArray()) {
+            return List.of();
+        }
+        List<String> result = new ArrayList<>();
+        for (JsonNode item : value) {
+            if (item != null && !item.isNull() && StringUtils.hasText(item.asText())) {
+                result.add(item.asText());
+            }
+        }
+        return result;
+    }
+
+    private static String coalesce(String first, String second) {
+        return StringUtils.hasText(first) ? first : second;
     }
 
     private static BusinessException externalError(String message) {

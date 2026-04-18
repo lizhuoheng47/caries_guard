@@ -48,14 +48,30 @@ class DoctorQaRequest(RagBaseRequest):
     clinical_context: dict[str, Any] | None = None
 
 
+class RagAskRequest(RagBaseRequest):
+    question: str
+    scene: str = "DOCTOR_QA"
+    case_context: dict[str, Any] | None = None
+
+
 class RagCitation(CamelModel):
     rank_no: int
+    knowledge_base_code: str | None = None
+    document_code: str | None = None
+    document_version: str | None = None
     doc_id: int
     doc_title: str | None = None
     chunk_id: int
     score: float
+    retrieval_score: float | None = None
     source_uri: str | None = None
     chunk_text: str
+
+
+class RagRetrievedChunk(CamelModel):
+    chunk_id: int
+    document_code: str | None = None
+    score: float
 
 
 class RagAnswer(CamelModel):
@@ -63,7 +79,12 @@ class RagAnswer(CamelModel):
     request_no: str
     answer_text: str
     citations: list[RagCitation]
+    retrieved_chunks: list[RagRetrievedChunk] = []
     knowledge_version: str
     model_name: str
     safety_flag: str = "0"
+    safety_flags: list[str] = []
+    refusal_reason: str | None = None
+    confidence: float | None = None
+    trace_id: str | None = None
     latency_ms: int

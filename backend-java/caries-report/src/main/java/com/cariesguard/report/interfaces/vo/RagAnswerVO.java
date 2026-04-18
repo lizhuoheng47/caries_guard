@@ -10,6 +10,10 @@ public record RagAnswerVO(
         String knowledgeVersion,
         String modelName,
         String safetyFlag,
+        List<String> safetyFlags,
+        String refusalReason,
+        Double confidence,
+        String traceId,
         Integer latencyMs,
         boolean fallback) {
 }

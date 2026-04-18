@@ -1,12 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-
-@dataclass(frozen=True)
-class LlmResult:
-    answer_text: str
-    prompt_text: str
+from app.infra.llm.base_llm_client import LlmResult
 
 
 class TemplateLlmClient:

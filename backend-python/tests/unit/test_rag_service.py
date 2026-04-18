@@ -4,7 +4,7 @@ from typing import Any
 from app.core.config import Settings
 from app.infra.llm.template_llm_client import TemplateLlmClient
 from app.infra.vector.simple_vector_store import SimpleVectorStore
-from app.schemas.rag import DoctorQaRequest, KnowledgeDocumentRequest, KnowledgeRebuildRequest
+from app.schemas.rag import DoctorQaRequest, KnowledgeDocumentRequest, KnowledgeRebuildRequest, RagAskRequest
 from app.services.knowledge_service import KnowledgeService
 from app.services.rag_service import RagService
 
@@ -52,7 +52,13 @@ class FakeMetadataRepository:
             if item["kb_id"] == kb_id and item["review_status_code"] == "APPROVED"
         ]
 
-    def replace_chunks(self, kb_id: int, chunks: list[dict[str, Any]], embedding_model: str, vector_store_path: str) -> list[dict[str, Any]]:
+    def replace_chunks(
+        self,
+        kb_id: int,
+        chunks: list[dict[str, Any]],
+        embedding_model: str,
+        vector_store_path: str,
+    ) -> list[dict[str, Any]]:
         self.chunks = [item for item in self.chunks if item["kb_id"] != kb_id]
         stored: list[dict[str, Any]] = []
         documents = {item["id"]: item for item in self.documents}
@@ -65,6 +71,7 @@ class FakeMetadataRepository:
                 "vector_store_path": vector_store_path,
                 "doc_title": document["doc_title"],
                 "doc_no": document["doc_no"],
+                "doc_version": document.get("doc_version"),
                 "source_uri": document.get("source_uri"),
                 "doc_source_code": document.get("doc_source_code"),
                 **item,
@@ -73,7 +80,13 @@ class FakeMetadataRepository:
             stored.append(chunk)
         return stored
 
-    def create_rebuild_job(self, kb_id: int, knowledge_version: str, vector_store_path: str, org_id: int | None) -> dict[str, Any]:
+    def create_rebuild_job(
+        self,
+        kb_id: int,
+        knowledge_version: str,
+        vector_store_path: str,
+        org_id: int | None,
+    ) -> dict[str, Any]:
         job = {
             "id": self._id(),
             "rebuild_job_no": f"KBREBUILD-{self._next_id}",
@@ -85,7 +98,13 @@ class FakeMetadataRepository:
         self.rebuild_jobs.append(job)
         return job
 
-    def finish_rebuild_job(self, job_id: int, status_code: str, chunk_count: int, error_message: str | None = None) -> dict[str, Any]:
+    def finish_rebuild_job(
+        self,
+        job_id: int,
+        status_code: str,
+        chunk_count: int,
+        error_message: str | None = None,
+    ) -> dict[str, Any]:
         job = next(item for item in self.rebuild_jobs if item["id"] == job_id)
         job.update({"rebuild_status_code": status_code, "chunk_count": chunk_count, "error_message": error_message})
         return job
@@ -100,9 +119,23 @@ class FakeMetadataRepository:
         self.requests.append(request)
         return request
 
-    def finish_rag_request(self, request_id: int, answer_text: str, status_code: str, latency_ms: int, safety_flag: str = "0") -> None:
+    def finish_rag_request(
+        self,
+        request_id: int,
+        answer_text: str,
+        status_code: str,
+        latency_ms: int,
+        safety_flag: str = "0",
+    ) -> None:
         request = next(item for item in self.requests if item["id"] == request_id)
-        request.update({"answer_text": answer_text, "request_status_code": status_code, "latency_ms": latency_ms, "safety_flag": safety_flag})
+        request.update(
+            {
+                "answer_text": answer_text,
+                "request_status_code": status_code,
+                "latency_ms": latency_ms,
+                "safety_flag": safety_flag,
+            }
+        )
 
     def create_retrieval_logs(self, request_id: int, hits: list[dict[str, Any]], org_id: int | None) -> None:
         for rank, hit in enumerate(hits, start=1):
@@ -135,35 +168,74 @@ def test_rag_document_rebuild_and_doctor_qa_logs_sources(tmp_path: Path) -> None
     knowledge_service, rag_service, repository = _services(tmp_path)
     imported = knowledge_service.import_document(
         KnowledgeDocumentRequest(
-            doc_title="儿童龋齿护理建议",
+            doc_title="Pediatric caries care guide",
             doc_source_code="MANUAL",
             source_uri="internal://guide/caries-care",
-            content_text="儿童龋齿风险较高时，应控制含糖饮食，坚持刷牙并使用含氟牙膏，按医生建议复查。",
+            content_text=(
+                "When pediatric caries risk is high, reduce sugar intake, keep brushing with fluoride "
+                "toothpaste, and arrange follow-up based on dentist advice."
+            ),
             review_status_code="APPROVED",
         )
     )
 
     rebuilt = knowledge_service.rebuild(KnowledgeRebuildRequest(kb_code="test-kb"))
-    answer = rag_service.doctor_qa(DoctorQaRequest(question="儿童龋齿高风险如何护理？", kb_code="test-kb"))
+    answer = rag_service.doctor_qa(DoctorQaRequest(question="How should high caries risk be managed?", kb_code="test-kb"))
 
     assert imported["docNo"].startswith("DOC-")
     assert rebuilt["chunkCount"] == 1
     assert rebuilt["rebuildStatusCode"] == "SUCCESS"
     assert answer["citations"]
-    assert answer["citations"][0]["docTitle"] == "儿童龋齿护理建议"
-    assert "依据" in answer["answerText"]
+    assert answer["citations"][0]["docTitle"] == "Pediatric caries care guide"
+    assert answer["citations"][0]["knowledgeBaseCode"] == "test-kb"
+    assert answer["citations"][0]["documentCode"].startswith("DOC-")
+    assert answer["confidence"] > 0
+    assert answer["safetyFlags"] == ["MEDICAL_CAUTION"]
 
     assert len(repository.requests) == 1
     assert len(repository.retrieval_logs) == 1
     assert len(repository.llm_logs) == 1
+    assert repository.llm_logs[0]["prompt_text"].startswith("scene=DOCTOR_QA")
 
 
-def test_rag_returns_safe_answer_when_index_has_no_hits(tmp_path: Path) -> None:
-    knowledge_service, rag_service, _repository = _services(tmp_path)
+def test_rag_returns_refusal_when_index_has_no_hits(tmp_path: Path) -> None:
+    knowledge_service, rag_service, repository = _services(tmp_path)
     knowledge_service.ensure_knowledge_base(kb_code="empty-kb")
 
-    answer = rag_service.doctor_qa(DoctorQaRequest(question="没有资料时怎么回答？", kb_code="empty-kb"))
+    answer = rag_service.doctor_qa(DoctorQaRequest(question="How to answer without evidence?", kb_code="empty-kb"))
 
     assert answer["citations"] == []
     assert answer["safetyFlag"] == "1"
-    assert "没有检索到足够依据" in answer["answerText"]
+    assert answer["refusalReason"] == "INSUFFICIENT_EVIDENCE"
+    assert "INSUFFICIENT_EVIDENCE" in answer["safetyFlags"]
+    assert answer["confidence"] == 0.0
+    assert repository.llm_logs[0]["status_code"] == "SKIPPED"
+
+
+def test_rag_ask_unified_endpoint_contract(tmp_path: Path) -> None:
+    knowledge_service, rag_service, _repository = _services(tmp_path)
+    knowledge_service.import_document(
+        KnowledgeDocumentRequest(
+            doc_title="Fluoride guide",
+            doc_source_code="MANUAL",
+            source_uri="internal://guide/fluoride",
+            content_text="Fluoride toothpaste and reduced sugar intake are common caries prevention measures.",
+            review_status_code="APPROVED",
+        )
+    )
+    knowledge_service.rebuild(KnowledgeRebuildRequest(kb_code="test-kb"))
+
+    answer = rag_service.ask(
+        RagAskRequest(
+            trace_id="trace-rag-1",
+            question="How can fluoride help caries prevention?",
+            kb_code="test-kb",
+            scene="DOCTOR_QA",
+            case_context={"caseNo": "CASE-1", "patientName": "should not enter prompt"},
+        )
+    )
+
+    assert answer["traceId"] == "trace-rag-1"
+    assert answer["citations"]
+    assert answer["retrievedChunks"]
+    assert answer.get("refusalReason") is None

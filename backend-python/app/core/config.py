@@ -105,6 +105,11 @@ class Settings:
     rag_top_k: int = int_env("CG_RAG_TOP_K", 5)
     llm_provider_code: str = os.getenv("CG_LLM_PROVIDER_CODE", "MOCK")
     llm_model_name: str = os.getenv("CG_LLM_MODEL_NAME", "template-llm-v1")
+    llm_base_url: str = os.getenv("CG_LLM_BASE_URL", "")
+    llm_api_key: str = os.getenv("CG_LLM_API_KEY", "")
+    llm_timeout_seconds: int = int_env("CG_LLM_TIMEOUT_SECONDS", 30)
+    llm_retry_count: int = int_env("CG_LLM_RETRY_COUNT", 1)
+    llm_temperature: float = float_env("CG_LLM_TEMPERATURE", 0.2)
 
     # ── Phase 5: Model Runtime ──────────────────────────────────────────
     ai_runtime_mode: str = _validate_runtime_mode(os.getenv("CG_AI_RUNTIME_MODE", "mock"))

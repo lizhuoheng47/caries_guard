@@ -9,6 +9,7 @@ import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
 import com.cariesguard.report.domain.client.RagClient;
 import com.cariesguard.report.domain.model.RagAnswerModel;
+import com.cariesguard.report.domain.model.RagAskRequestModel;
 import com.cariesguard.report.domain.model.RagCitationModel;
 import com.cariesguard.report.domain.model.RagDoctorQaRequestModel;
 import com.cariesguard.report.domain.model.RagPatientExplanationRequestModel;
@@ -16,6 +17,7 @@ import com.cariesguard.report.domain.model.ReportRenderDataModel;
 import com.cariesguard.report.domain.model.ReportToothRecordModel;
 import com.cariesguard.report.interfaces.command.DoctorQaCommand;
 import com.cariesguard.report.interfaces.command.PatientExplanationCommand;
+import com.cariesguard.report.interfaces.command.RagAskCommand;
 import com.cariesguard.report.interfaces.vo.RagAnswerVO;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -67,6 +69,7 @@ class RagAppServiceTests {
         assertThat(answer.fallback()).isFalse();
         assertThat(answer.answerText()).contains("fluoride");
         assertThat(answer.citations()).hasSize(1);
+        assertThat(answer.safetyFlag()).isEqualTo("0");
         ArgumentCaptor<RagDoctorQaRequestModel> requestCaptor = ArgumentCaptor.forClass(RagDoctorQaRequestModel.class);
         org.mockito.Mockito.verify(ragClient).doctorQa(requestCaptor.capture());
         assertThat(requestCaptor.getValue().javaUserId()).isEqualTo(1001L);
@@ -94,6 +97,7 @@ class RagAppServiceTests {
         assertThat(answer.fallback()).isTrue();
         assertThat(answer.citations()).isEmpty();
         assertThat(answer.safetyFlag()).isEqualTo("1");
+        assertThat(answer.safetyFlags()).contains("INSUFFICIENT_EVIDENCE");
     }
 
     @Test
@@ -138,6 +142,45 @@ class RagAppServiceTests {
         assertThat(requestCaptor.getValue().relatedBizNo()).isEqualTo("RPT-1");
         assertThat(requestCaptor.getValue().caseSummary()).containsEntry("riskLevelCode", "HIGH");
         assertThat(requestCaptor.getValue().caseSummary()).containsKey("toothFindings");
+    }
+
+    @Test
+    void askShouldCallUnifiedPythonRagEndpoint() {
+        setCurrentUser();
+        when(ragClient.ask(any())).thenReturn(new RagAnswerModel(
+                "RAG-3",
+                "RAGREQ-3",
+                "Unified answer.",
+                List.of(new RagCitationModel(1, "caries-default", "DOC-1", "v1.0", 10L,
+                        "Guide", 20L, 0.91, 0.91, "kb://guide", "evidence")),
+                "v1.0",
+                "template-llm-v1",
+                "0",
+                List.of("MEDICAL_CAUTION"),
+                null,
+                0.82,
+                "trace-1",
+                12,
+                false));
+
+        RagAppService appService = new RagAppService(ragClient);
+        RagAnswerVO answer = appService.ask(new RagAskCommand(
+                "How should I explain C2 risk?",
+                "DOCTOR_QA",
+                "caries-default",
+                3,
+                "CASE-1",
+                "PAT-1",
+                Map.of("riskLevelCode", "MEDIUM")));
+
+        assertThat(answer.confidence()).isEqualTo(0.82);
+        assertThat(answer.safetyFlags()).containsExactly("MEDICAL_CAUTION");
+        assertThat(answer.citations().get(0).documentCode()).isEqualTo("DOC-1");
+        ArgumentCaptor<RagAskRequestModel> requestCaptor = ArgumentCaptor.forClass(RagAskRequestModel.class);
+        org.mockito.Mockito.verify(ragClient).ask(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().javaUserId()).isEqualTo(1001L);
+        assertThat(requestCaptor.getValue().orgId()).isEqualTo(2001L);
+        assertThat(requestCaptor.getValue().scene()).isEqualTo("DOCTOR_QA");
     }
 
     private void setCurrentUser() {
