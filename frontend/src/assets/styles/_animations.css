@@ -1,57 +1,62 @@
+/* Pulse Breath */
 @keyframes pulse-opacity {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+.animate-pulse-opacity { animation: pulse-opacity 1.5s infinite ease-in-out; }
 
+/* Scanline */
 @keyframes scanline {
   0% { top: 10%; }
   50% { top: 85%; }
   100% { top: 10%; }
 }
+.animate-scanline { animation: scanline 3s ease-in-out infinite; }
 
+/* Orbit */
 @keyframes orbit {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+.animate-orbit { animation: orbit 20s linear infinite; }
 
+/* Float Particle */
 @keyframes float-particle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-12px) scale(1.1); }
 }
+.animate-float-particle { animation: float-particle 4s ease-in-out infinite; }
 
+/* Cursor Blink */
 @keyframes cursor-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+.animate-cursor-blink { animation: cursor-blink 1s infinite; }
 
+/* Shimmer (Loading) */
 @keyframes shimmer {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(100%); }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.animate-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.animate-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(90deg, transparent, rgba(0,229,255,0.05), transparent);
+  animation: shimmer 2s infinite;
 }
 
-.animate-pulse-opacity {
-  animation: pulse-opacity 1.5s infinite;
-}
-
-.animate-scanline {
-  animation: scanline 3s ease-in-out infinite;
-}
-
-.animate-orbit {
-  animation: orbit 20s linear infinite;
-}
-
-.animate-float-particle {
-  animation: float-particle 4s ease-in-out infinite;
-}
-
-.animate-cursor-blink {
-  animation: cursor-blink 1s infinite;
-}
-
-/* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  *, ::before, ::after {
+  * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

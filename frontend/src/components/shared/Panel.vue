@@ -1,26 +1,24 @@
 <template>
   <div class="glass-panel rounded-md flex flex-col h-full overflow-hidden">
-    <div v-if="title" class="panel-header flex items-center justify-between px-2 py-2 border-b-[0.5px] border-line-subtle bg-deep-surface/50">
+    <!-- Header -->
+    <div class="h-[32px] shrink-0 bg-[rgba(3,8,18,0.5)] border-b border-[var(--ln)] flex items-center justify-between px-2 relative">
       <div class="flex items-center gap-2">
-        <div class="w-[3px] h-[11px]" :style="{ backgroundColor: `var(--${color})` }"></div>
-        <h3 class="text-[11px] font-medium text-ice-white m-0 leading-none">{{ title }}</h3>
+        <div class="w-[3px] h-[11px]" :style="{ backgroundColor: `var(--${color})`, boxShadow: `0 0 8px var(--${color})` }"></div>
+        <h3 class="text-[11px] font-medium text-[var(--tp)] m-0">{{ title }}</h3>
       </div>
-      <div v-if="$slots.meta" class="panel-meta">
-        <slot name="meta" />
-      </div>
+      <slot name="meta"></slot>
     </div>
-    <div :class="['panel-content flex-1 overflow-auto', { 'p-3': !noPadding }]">
-      <slot />
+    
+    <!-- Body -->
+    <div class="flex-1 p-[12px] min-h-0 relative overflow-y-auto">
+      <slot></slot>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
-  title?: string;
-  color?: 'cyan' | 'amber' | 'magenta' | 'emerald' | 'violet';
-  noPadding?: boolean;
-}>(), {
-  color: 'cyan'
-});
+defineProps<{
+  title: string;
+  color: 'cyan' | 'amber' | 'magenta' | 'emerald' | 'violet';
+}>();
 </script>

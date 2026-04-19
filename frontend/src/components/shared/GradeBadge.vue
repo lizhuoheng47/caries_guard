@@ -1,30 +1,27 @@
 <template>
-  <div class="grade-badge" :class="`grade-${grade}`">
-    {{ grade }}
+  <div class="inline-flex items-center px-1.5 py-0.5 rounded-[2px]" :class="[bgClass]">
+    <span class="font-mono text-[10px] font-medium" :class="textClass">{{ grade }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  grade: string; // G0, G1, G2, G3, G4
+import { computed } from 'vue';
+
+const props = defineProps<{
+  grade: 'G0' | 'G1' | 'G2' | 'G3' | 'G4';
 }>();
+
+const theme = computed(() => {
+  switch (props.grade) {
+    case 'G0': return 'emerald';
+    case 'G1': return 'cyan';
+    case 'G2': return 'amber';
+    case 'G3': return 'magenta';
+    case 'G4': return 'violet';
+    default: return 'cyan';
+  }
+});
+
+const bgClass = computed(() => `bg-[var(--${theme.value})]/15`);
+const textClass = computed(() => `text-[var(--${theme.value})]`);
 </script>
-
-<style scoped>
-.grade-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 6px;
-  border-radius: var(--radius-xs);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-}
-
-.grade-G0 { background: rgba(0,255,163,0.15); color: var(--emerald); }
-.grade-G1 { background: rgba(0,229,255,0.15); color: var(--cyan); }
-.grade-G2 { background: rgba(255,181,71,0.15); color: var(--amber); }
-.grade-G3 { background: rgba(255,61,127,0.15); color: var(--magenta); }
-.grade-G4 { background: rgba(139,92,246,0.15); color: var(--violet); }
-</style>

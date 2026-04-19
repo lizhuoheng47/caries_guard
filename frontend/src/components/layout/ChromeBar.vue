@@ -1,22 +1,33 @@
 <template>
-  <div class="h-[36px] w-full bg-[var(--void)] flex items-center justify-between px-4 border-b border-[var(--ln)] select-none z-50 shrink-0">
-    <!-- Mac-like dots -->
-    <div class="flex items-center gap-2 w-1/4">
-      <div class="w-3 h-3 rounded-full border border-[var(--td)]"></div>
-      <div class="w-3 h-3 rounded-full border border-[var(--td)]"></div>
-      <div class="w-3 h-3 rounded-full bg-[var(--emerald)] shadow-[0_0_8px_var(--emerald)]"></div>
+  <div class="h-[28px] w-full bg-[rgba(3,8,18,0.95)] flex items-center px-4 shrink-0 relative border-b border-[var(--ln)]">
+    <!-- Traffic lights -->
+    <div class="flex items-center gap-[6px]">
+      <div class="w-[7px] h-[7px] rounded-full bg-[var(--td)] opacity-50"></div>
+      <div class="w-[7px] h-[7px] rounded-full bg-[var(--td)] opacity-50"></div>
+      <div class="w-[7px] h-[7px] rounded-full bg-[var(--emerald)] shadow-[0_0_8px_var(--emerald)]"></div>
     </div>
     
-    <!-- URL Area / Title -->
-    <div class="flex-1 flex justify-center items-center gap-2">
-      <div class="w-2 h-2 rotate-45 bg-[var(--cyan)]"></div>
-      <span class="font-mono text-[11px] text-[var(--cyan)] tracking-[0.25em] uppercase font-medium">CARIESGUARD.NEURAL · 控制台 · T-20260418-001</span>
+    <!-- URL Area -->
+    <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+      <div class="w-[6px] h-[6px] rotate-45 bg-[var(--cyan)] shadow-[0_0_8px_var(--cyan)]"></div>
+      <span class="font-mono text-[9px] text-[var(--cyan)] tracking-[0.08em] val-cyan">CARIESGUARD / {{ currentRouteName }}</span>
     </div>
-    
-    <!-- Status -->
-    <div class="flex items-center justify-end gap-2 w-1/4">
-      <div class="w-2 h-2 rounded-full bg-[var(--emerald)] shadow-[0_0_8px_var(--emerald)] animate-pulse-opacity"></div>
-      <span class="font-mono text-[10px] text-[var(--emerald)] tracking-[0.15em] font-medium">神经网络连接稳定</span>
+
+    <!-- Status Area -->
+    <div class="ml-auto flex items-center gap-2">
+      <div class="w-1.5 h-1.5 rounded-full bg-[var(--emerald)] shadow-[0_0_6px_var(--emerald)] animate-pulse-opacity"></div>
+      <span class="font-mono text-[9px] text-[var(--emerald)] tracking-[0.08em] uppercase val-emerald">NEURAL LINK STABLE</span>
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+const currentRouteName = computed(() => {
+  const path = route.path.replace(/^\//, '').toUpperCase();
+  return path || 'DASHBOARD';
+});
+</script>

@@ -1,44 +1,36 @@
 <template>
   <div 
-    class="absolute border pointer-events-none"
-    :style="{
-      left: `${x}%`,
-      top: `${y}%`,
-      width: `${width}%`,
-      height: `${height}%`,
-      borderColor: `var(--${color})`,
-      borderStyle: isDoctor ? 'dashed' : 'solid',
-      borderWidth: isDoctor ? '1.5px' : '1px',
-      opacity: isDoctor ? 1 : 0.8,
-      zIndex: isDoctor ? 20 : 10
+    class="absolute pointer-events-none"
+    :style="{ 
+      left: `${x}%`, top: `${y}%`, 
+      width: `${width}%`, height: `${height}%`,
+      borderColor: `var(--${color})`
     }"
   >
-    <!-- L-shape Corners -->
-    <div class="reticle-corner reticle-tl"></div>
-    <div class="reticle-corner reticle-tr"></div>
-    <div class="reticle-corner reticle-bl"></div>
-    <div class="reticle-corner reticle-br"></div>
+    <!-- Border -->
+    <div class="absolute inset-0 border border-[var(--${color})] opacity-80" :style="{ borderColor: `var(--${color})` }"></div>
+    
+    <!-- Corners -->
+    <div class="reticle-corner reticle-tl" :style="{ borderColor: `var(--${color})` }"></div>
+    <div class="reticle-corner reticle-tr" :style="{ borderColor: `var(--${color})` }"></div>
+    <div class="reticle-corner reticle-bl" :style="{ borderColor: `var(--${color})` }"></div>
+    <div class="reticle-corner reticle-br" :style="{ borderColor: `var(--${color})` }"></div>
     
     <!-- Label -->
-    <div 
-      class="absolute top-0 left-0 -translate-y-full px-1 py-0.5 text-[7.5px] font-mono whitespace-nowrap bg-opacity-90"
-      :style="{ backgroundColor: `var(--${color})`, color: 'var(--void)' }"
-    >
-      {{ label }}
+    <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-1 py-0.5 rounded-xs flex items-center justify-center whitespace-nowrap"
+         :style="{ backgroundColor: `var(--${color})` }">
+      <span class="font-mono text-[7.5px] text-[var(--void)] font-bold tracking-wider">{{ label }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
+defineProps<{
   x: number;
   y: number;
   width: number;
   height: number;
   label: string;
-  color?: 'cyan' | 'amber' | 'magenta' | 'emerald' | 'violet';
-  isDoctor?: boolean;
-}>(), {
-  color: 'amber'
-});
+  color: 'cyan' | 'amber' | 'magenta' | 'emerald' | 'violet';
+}>();
 </script>

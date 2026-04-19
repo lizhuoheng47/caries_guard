@@ -1,41 +1,35 @@
 <template>
-  <div class="uncertainty-bar w-full">
+  <div class="flex flex-col w-full">
     <div class="flex justify-between items-end mb-1">
-      <span class="text-[8px] font-mono text-alert-amber uppercase">Uncertainty</span>
-      <span class="text-base font-mono text-alert-amber val-amber">{{ value.toFixed(2) }}</span>
+      <span class="font-mono text-[8px] text-[var(--amber)] uppercase tracking-[0.1em]">Uncertainty</span>
+      <span class="font-mono text-[16px] text-[var(--amber)] val-amber leading-none">{{ value.toFixed(2) }}</span>
     </div>
     
-    <div class="relative w-full h-[6px] bg-black/30 border-[0.5px] border-line-subtle rounded-sm overflow-hidden">
+    <div class="relative w-full h-[6px] bg-[rgba(0,0,0,0.3)] border-[0.5px] border-[var(--ln)] rounded-[2px] overflow-hidden mb-1">
       <div 
-        class="absolute top-0 left-0 h-full transition-all duration-300"
-        :style="{
-          width: `${value * 100}%`,
-          background: 'linear-gradient(90deg, var(--cyan), var(--amber), var(--magenta))'
-        }"
-      >
-        <div class="absolute right-0 top-1/2 -translate-y-1/2 w-[2px] h-[2px] bg-alert-amber shadow-[0_0_6px_var(--amber)]"></div>
-      </div>
-      
-      <!-- Threshold line -->
+        class="absolute top-0 bottom-0 left-0"
+        :style="{ width: `${value * 100}%`, background: 'linear-gradient(90deg, var(--cyan), var(--amber), var(--magenta))' }"
+      ></div>
+      <!-- Pulse dot at the end -->
       <div 
-        class="absolute top-0 bottom-0 border-l border-dashed border-alert-amber/50"
-        :style="{ left: `${threshold * 100}%` }"
+        class="absolute top-1/2 -translate-y-1/2 w-[2px] h-[4px] bg-[var(--amber)] shadow-[0_0_4px_var(--amber)]"
+        :style="{ left: `calc(${value * 100}% - 2px)` }"
       ></div>
     </div>
     
-    <div class="flex justify-between mt-1 text-[8px] font-mono text-ghost-dim">
-      <span>LOW</span>
-      <span class="absolute" :style="{ left: `calc(${threshold * 100}% - 12px)` }">Θ {{ threshold }}</span>
-      <span>HIGH</span>
+    <div class="flex justify-between relative">
+      <span class="font-mono text-[8px] text-[var(--td)]">LOW</span>
+      <span class="font-mono text-[8px] text-[var(--td)] absolute left-[35%] -translate-x-1/2 flex items-center flex-col">
+        <div class="w-[1px] h-[3px] bg-[var(--amber)] mb-[1px]"></div>
+        Θ 0.35
+      </span>
+      <span class="font-mono text-[8px] text-[var(--td)]">HIGH</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
-  value: number; // 0.0 to 1.0
-  threshold?: number;
-}>(), {
-  threshold: 0.35
-});
+defineProps<{
+  value: number;
+}>();
 </script>

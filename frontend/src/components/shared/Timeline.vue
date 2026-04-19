@@ -1,60 +1,86 @@
 <template>
-  <div class="relative w-full py-4 corner-cut-tl corner-cut-br border border-line-subtle p-4 bg-deep-surface/30">
-    <div class="flex items-center justify-between relative z-10">
-      <template v-for="(node, index) in nodes" :key="node.code">
-        <!-- Node -->
-        <div class="flex flex-col items-center gap-2 relative z-20">
-          <!-- Icon / Circle -->
-          <div 
-            class="w-5 h-5 rounded-full flex items-center justify-center bg-void-black transition-all"
-            :class="{
-              'border border-cyan glow-cyan bg-cyan/20 text-cyan': node.status === 'COMPLETED',
-              'border border-amber glow-amber': node.status === 'CURRENT',
-              'border border-ghost-dim/50': node.status === 'PENDING'
-            }"
-          >
-            <!-- Checkmark for completed -->
-            <svg v-if="node.status === 'COMPLETED'" class="w-3 h-3 text-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-            
-            <!-- Pulse dot for current -->
-            <div v-else-if="node.status === 'CURRENT'" class="w-2 h-2 rounded-full bg-amber shadow-[0_0_6px_var(--amber)] animate-pulse-opacity"></div>
-            
-            <!-- Dot for pending -->
-            <div v-else class="w-1 h-1 rounded-full bg-ghost-dim/50"></div>
-          </div>
+  <div class="relative glass-panel rounded-sm p-3 corner-cut-tl corner-cut-tr corner-cut-bl corner-cut-br">
+    <div class="flex items-start justify-between relative px-4">
+      
+      <!-- Connection Lines -->
+      <div class="absolute top-[8px] left-[32px] right-[32px] h-[1px] bg-[var(--td)]/30 z-0">
+        <!-- Progress Line -->
+        <div 
+          class="absolute top-0 bottom-0 left-0 bg-[var(--cyan)] transition-all duration-500 shadow-[0_0_8px_var(--cyan)]"
+          :style="{ width: `${progressPercentage}%` }"
+        ></div>
+      </div>
+
+      <!-- Nodes -->
+      <div 
+        v-for="(node, index) in nodes" 
+        :key="index"
+        class="relative z-10 flex flex-col items-center gap-2"
+        :style="{ flex: index === 0 || index === nodes.length - 1 ? '0 0 auto' : '1 1 0', maxWidth: index === 0 || index === nodes.length - 1 ? 'none' : '100%' }"
+      >
+        <!-- Node Circle -->
+        <div class="w-[16px] h-[16px] rounded-full flex items-center justify-center bg-[var(--void)] relative" :class="getNodeClasses(node.status)">
+          <template v-if="node.status === 'DONE'">
+            <div class="absolute inset-0 bg-[var(--cyan)] rounded-full shadow-[0_0_8px_var(--cyan)]"></div>
+            <svg class="w-2.5 h-2.5 text-[var(--tp)] relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+          </template>
           
-          <!-- Text -->
-          <div class="text-center">
-            <div class="text-[10px] whitespace-nowrap mb-0.5" :class="{'text-ice-white': node.status !== 'PENDING', 'text-ghost-dim': node.status === 'PENDING'}">
-              {{ node.name }}
-            </div>
-            <div class="text-[8px] font-mono whitespace-nowrap" :class="{'text-cyan': node.status === 'COMPLETED', 'text-amber val-amber animate-pulse-opacity': node.status === 'CURRENT', 'text-ghost-dim': node.status === 'PENDING'}">
-              {{ node.time || (node.status === 'CURRENT' ? 'LIVE' : '—') }}
-            </div>
-          </div>
+          <template v-else-if="node.status === 'ACTIVE'">
+            <div class="absolute -inset-[3px] border-[1px] border-[var(--amber)] rounded-full animate-spin" style="animation-duration: 3s;"></div>
+            <div class="w-[6px] h-[6px] rounded-full bg-[var(--amber)] shadow-[0_0_8px_var(--amber)] animate-pulse-opacity"></div>
+          </template>
+          
+          <template v-else>
+            <div class="w-[4px] h-[4px] rounded-full bg-[var(--td)] opacity-50"></div>
+          </template>
         </div>
         
-        <!-- Connecting Line -->
-        <div v-if="index < nodes.length - 1" class="flex-1 h-[1px] relative -translate-y-4 mx-2">
-          <div 
-            class="absolute inset-0 transition-all"
-            :class="{
-              'bg-cyan': node.status === 'COMPLETED' && nodes[index+1].status !== 'PENDING',
-              'bg-gradient-to-r from-cyan to-transparent': node.status === 'COMPLETED' && nodes[index+1].status === 'PENDING',
-              'bg-gradient-to-r from-amber to-transparent opacity-50': node.status === 'CURRENT',
-              'bg-line-subtle': node.status === 'PENDING'
-            }"
-          ></div>
+        <!-- Text Content -->
+        <div class="flex flex-col items-center gap-0.5">
+          <span class="text-[11px]" :class="node.status === 'FUTURE' ? 'text-[var(--td)]' : 'text-[var(--ts)]'">{{ node.label }}</span>
+          <span class="font-mono text-[8px] uppercase tracking-wider" :class="getTimeClasses(node.status)">
+            {{ node.status === 'ACTIVE' ? 'LIVE' : (node.time || '—') }}
+          </span>
         </div>
-      </template>
+      </div>
+      
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { TimelineNode } from '../../models/analysis';
+import { computed } from 'vue';
 
-defineProps<{
+type NodeStatus = 'DONE' | 'ACTIVE' | 'FUTURE';
+
+interface TimelineNode {
+  label: string;
+  status: NodeStatus;
+  time?: string;
+}
+
+const props = defineProps<{
   nodes: TimelineNode[];
 }>();
+
+const progressPercentage = computed(() => {
+  const activeIndex = props.nodes.findIndex(n => n.status === 'ACTIVE');
+  if (activeIndex === -1) {
+    const allDone = props.nodes.every(n => n.status === 'DONE');
+    return allDone ? 100 : 0;
+  }
+  return (activeIndex / (props.nodes.length - 1)) * 100;
+});
+
+const getNodeClasses = (status: NodeStatus) => {
+  if (status === 'DONE') return 'border-[0px]';
+  if (status === 'ACTIVE') return 'border-[1px] border-[var(--amber)]';
+  return 'border-[1px] border-[var(--td)]/50';
+};
+
+const getTimeClasses = (status: NodeStatus) => {
+  if (status === 'ACTIVE') return 'text-[var(--amber)] val-amber animate-pulse-opacity';
+  if (status === 'FUTURE') return 'text-[var(--td)]/50';
+  return 'text-[var(--td)]';
+};
 </script>

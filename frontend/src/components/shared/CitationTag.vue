@@ -1,5 +1,5 @@
 <template>
-  <sup class="citation-tag">
+  <sup class="inline-flex items-center justify-center min-w-[12px] h-[12px] px-0.5 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-[2px] ml-[2px] font-mono text-[7px] text-[var(--violet)] cursor-pointer hover:bg-[var(--violet)]/40 transition-colors align-super">
     [{{ id }}]
   </sup>
 </template>
@@ -9,24 +9,3 @@ defineProps<{
   id: string | number;
 }>();
 </script>
-
-<style scoped>
-.citation-tag {
-  vertical-align: super;
-  background: rgba(139, 92, 246, 0.2);
-  border: 0.5px solid rgba(139, 92, 246, 0.4);
-  color: var(--violet);
-  font-family: var(--font-mono);
-  font-size: 7.5px;
-  padding: 0 3px;
-  border-radius: var(--radius-xs);
-  margin-left: 2px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.citation-tag:hover {
-  background: rgba(139, 92, 246, 0.4);
-  box-shadow: 0 0 6px rgba(139, 92, 246, 0.3);
-}
-</style>

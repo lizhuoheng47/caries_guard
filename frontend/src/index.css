@@ -1,38 +1,8 @@
 @import "tailwindcss";
 
-@theme {
-  --color-neural-cyan: var(--cyan);
-  --color-soft-cyan: var(--cyan-soft);
-  --color-knowledge-violet: var(--violet);
-  --color-alert-amber: var(--amber);
-  --color-critical-magenta: var(--magenta);
-  --color-safe-emerald: var(--emerald);
-  --color-void-black: var(--void);
-  --color-deep-surface: var(--surf);
-  --color-elevated: var(--elev);
-  --color-ice-white: var(--tp);
-  --color-steel-blue: var(--ts);
-  --color-ghost-dim: var(--td);
-  --color-line-subtle: var(--ln);
-  --color-line-hot: var(--lh);
-  
-  --spacing-gap-xs: var(--gap-xs);
-  --spacing-gap-sm: var(--gap-sm);
-  --spacing-gap-md: var(--gap-md);
-  --spacing-gap-lg: var(--gap-lg);
-  --spacing-gap-xl: var(--gap-xl);
-  --spacing-gap-xxl: var(--gap-xxl);
+@import "./assets/styles/_variables.css";
+@import "./assets/styles/_animations.css";
+@import "./assets/styles/_base.css";
+@import "./assets/styles/_hud.css";
 
-  --radius-xs: var(--radius-xs);
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
-
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: var(--font-mono);
-}
-
-@import './_variables.css';
-@import './_base.css';
-@import './_animations.css';
-@import './_hud.css';
+/* Echarts overrides can be placed here if needed */

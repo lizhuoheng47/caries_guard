@@ -17,7 +17,12 @@ const router = createRouter({
       children: [
         {
           path: '',
-          redirect: '/analysis'
+          redirect: '/dashboard/ai'
+        },
+        {
+          path: 'dashboard/ai',
+          name: 'dashboard-ai',
+          component: () => import('../views/DashboardView.vue')
         },
         {
           path: 'analysis',
@@ -30,6 +35,11 @@ const router = createRouter({
           component: () => import('../views/AnalysisDetailView.vue')
         },
         {
+          path: 'review/:taskId',
+          name: 'review-workbench',
+          component: () => import('../views/ReviewWorkbenchView.vue')
+        },
+        {
           path: 'rag',
           name: 'rag-console',
           component: () => import('../views/RagConsoleView.vue')
@@ -38,6 +48,11 @@ const router = createRouter({
           path: 'knowledge',
           name: 'knowledge-repo',
           component: () => import('../views/KnowledgeRepoView.vue')
+        },
+        {
+          path: 'cases',
+          name: 'case-portal',
+          component: () => import('../views/CasePortalView.vue')
         }
       ]
     }
