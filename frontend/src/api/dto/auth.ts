@@ -1,15 +1,29 @@
+export interface LoginUserDTO {
+  userId: number;
+  username: string;
+  nickName?: string;
+  nickname?: string;
+  roleCodes?: string[];
+  orgId: number;
+  userTypeCode?: string;
+}
+
 export interface LoginResponseDTO {
   token: string;
+  expireIn?: number;
   refreshToken?: string;
   expiresAt?: string;
+  user?: LoginUserDTO;
 }
 
 export interface CurrentUserDTO {
   userId: number;
   username: string;
-  nickname: string;
-  roleCodes: string[];
+  nickName?: string;
+  nickname?: string;
+  roleCodes?: string[];
   orgId: number;
+  userTypeCode?: string;
 }
 
 export interface MenuNodeDTO {
@@ -23,6 +37,9 @@ export interface MenuNodeDTO {
 }
 
 export interface PermissionDTO {
-  permissionCodes: string[];
-  menus: MenuNodeDTO[];
+  userId?: number;
+  roles?: string[];
+  permissions?: string[];
+  permissionCodes?: string[];
+  menus?: MenuNodeDTO[];
 }

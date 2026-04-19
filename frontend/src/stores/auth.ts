@@ -21,24 +21,33 @@ export const useAuthStore = defineStore('auth', {
       const authTokens = AuthAdapter.toAuthTokens(res.data);
       this.token = authTokens.accessToken;
       localStorage.setItem('token', this.token);
-      
-      await this.fetchUserInfo();
+      this.user = res.data.user ? AuthAdapter.toUser(res.data.user) : this.user;
+      await this.fetchUserInfo({ requireUserRefresh: !res.data.user });
     },
     
-    async fetchUserInfo() {
+    async fetchUserInfo(options?: { requireUserRefresh?: boolean; logoutOnFailure?: boolean }) {
       if (!this.token) return;
-      
+
+      const requireUserRefresh = options?.requireUserRefresh ?? true;
+      const logoutOnFailure = options?.logoutOnFailure ?? true;
+
       try {
-        const [userRes, permRes] = await Promise.all([
-          authApi.getMe(),
-          authApi.getPermissions()
-        ]);
-        
-        this.user = AuthAdapter.toUser(userRes.data);
-        this.permissions = AuthAdapter.toUserPermissions(permRes.data);
+        if (requireUserRefresh || !this.user) {
+          const userRes = await authApi.getMe();
+          this.user = AuthAdapter.toUser(userRes.data);
+        }
       } catch (error) {
-        this.logout();
+        if (logoutOnFailure) {
+          this.logout();
+        }
         throw error;
+      }
+
+      try {
+        const permRes = await authApi.getPermissions();
+        this.permissions = AuthAdapter.toUserPermissions(permRes.data);
+      } catch {
+        this.permissions = { codes: [], menus: [] };
       }
     },
     

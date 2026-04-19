@@ -5,7 +5,7 @@ import java.util.List;
 
 @Data
 public class ReviewWorkbenchVO {
-    private AnalysisDetailViewVO.AnalysisTaskDetailVO task;
+    private AnalysisTaskDetailVO task;
     private AnalysisDetailViewVO.CaseBriefVO caseInfo;
     private AnalysisDetailViewVO.ImageDetailVO image;
     private AiResult aiResult;

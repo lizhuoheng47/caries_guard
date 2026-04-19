@@ -1,4 +1,4 @@
-import type { LoginResponseDTO, CurrentUserDTO, PermissionDTO, MenuNodeDTO } from '../dto/auth';
+import type { LoginResponseDTO, CurrentUserDTO, PermissionDTO, MenuNodeDTO, LoginUserDTO } from '../dto/auth';
 import type { AuthTokens, User, UserPermissions, MenuItem } from '../../models/auth';
 
 export const AuthAdapter = {
@@ -6,17 +6,22 @@ export const AuthAdapter = {
     return {
       accessToken: dto.token,
       refreshToken: dto.refreshToken,
-      expiresAt: dto.expiresAt,
+      expiresAt: dto.expiresAt ?? (
+        typeof dto.expireIn === 'number'
+          ? new Date(Date.now() + dto.expireIn * 1000).toISOString()
+          : undefined
+      ),
     };
   },
 
-  toUser(dto: CurrentUserDTO): User {
+  toUser(dto: CurrentUserDTO | LoginUserDTO): User {
     return {
       id: dto.userId,
       username: dto.username,
-      nickname: dto.nickname,
-      roles: dto.roleCodes,
+      nickname: dto.nickName ?? dto.nickname ?? dto.username,
+      roles: dto.roleCodes ?? [],
       orgId: dto.orgId,
+      userTypeCode: dto.userTypeCode,
     };
   },
 
@@ -33,8 +38,8 @@ export const AuthAdapter = {
 
   toUserPermissions(dto: PermissionDTO): UserPermissions {
     return {
-      codes: dto.permissionCodes,
-      menus: dto.menus.map(m => this.toMenuItem(m)),
+      codes: dto.permissions ?? dto.permissionCodes ?? [],
+      menus: (dto.menus ?? []).map(m => this.toMenuItem(m)),
     };
   }
 };

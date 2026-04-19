@@ -3,13 +3,13 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-4 shrink-0">
       <div class="flex flex-col">
-        <span class="font-mono text-[9px] text-[var(--td)] tracking-[0.1em] uppercase mb-1">AI CORE / <span class="text-[var(--cyan)]">INTELLIGENCE RAG</span></span>
-        <h2 class="text-[20px] font-medium text-[var(--tp)] m-0">智能解释</h2>
+        <span class="font-mono text-[11px] text-[var(--td)] tracking-[0.1em] uppercase mb-1">AI 核心 / <span class="text-[var(--cyan)]">智能检索 RAG</span></span>
+        <h2 class="text-[22px] font-medium text-[var(--tp)] m-0">智能解释</h2>
       </div>
       <div class="flex gap-2">
         <div class="flex border border-[var(--ln)] rounded-[3px] p-0.5 bg-[rgba(3,8,18,0.5)]">
-          <button class="px-3 py-1 font-mono text-[9px] text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">PATIENT MODE</button>
-          <button class="px-3 py-1 font-mono text-[9px] bg-[var(--cyan)] text-[var(--void)] rounded-[2px] shadow-[0_0_8px_var(--cyan)] glow-cyan">DOCTOR MODE</button>
+          <button class="px-3 py-1 font-mono text-[11px] text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">患者模式</button>
+          <button class="px-3 py-1 font-mono text-[11px] bg-[var(--cyan)] text-[var(--void)] rounded-[2px] shadow-[0_0_8px_var(--cyan)] glow-cyan">医生模式</button>
         </div>
       </div>
     </div>
@@ -17,41 +17,41 @@
     <div class="flex-1 flex gap-3 min-h-0 mb-4 overflow-hidden">
       
       <!-- Left: Case Context -->
-      <div class="w-[240px] shrink-0 min-h-0 flex flex-col gap-3">
-        <Panel title="Patient Context" color="cyan">
+      <div class="w-[260px] shrink-0 min-h-0 flex flex-col gap-3">
+        <Panel title="病例上下文" color="cyan">
           <div class="flex flex-col gap-3">
             <div class="w-full aspect-[16/9] bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[3px] overflow-hidden relative">
               <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
               <div class="absolute bottom-2 left-2 flex items-center gap-1.5">
                 <div class="w-1.5 h-1.5 rounded-full bg-[var(--cyan)] shadow-[0_0_4px_var(--cyan)]"></div>
-                <span class="font-mono text-[8px] text-[var(--cyan-soft)]">SCAN 2026-04-18</span>
+                <span class="font-mono text-[10px] text-[var(--cyan-soft)]">扫描于 2026-04-18</span>
               </div>
             </div>
             
             <div class="flex flex-col gap-2">
               <div class="flex justify-between items-baseline border-b border-[var(--ln)] pb-1">
-                <span class="font-mono text-[9px] text-[var(--td)] uppercase">PATIENT ID</span>
-                <span class="font-mono text-[11px] text-[var(--tp)]">P-1002</span>
+                <span class="font-mono text-[11px] text-[var(--td)] uppercase">患者 ID</span>
+                <span class="font-mono text-[12px] text-[var(--tp)]">P-1002</span>
               </div>
               <div class="flex justify-between items-baseline border-b border-[var(--ln)] pb-1">
-                <span class="font-mono text-[9px] text-[var(--td)] uppercase">DEMOGRAPHICS</span>
-                <span class="font-mono text-[11px] text-[var(--tp)]">M / 45 YRS</span>
+                <span class="font-mono text-[11px] text-[var(--td)] uppercase">基本信息</span>
+                <span class="font-mono text-[12px] text-[var(--tp)]">男 / 45 岁</span>
               </div>
               <div class="flex justify-between items-baseline pb-1">
-                <span class="font-mono text-[9px] text-[var(--td)] uppercase">DATE</span>
-                <span class="font-mono text-[11px] text-[var(--tp)]">2026-04-18</span>
+                <span class="font-mono text-[11px] text-[var(--td)] uppercase">日期</span>
+                <span class="font-mono text-[12px] text-[var(--tp)]">2026-04-18</span>
               </div>
             </div>
             
             <div class="mt-2 p-3 bg-[var(--amber)]/5 border-[0.5px] border-[var(--amber)]/30 rounded-[3px]">
               <div class="flex items-center gap-2 mb-2">
-                <span class="font-mono text-[9px] text-[var(--amber)] uppercase">AI DIAGNOSIS</span>
+                <span class="font-mono text-[11px] text-[var(--amber)] uppercase">AI 诊断结论</span>
               </div>
               <div class="flex items-center gap-2 mb-2">
-                <span class="font-mono text-[16px] text-[var(--amber)] val-amber">G3</span>
-                <span class="text-[10px] text-[var(--ts)]">Deep Caries Detected</span>
+                <span class="font-mono text-[20px] text-[var(--amber)] val-amber">G3</span>
+                <span class="text-[12px] text-[var(--ts)]">检测到深龋</span>
               </div>
-              <span class="font-mono text-[9px] text-[var(--td)]">UNCERTAINTY: 0.72</span>
+              <span class="font-mono text-[11px] text-[var(--td)]">不确定度: 0.72</span>
             </div>
           </div>
         </Panel>
@@ -59,7 +59,7 @@
       
       <!-- Middle: Chat Area -->
       <div class="flex-1 min-w-0 flex flex-col">
-        <Panel title="Diagnostic Conversation" color="cyan">
+        <Panel title="诊断对话交互" color="cyan">
           <div class="flex flex-col h-full">
             <div class="flex-1 overflow-y-auto pr-2 flex flex-col gap-4 pb-4">
               <template v-for="(msg, index) in messages" :key="index">
@@ -69,12 +69,12 @@
                     <div class="w-3 h-3 bg-gradient-to-br from-[var(--cyan)] to-[var(--violet)] shadow-[0_0_8px_var(--violet)] rounded-xs rotate-45"></div>
                   </div>
                   <div class="flex flex-col gap-2">
-                    <div class="bg-[var(--violet)]/5 border-l-2 border-l-[var(--violet)] border border-[var(--violet)]/20 rounded-[4px] p-3 text-[12px] text-[var(--tp)] leading-relaxed" v-html="msg.content">
+                    <div class="bg-[var(--violet)]/5 border-l-2 border-l-[var(--violet)] border border-[var(--violet)]/20 rounded-[4px] p-3 text-[13px] text-[var(--tp)] leading-relaxed" v-html="msg.content">
                     </div>
                     <!-- Safety Flag -->
                     <div v-if="msg.warning" class="bg-[var(--amber)]/10 border border-[var(--amber)]/30 rounded-[4px] p-2 flex items-center gap-2">
                       <svg class="w-4 h-4 text-[var(--amber)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                      <span class="text-[10px] text-[var(--amber)] font-mono">{{ msg.warning }}</span>
+                      <span class="text-[11px] text-[var(--amber)] font-mono">{{ msg.warning }}</span>
                     </div>
                   </div>
                 </div>
@@ -84,7 +84,7 @@
                   <div class="w-[28px] h-[28px] rounded-[4px] bg-[rgba(3,8,18,0.8)] border border-[var(--ln)] flex items-center justify-center shrink-0">
                     <svg class="w-4 h-4 text-[var(--ts)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                   </div>
-                  <div class="bg-[var(--cyan)]/10 border border-[var(--cyan)]/30 rounded-[4px] p-3 text-[12px] text-[var(--tp)] leading-relaxed">
+                  <div class="bg-[var(--cyan)]/10 border border-[var(--cyan)]/30 rounded-[4px] p-3 text-[13px] text-[var(--tp)] leading-relaxed">
                     {{ msg.content }}
                   </div>
                 </div>
@@ -93,21 +93,20 @@
                 <div class="w-[28px] h-[28px] rounded-[4px] bg-[var(--violet)]/20 border border-[var(--violet)] flex items-center justify-center shrink-0">
                   <div class="w-3 h-3 bg-[var(--cyan)] rounded-xs rotate-45 animate-ping"></div>
                 </div>
-                <div class="bg-[var(--violet)]/5 border border-[var(--violet)]/20 rounded-[4px] p-3 text-[12px] text-[var(--td)]">
-                  Thinking...
+                <div class="bg-[var(--violet)]/5 border border-[var(--violet)]/20 rounded-[4px] p-3 text-[13px] text-[var(--td)]">
+                  思考中...
                 </div>
               </div>
               
             </div>
-            
-            <!-- Input Area -->
+
             <div class="shrink-0 pt-3 border-t border-[var(--ln)]">
               <div class="relative">
                 <textarea 
                   v-model="inputText"
                   @keydown.enter.prevent="sendMessage"
-                  class="w-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[4px] py-3 pl-3 pr-12 text-[12px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] transition-colors resize-none h-[48px]"
-                  placeholder="Ask for deeper diagnostic details..."
+                  class="w-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[4px] py-3 pl-3 pr-12 text-[13px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] transition-colors resize-none h-[54px]"
+                  placeholder="询问更深层的诊断细节..."
                 ></textarea>
                 <button @click="sendMessage" class="absolute right-2 top-1/2 -translate-y-1/2 w-[32px] h-[32px] flex items-center justify-center bg-[var(--cyan)]/20 border border-[var(--cyan)] text-[var(--cyan)] rounded-[3px] hover:shadow-[0_0_8px_rgba(0,229,255,0.4)] transition-all">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
@@ -118,23 +117,22 @@
         </Panel>
       </div>
       
-      <!-- Right: Citation Tracing -->
       <div class="w-[260px] shrink-0 min-h-0 flex flex-col gap-3">
-        <Panel title="Citation Trace" color="violet">
+        <Panel title="引用来源追踪" color="violet">
           <div class="flex flex-col h-full">
-            <span class="font-mono text-[9px] text-[var(--td)] tracking-widest uppercase mb-3">Retrieved Chunks</span>
+            <span class="font-mono text-[11px] text-[var(--td)] tracking-widest uppercase mb-3">检索到的知识分片</span>
             
             <div class="flex-1 overflow-y-auto flex flex-col gap-3 pr-2">
               <div v-for="(citation, index) in citations" :key="index" class="p-3 bg-[rgba(3,8,18,0.5)] border border-[var(--ln)] hover:border-[var(--violet)]/50 rounded-[4px] cursor-pointer transition-colors relative">
                 <div class="absolute -left-[1px] top-2 w-[2px] h-[16px] bg-[var(--violet)] shadow-[0_0_8px_var(--violet)]"></div>
                 <div class="flex justify-between items-start mb-1.5 pl-1.5">
                   <div class="flex items-center gap-1.5">
-                    <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[8px] text-[var(--violet)]">{{ index + 1 }}</div>
-                    <span class="font-mono text-[9px] text-[var(--tp)] truncate w-[140px]">{{ citation.docTitle }}</span>
+                    <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[10px] text-[var(--violet)]">{{ index + 1 }}</div>
+                    <span class="font-mono text-[11px] text-[var(--tp)] truncate w-[140px]">{{ citation.docTitle }}</span>
                   </div>
-                  <span class="font-mono text-[8px] text-[var(--td)]">P.{{ citation.pageNumber || '?' }}</span>
+                  <span class="font-mono text-[10px] text-[var(--td)]">第{{ citation.pageNumber || '?' }}页</span>
                 </div>
-                <p class="text-[10px] text-[var(--ts)] leading-relaxed line-clamp-3 pl-1.5">
+                <p class="text-[12px] text-[var(--ts)] leading-relaxed line-clamp-3 pl-1.5">
                   {{ citation.chunkText }}
                 </p>
               </div>
@@ -142,12 +140,16 @@
             
             <div class="shrink-0 pt-3 border-t border-[var(--ln)] mt-2">
               <div class="flex justify-between items-baseline mb-1">
-                <span class="font-mono text-[8px] text-[var(--td)]">Knowledge Base DB</span>
-                <span class="font-mono text-[8px] text-[var(--cyan)]">v1.4.2</span>
+                <span class="font-mono text-[10px] text-[var(--td)]">知识库版本</span>
+                <span class="font-mono text-[10px] text-[var(--cyan)]">{{ latestKbVersion || 'v1.0' }}</span>
               </div>
-              <div class="flex justify-between items-baseline">
-                <span class="font-mono text-[8px] text-[var(--td)]">Indexed Chunks</span>
-                <span class="font-mono text-[8px] text-[var(--tp)]">48,291</span>
+              <div v-if="latestConfidence !== null" class="flex justify-between items-baseline mb-1">
+                <span class="font-mono text-[10px] text-[var(--td)]">置信度</span>
+                <span class="font-mono text-[10px] text-[var(--emerald)]">{{ (latestConfidence * 100).toFixed(0) }}%</span>
+              </div>
+              <div v-if="latestTraceId" class="flex justify-between items-baseline">
+                <span class="font-mono text-[10px] text-[var(--td)]">追踪 ID</span>
+                <span class="font-mono text-[10px] text-[var(--tp)] truncate max-w-[100px]">{{ latestTraceId }}</span>
               </div>
             </div>
           </div>
@@ -179,6 +181,9 @@ const messages = ref<Message[]>([
   }
 ]);
 const citations = ref<any[]>([]);
+const latestKbVersion = ref<string>('');
+const latestConfidence = ref<number | null>(null);
+const latestTraceId = ref<string>('');
 
 const sendMessage = async () => {
   const text = inputText.value.trim();
@@ -193,13 +198,16 @@ const sendMessage = async () => {
     messages.value.push({
       role: 'ai',
       content: res.data.answerText || res.data.answer,
-      warning: res.data.safetyFlag === '1' ? 'WARNING: AI 建议仅供参考' : undefined
+      warning: res.data.safetyFlag === '1' ? '警告：AI 建议仅供参考' : undefined
     });
     citations.value = res.data.citations || [];
+    latestKbVersion.value = res.data.knowledgeVersion || '';
+    latestConfidence.value = res.data.confidence ?? null;
+    latestTraceId.value = res.data.traceId || '';
   } catch (e) {
     messages.value.push({
       role: 'ai',
-      content: 'I encountered an error retrieving the information.'
+      content: '获取信息时遇到错误。'
     });
   } finally {
     loading.value = false;

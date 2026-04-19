@@ -5,33 +5,33 @@
       <div class="flex items-center gap-3">
         <NeuralButton variant="ghost" @click="router.back()">
           <template #icon-left><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg></template>
-          Back
+          返回
         </NeuralButton>
         <div class="h-4 w-[1px] bg-[var(--ln)]"></div>
         <div class="flex flex-col">
-          <span class="font-mono text-[9px] text-[var(--td)] tracking-[0.1em] uppercase">NEURAL CORE / SCAN / {{ store.currentDetail.task.no }}</span>
+          <span class="font-mono text-[11px] text-[var(--td)] tracking-[0.1em] uppercase">神经核心 / 扫描 / {{ store.currentDetail.task.no }}</span>
           <div class="flex items-center gap-2">
-            <h2 class="text-[18px] font-medium text-[var(--tp)] m-0">全景 X 光 · AI 诊断会话</h2>
-            <StatusChip status="RUNNING" label="LIVE" />
+            <h2 class="text-[20px] font-medium text-[var(--tp)] m-0">全景 X 光 · AI 诊断会话</h2>
+            <StatusChip status="RUNNING" label="实时" />
           </div>
         </div>
       </div>
       
       <div class="flex gap-2">
-        <NeuralButton variant="ghost">Export</NeuralButton>
+        <NeuralButton variant="ghost">导出</NeuralButton>
         <NeuralButton variant="primary">
           <template #icon-left><div class="w-1.5 h-1.5 rotate-45 bg-[var(--tp)]"></div></template>
-          Submit Review
+          提交复核
         </NeuralButton>
       </div>
     </div>
     
     <!-- KPI Row -->
     <div class="grid grid-cols-4 gap-3 mb-4 shrink-0">
-      <KpiCard label="SCANS TODAY" value="128" trend="12" color="cyan" sparkline="0,12 10,8 20,14 30,5 42,10" />
-      <KpiCard label="REVIEW QUEUE" value="07" trend="2" color="amber" sparkline="0,8 10,12 20,6 30,10 42,8" />
-      <KpiCard label="HIGH RISK" value="03" color="magenta" sparkline="0,15 10,10 20,12 30,15 42,10" />
-      <KpiCard label="AGREEMENT" value="94.2%" trend="0.8" color="emerald" sparkline="0,10 10,12 20,8 30,6 42,4" />
+      <KpiCard label="AI 分级" :value="store.currentDetail.summary.grade" color="cyan" />
+      <KpiCard label="不确定度" :value="(store.currentDetail.summary.uncertainty ?? 0).toFixed(2)" :color="(store.currentDetail.summary.uncertainty ?? 0) > 0.35 ? 'amber' : 'cyan'" />
+      <KpiCard label="置信度" :value="((store.currentDetail.summary.confidence ?? 0) * 100).toFixed(0) + '%'" color="emerald" />
+      <KpiCard label="风险等级" :value="store.currentDetail.summary.riskLevel || '无'" :color="store.currentDetail.summary.riskLevel === 'HIGH' ? 'magenta' : 'emerald'" />
     </div>
     
     <!-- Main Three Columns -->
@@ -39,13 +39,13 @@
       
       <!-- Left: Panoramic X-Ray Scanner (1.45fr) -->
       <div class="flex-[1.45] min-w-0">
-        <Panel title="Panoramic X-Ray" color="cyan">
+        <Panel title="全景 X 光影像" color="cyan">
           <template #meta>
             <div class="flex gap-1 bg-[rgba(3,8,18,0.5)] p-0.5 rounded-[2px] border border-[var(--ln)]">
-              <button class="px-2 py-0.5 text-[8px] font-mono bg-[var(--cyan)]/20 text-[var(--cyan)] rounded-[2px] glow-cyan">OVR</button>
-              <button class="px-2 py-0.5 text-[8px] font-mono text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">DET</button>
-              <button class="px-2 py-0.5 text-[8px] font-mono text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">MSK</button>
-              <button class="px-2 py-0.5 text-[8px] font-mono text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">HT</button>
+              <button class="px-2 py-0.5 text-[10px] font-mono bg-[var(--cyan)]/20 text-[var(--cyan)] rounded-[2px] glow-cyan">全景</button>
+              <button class="px-2 py-0.5 text-[10px] font-mono text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">细节</button>
+              <button class="px-2 py-0.5 text-[10px] font-mono text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">蒙层</button>
+              <button class="px-2 py-0.5 text-[10px] font-mono text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">热图</button>
             </div>
           </template>
           
@@ -69,22 +69,22 @@
             <div class="absolute left-0 right-0 h-[1px] bg-[var(--cyan)] shadow-[0_0_12px_var(--cyan)] z-30 animate-scanline"></div>
             
             <div class="absolute top-2 left-2 z-40 flex flex-col gap-2">
-              <HudChip label="NEURAL ACTIVE" color="cyan" />
-              <HudChip label="2 LESIONS" color="amber" />
+              <HudChip label="神经元激活" color="cyan" />
+              <HudChip label="2 处病灶" color="amber" />
             </div>
             
             <div class="absolute bottom-2 left-2 z-40">
-              <div class="font-mono text-[8px] text-[var(--cyan-soft)]">X: 0420 Y: 0312</div>
+              <div class="font-mono text-[10px] text-[var(--cyan-soft)]">X: 0420 Y: 0312</div>
             </div>
             
             <div class="absolute bottom-2 right-2 z-40 glass-panel p-2 rounded-[4px] border-[var(--ln)]">
               <div class="flex items-center gap-2 mb-1">
                 <div class="w-2 h-2 bg-[var(--amber)] shadow-[0_0_4px_var(--amber)]"></div>
-                <span class="font-mono text-[8px] text-[var(--ts)] uppercase">G3 Moderate</span>
+                <span class="font-mono text-[10px] text-[var(--ts)] uppercase">G3 中度</span>
               </div>
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 bg-[var(--magenta)] shadow-[0_0_4px_var(--magenta)]"></div>
-                <span class="font-mono text-[8px] text-[var(--ts)] uppercase">G4 Deep</span>
+                <span class="font-mono text-[10px] text-[var(--ts)] uppercase">G4 重度</span>
               </div>
             </div>
           </div>
@@ -93,7 +93,7 @@
       
       <!-- Middle: AI Diagnostic Report (0.9fr) -->
       <div class="flex-[0.9] min-w-0">
-        <Panel title="AI Diagnostic" color="violet">
+        <Panel title="AI 诊断报告" color="violet">
           <div class="flex flex-col h-full gap-4">
             <div class="flex items-center gap-4 p-4 border-[0.5px] border-[var(--ln)] rounded-[4px] corner-cut-tr" style="background: rgba(10,20,40,0.5)">
               <div class="relative w-[80px] h-[80px] shrink-0">
@@ -110,22 +110,22 @@
                 </svg>
                 <div class="absolute inset-0 flex flex-col items-center justify-center">
                   <span class="font-mono text-[24px] font-medium val-magenta">G3</span>
-                  <span class="font-mono text-[8px] text-[var(--td)] tracking-widest uppercase mt-0.5">Grade</span>
+                  <span class="font-mono text-[10px] text-[var(--td)] tracking-widest uppercase mt-0.5">等级</span>
                 </div>
               </div>
               
               <div class="flex flex-col gap-2 flex-1 pl-2">
                 <div class="flex justify-between items-baseline border-b border-[var(--ln)] pb-1">
-                  <span class="font-mono text-[9px] text-[var(--td)] uppercase tracking-wider">Lesions</span>
-                  <span class="font-mono text-[12px] text-[var(--tp)]">02</span>
+                  <span class="font-mono text-[11px] text-[var(--td)] uppercase tracking-wider">病灶数</span>
+                  <span class="font-mono text-[14px] text-[var(--tp)]">02</span>
                 </div>
                 <div class="flex justify-between items-baseline border-b border-[var(--ln)] pb-1">
-                  <span class="font-mono text-[9px] text-[var(--td)] uppercase tracking-wider">Max</span>
-                  <span class="font-mono text-[12px] val-magenta">G4</span>
+                  <span class="font-mono text-[11px] text-[var(--td)] uppercase tracking-wider">最大等级</span>
+                  <span class="font-mono text-[14px] val-magenta">G4</span>
                 </div>
                 <div class="flex justify-between items-baseline pb-1">
-                  <span class="font-mono text-[9px] text-[var(--td)] uppercase tracking-wider">Action</span>
-                  <span class="font-mono text-[10px] text-[var(--amber)] val-amber">REVIEW</span>
+                  <span class="font-mono text-[11px] text-[var(--td)] uppercase tracking-wider">操作</span>
+                  <span class="font-mono text-[12px] text-[var(--amber)] val-amber">复核</span>
                 </div>
               </div>
             </div>
@@ -133,8 +133,8 @@
             <div class="p-4 border-[0.5px] border-[var(--amber)]/30 rounded-[4px] relative bg-[var(--amber)]/5">
               <div class="absolute top-0 right-0 w-[8px] h-[8px] border-t border-r border-[var(--amber)]/50"></div>
               <UncertaintyBar :value="0.72" />
-              <div class="mt-4 text-[10px] text-[var(--amber)] leading-relaxed flex flex-col gap-1">
-                <span class="font-mono tracking-widest opacity-80">TRIGGER: G3/G4 边界分歧</span>
+              <div class="mt-4 text-[12px] text-[var(--amber)] leading-relaxed flex flex-col gap-1">
+                <span class="font-mono tracking-widest opacity-80">触发器: G3/G4 边界分歧</span>
                 <span class="opacity-90">自动升级复核，建议确认病变深度是否到达内层牙本质。</span>
               </div>
             </div>
@@ -144,13 +144,13 @@
       
       <!-- Right: RAG Knowledge Response (0.85fr) -->
       <div class="flex-[0.85] min-w-0">
-        <Panel title="Knowledge RAG" color="violet">
+        <Panel title="知识库 RAG 检索" color="violet">
           <div class="flex flex-col h-full relative">
-            <div class="absolute top-0 right-0 font-mono text-[8px] text-[var(--td)] uppercase text-right">caries-<br/>v1.0</div>
+            <div class="absolute top-0 right-0 font-mono text-[10px] text-[var(--td)] uppercase text-right">caries-<br/>v1.0</div>
             
             <div class="mt-8 mb-4 p-4 rounded-[4px] border border-[var(--violet)]/20 bg-[var(--violet)]/5 border-l-2 border-l-[var(--violet)] relative">
               <div class="absolute inset-0 bg-gradient-to-r from-[var(--violet)]/10 to-transparent opacity-50 pointer-events-none"></div>
-              <p class="text-[12px] text-[var(--tp)] leading-relaxed">
+              <p class="text-[14px] text-[var(--tp)] leading-relaxed">
                 G3 级龋病表现为牙本质中层受累<CitationTag id="1" />，建议及时充填以阻止向牙髓扩展<CitationTag id="2" />。
               </p>
             </div>
@@ -158,24 +158,24 @@
             <div class="flex flex-col gap-2 flex-1 overflow-auto">
               <div class="flex items-center justify-between p-2 rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)]">
                 <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[8px] text-[var(--violet)]">1</div>
-                  <span class="text-[11px] text-[var(--ts)]">龋病分级诊断指南</span>
+                  <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[10px] text-[var(--violet)]">1</div>
+                  <span class="text-[13px] text-[var(--ts)]">龋病分级诊断指南</span>
                 </div>
-                <span class="font-mono text-[8px] text-[var(--td)]">P.42</span>
+                <span class="font-mono text-[10px] text-[var(--td)]">P.42</span>
               </div>
               <div class="flex items-center justify-between p-2 rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)]">
                 <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[8px] text-[var(--violet)]">2</div>
-                  <span class="text-[11px] text-[var(--ts)]">临床路径手册</span>
+                  <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[10px] text-[var(--violet)]">2</div>
+                  <span class="text-[13px] text-[var(--ts)]">临床路径手册</span>
                 </div>
-                <span class="font-mono text-[8px] text-[var(--td)]">P.18</span>
+                <span class="font-mono text-[10px] text-[var(--td)]">P.18</span>
               </div>
               <div class="flex items-center justify-between p-2 rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)]">
                 <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[8px] text-[var(--violet)]">3</div>
-                  <span class="text-[11px] text-[var(--ts)]">龋病流行病学研究</span>
+                  <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[10px] text-[var(--violet)]">3</div>
+                  <span class="text-[13px] text-[var(--ts)]">龋病流行病学研究</span>
                 </div>
-                <span class="font-mono text-[8px] text-[var(--td)]">P.07</span>
+                <span class="font-mono text-[10px] text-[var(--td)]">P.07</span>
               </div>
             </div>
           </div>
@@ -188,17 +188,14 @@
     <div class="shrink-0 mb-4 flex">
       <div class="flex items-center">
         <div class="w-[3px] h-[16px] bg-[var(--cyan)] shadow-[0_0_8px_var(--cyan)] mr-2"></div>
-        <span class="font-mono text-[10px] text-[var(--tp)] uppercase tracking-wider mr-6">AI Trace</span>
+        <span class="font-mono text-[12px] text-[var(--tp)] uppercase tracking-wider mr-6">AI 追踪</span>
       </div>
       <div class="flex-1">
-        <Timeline :nodes="[
-          { label: '上传', status: 'DONE', time: '14:02' },
-          { label: '创建', status: 'DONE', time: '14:02' },
-          { label: '推理', status: 'DONE', time: '14:02' },
-          { label: 'RAG', status: 'DONE', time: '14:02' },
-          { label: '复核', status: 'ACTIVE', time: 'LIVE' },
-          { label: '反馈', status: 'FUTURE' }
-        ]" />
+        <Timeline :nodes="store.currentDetail.timeline.map(t => ({
+          label: t.name,
+          status: t.status === 'COMPLETED' ? 'DONE' : t.status === 'CURRENT' ? 'ACTIVE' : 'FUTURE',
+          time: t.time ? new Date(t.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined
+        }))" />
       </div>
     </div>
   </div>
@@ -206,7 +203,7 @@
   <!-- Loading State -->
   <div v-else-if="store.loading" class="flex-1 flex flex-col items-center justify-center">
     <div class="w-16 h-16 rounded-full border border-[var(--cyan)]/30 border-t-[var(--cyan)] animate-spin mb-4 shadow-[0_0_15px_rgba(0,229,255,0.2)]"></div>
-    <div class="font-mono text-[12px] text-[var(--cyan)] tracking-[0.2em] animate-pulse-opacity">NEURAL ENGINE INITIALIZING...</div>
+    <div class="font-mono text-[12px] text-[var(--cyan)] tracking-[0.2em] animate-pulse-opacity">神经引擎初始化中...</div>
   </div>
 </template>
 

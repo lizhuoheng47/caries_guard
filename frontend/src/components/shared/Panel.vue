@@ -4,8 +4,9 @@
     <div class="h-[32px] shrink-0 bg-[rgba(3,8,18,0.5)] border-b border-[var(--ln)] flex items-center justify-between px-2 relative">
       <div class="flex items-center gap-2">
         <div class="w-[3px] h-[11px]" :style="{ backgroundColor: `var(--${color})`, boxShadow: `0 0 8px var(--${color})` }"></div>
-        <h3 class="text-[11px] font-medium text-[var(--tp)] m-0">{{ title }}</h3>
+        <h3 class="text-[13px] font-medium text-[var(--tp)] m-0">{{ title }}</h3>
       </div>
+
       <slot name="meta"></slot>
     </div>
     

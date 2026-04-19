@@ -3,32 +3,32 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-4 shrink-0">
       <div class="flex flex-col">
-        <span class="font-mono text-[9px] text-[var(--td)] tracking-[0.1em] uppercase mb-1">AI CORE / <span class="text-[var(--cyan)]">CASES</span></span>
-        <h2 class="text-[20px] font-medium text-[var(--tp)] m-0">影像扫描</h2>
+        <span class="font-mono text-[11px] text-[var(--td)] tracking-[0.1em] uppercase mb-1">AI 核心 / <span class="text-[var(--cyan)]">病例库</span></span>
+        <h2 class="text-[22px] font-medium text-[var(--tp)] m-0">影像扫描</h2>
       </div>
       
       <div class="flex items-center gap-3">
         <!-- Search -->
-        <div class="relative w-[260px]">
+        <div class="relative w-[280px]">
           <input 
             type="text" 
-            placeholder="Search patient ID or name..." 
-            class="w-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[3px] h-[32px] pl-9 pr-3 text-[12px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] focus:shadow-[0_0_8px_rgba(0,229,255,0.2)] transition-all font-mono placeholder:text-[var(--td)]"
+            placeholder="搜索患者 ID 或姓名..." 
+            class="w-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[3px] h-[36px] pl-9 pr-3 text-[13px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] focus:shadow-[0_0_8px_rgba(0,229,255,0.2)] transition-all font-mono placeholder:text-[var(--td)]"
           />
           <svg class="w-4 h-4 text-[var(--ts)] absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </div>
         
         <!-- Filters -->
         <div class="flex gap-1 border border-[var(--ln)] rounded-[3px] p-0.5" style="background: rgba(3,8,18,0.5);">
-          <button class="px-3 py-1 font-mono text-[9px] bg-[var(--cyan)] text-[var(--void)] rounded-[2px] shadow-[0_0_8px_var(--cyan)] glow-cyan">ALL</button>
-          <button class="px-3 py-1 font-mono text-[9px] text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">PENDING</button>
-          <button class="px-3 py-1 font-mono text-[9px] text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">ANALYZED</button>
-          <button class="px-3 py-1 font-mono text-[9px] text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">REVIEWED</button>
+          <button class="px-3 py-1 font-mono text-[11px] bg-[var(--cyan)] text-[var(--void)] rounded-[2px] shadow-[0_0_8px_var(--cyan)] glow-cyan">全部</button>
+          <button class="px-3 py-1 font-mono text-[11px] text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">待处理</button>
+          <button class="px-3 py-1 font-mono text-[11px] text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">已分析</button>
+          <button class="px-3 py-1 font-mono text-[11px] text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">已复核</button>
         </div>
         
         <NeuralButton variant="primary" @click="showNewCase = true">
           <template #icon-left><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg></template>
-          New Case
+          新建病例
         </NeuralButton>
       </div>
     </div>
@@ -63,14 +63,14 @@
             <!-- Top right HUD chips -->
             <div class="absolute top-2 right-2 flex flex-col gap-1 z-10">
               <div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border" :class="getGradeChipClass(c.grade)">
-                <span class="font-mono text-[8px] font-medium">{{ c.grade }}</span>
+                <span class="font-mono text-[10px] font-medium">{{ c.grade }}</span>
               </div>
             </div>
             
             <!-- Bottom left scan info -->
             <div class="absolute bottom-2 left-2 z-10 flex items-center gap-1.5">
               <div class="w-1.5 h-1.5 rounded-full bg-[var(--cyan)] shadow-[0_0_4px_var(--cyan)]"></div>
-              <span class="font-mono text-[8px] text-[var(--cyan-soft)]">{{ new Date(c.createdAt).toLocaleDateString() }}</span>
+              <span class="font-mono text-[10px] text-[var(--cyan-soft)]">{{ new Date(c.createdAt).toLocaleDateString() }}</span>
             </div>
             
             <!-- Scanline on hover -->
@@ -82,10 +82,10 @@
             <!-- Patient Info -->
             <div class="flex justify-between items-start">
               <div class="flex flex-col">
-                <span class="text-[12px] text-[var(--tp)] font-medium">{{ c.patientName || c.patientId }}</span>
-                <span class="font-mono text-[9px] text-[var(--td)]">{{ c.patientId }} | {{ c.no }}</span>
+                <span class="text-[13px] text-[var(--tp)] font-medium">{{ c.patientName || c.patientId }}</span>
+                <span class="font-mono text-[11px] text-[var(--td)]">{{ c.patientId }} | {{ c.no }}</span>
               </div>
-              <span class="font-mono text-[8px] text-[var(--td)] uppercase">{{ c.caseNo }}</span>
+              <span class="font-mono text-[10px] text-[var(--td)] uppercase">{{ c.caseNo }}</span>
             </div>
             
             <!-- Bottom: Status + Grade + Uncertainty mini bar -->
@@ -93,7 +93,7 @@
               <!-- Status -->
               <div class="flex items-center gap-1.5">
                 <div class="w-1 h-1 rounded-full animate-pulse-opacity" :class="getStatusDotClass(c.status)"></div>
-                <span class="font-mono text-[8px] uppercase tracking-[0.1em]" :class="getStatusTextClass(c.status)">{{ c.status }}</span>
+                <span class="font-mono text-[10px] uppercase tracking-[0.1em]" :class="getStatusTextClass(c.status)">{{ statusMap[c.status] || c.status }}</span>
               </div>
               
               <!-- Uncertainty mini bar -->
@@ -101,7 +101,7 @@
                 <div class="flex-1 h-[3px] bg-[var(--void)] border border-[var(--ln)] rounded-full overflow-hidden">
                   <div class="h-full" :style="{ width: `${(c.uncertainty || 0) * 100}%` }" :class="(c.uncertainty || 0) > 0.35 ? 'bg-[var(--amber)] shadow-[0_0_4px_var(--amber)]' : 'bg-[var(--cyan)] shadow-[0_0_4px_var(--cyan)]'"></div>
                 </div>
-                <span class="font-mono text-[8px] tabular-nums" :class="(c.uncertainty || 0) > 0.35 ? 'text-[var(--amber)]' : 'text-[var(--ts)]'">{{ (c.uncertainty || 0).toFixed(2) }}</span>
+                <span class="font-mono text-[10px] tabular-nums" :class="(c.uncertainty || 0) > 0.35 ? 'text-[var(--amber)]' : 'text-[var(--ts)]'">{{ (c.uncertainty || 0).toFixed(2) }}</span>
               </div>
             </div>
           </div>
@@ -114,7 +114,7 @@
       <Transition name="fade-up">
         <div v-if="showNewCase" class="fixed inset-0 z-50 flex items-center justify-center" @click.self="showNewCase = false">
           <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-          <div class="glass-panel w-[480px] p-8 rounded-md relative z-10 shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+          <div class="glass-panel w-[520px] p-8 rounded-md relative z-10 shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
             <!-- Reticle corners -->
             <div class="absolute top-0 left-0 w-[10px] h-[10px] border-t border-l border-[var(--cyan)]/60"></div>
             <div class="absolute top-0 right-0 w-[10px] h-[10px] border-t border-r border-[var(--cyan)]/60"></div>
@@ -123,53 +123,54 @@
             
             <div class="flex items-center gap-3 mb-1">
               <div class="w-[3px] h-[16px] bg-[var(--cyan)] shadow-[0_0_8px_var(--cyan)]"></div>
-              <h3 class="text-[14px] font-medium text-[var(--tp)] m-0">New Case</h3>
+              <h3 class="text-[16px] font-medium text-[var(--tp)] m-0">登记新病例</h3>
             </div>
-            <div class="font-mono text-[8px] text-[var(--td)] tracking-[0.15em] mb-8 pl-[15px]">REGISTER NEW PATIENT SCAN</div>
+            <div class="font-mono text-[10px] text-[var(--td)] tracking-[0.15em] mb-8 pl-[15px]">录入新的患者 X 光扫描影像</div>
             
             <form class="flex flex-col gap-5" @submit.prevent="showNewCase = false">
               <div class="grid grid-cols-2 gap-4">
                 <div class="flex flex-col gap-1.5">
-                  <label class="font-mono text-[9px] text-[var(--ts)] tracking-widest uppercase">Patient ID</label>
-                  <input type="text" class="w-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[3px] h-[36px] px-3 text-[12px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] transition-all font-mono" placeholder="P-XXXX" />
+                  <label class="font-mono text-[11px] text-[var(--ts)] tracking-widest uppercase">患者 ID</label>
+                  <input type="text" class="w-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[3px] h-[36px] px-3 text-[13px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] transition-all font-mono" placeholder="P-XXXX" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                  <label class="font-mono text-[9px] text-[var(--ts)] tracking-widest uppercase">Age</label>
-                  <input type="number" class="w-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[3px] h-[36px] px-3 text-[12px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] transition-all font-mono" placeholder="45" />
+                  <label class="font-mono text-[11px] text-[var(--ts)] tracking-widest uppercase">年龄</label>
+                  <input type="number" class="w-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[3px] h-[36px] px-3 text-[13px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] transition-all font-mono" placeholder="45" />
                 </div>
               </div>
               
               <div class="flex flex-col gap-1.5">
-                <label class="font-mono text-[9px] text-[var(--ts)] tracking-widest uppercase">Gender</label>
+                <label class="font-mono text-[11px] text-[var(--ts)] tracking-widest uppercase">性别</label>
                 <div class="flex gap-2">
-                  <button type="button" class="flex-1 py-2 rounded-[3px] border border-[var(--cyan)] bg-[var(--cyan)]/20 text-[var(--cyan)] font-mono text-[10px] shadow-[0_0_8px_rgba(0,229,255,0.2)]">Male</button>
-                  <button type="button" class="flex-1 py-2 rounded-[3px] border border-[var(--ln)] text-[var(--td)] font-mono text-[10px] hover:text-[var(--ts)]">Female</button>
+                  <button type="button" class="flex-1 py-2 rounded-[3px] border border-[var(--cyan)] bg-[var(--cyan)]/20 text-[var(--cyan)] font-mono text-[11px] shadow-[0_0_8px_rgba(0,229,255,0.2)]">男</button>
+                  <button type="button" class="flex-1 py-2 rounded-[3px] border border-[var(--ln)] text-[var(--td)] font-mono text-[11px] hover:text-[var(--ts)]">女</button>
                 </div>
               </div>
               
               <div class="flex flex-col gap-1.5">
-                <label class="font-mono text-[9px] text-[var(--ts)] tracking-widest uppercase">Chief Complaint</label>
-                <textarea class="w-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[3px] p-3 text-[12px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] transition-all resize-none h-[60px]" placeholder="Enter patient complaint..."></textarea>
+                <label class="font-mono text-[11px] text-[var(--ts)] tracking-widest uppercase">主诉</label>
+                <textarea class="w-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[3px] p-3 text-[13px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] transition-all resize-none h-[80px]" placeholder="请输入患者主诉内容..."></textarea>
               </div>
               
               <div class="flex flex-col gap-1.5">
-                <label class="font-mono text-[9px] text-[var(--ts)] tracking-widest uppercase">X-Ray Upload</label>
+                <label class="font-mono text-[11px] text-[var(--ts)] tracking-widest uppercase">X 光影像上传</label>
                 <div class="border border-dashed border-[var(--cyan)]/30 rounded-[4px] p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--cyan)]/5 transition-colors">
                   <svg class="w-6 h-6 text-[var(--cyan)] opacity-50 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  <span class="text-[11px] text-[var(--ts)]">Drop X-ray image here</span>
-                  <span class="text-[9px] text-[var(--td)] mt-1">PNG, JPG, DICOM</span>
+                  <span class="text-[13px] text-[var(--ts)]">拖拽 X 光图片至此</span>
+                  <span class="text-[11px] text-[var(--td)] mt-1">支持 PNG, JPG, DICOM</span>
                 </div>
               </div>
               
               <div class="flex gap-2 mt-2">
-                <button type="button" @click="showNewCase = false" class="flex-1 py-2.5 rounded-[3px] border border-[var(--ln)] text-[var(--td)] font-mono text-[9px] uppercase tracking-wider hover:text-[var(--ts)] transition-colors">Cancel</button>
-                <button type="submit" class="flex-1 py-2.5 rounded-[3px] bg-gradient-to-r from-[var(--cyan)]/20 to-[var(--violet)]/20 border border-[var(--cyan)] text-[var(--tp)] font-mono text-[9px] uppercase tracking-wider shadow-[0_0_12px_rgba(0,229,255,0.3)] hover:shadow-[0_0_20px_rgba(0,229,255,0.5)] transition-all">Create & Analyze</button>
+                <button type="button" @click="showNewCase = false" class="flex-1 py-2.5 rounded-[3px] border border-[var(--ln)] text-[var(--td)] font-mono text-[11px] uppercase tracking-wider hover:text-[var(--ts)] transition-colors">取消</button>
+                <button type="submit" class="flex-1 py-2.5 rounded-[3px] bg-gradient-to-r from-[var(--cyan)]/20 to-[var(--violet)]/20 border border-[var(--cyan)] text-[var(--tp)] font-mono text-[11px] uppercase tracking-wider shadow-[0_0_12px_rgba(0,229,255,0.3)] hover:shadow-[0_0_20px_rgba(0,229,255,0.5)] transition-all">创建并分析</button>
               </div>
             </form>
           </div>
         </div>
       </Transition>
     </Teleport>
+
   </div>
 </template>
 
@@ -183,11 +184,19 @@ const router = useRouter();
 const showNewCase = ref(false);
 const store = useAnalysisStore();
 
+const statusMap: Record<string, string> = {
+  'DONE': '已完成',
+  'RUNNING': '运行中',
+  'REVIEW': '待复核',
+  'FAILED': '失败'
+};
+
 onMounted(() => {
+
   store.fetchTasks({ pageNum: 1, pageSize: 12 });
 });
 
-const getGradeAccent = (grade: string) => {
+const getGradeAccent = (grade?: string) => {
   switch (grade) {
     case 'G0': return 'bg-[var(--emerald)]';
     case 'G1': return 'bg-[var(--cyan)]';
@@ -198,7 +207,7 @@ const getGradeAccent = (grade: string) => {
   }
 };
 
-const getGradeChipClass = (grade: string) => {
+const getGradeChipClass = (grade?: string) => {
   switch (grade) {
     case 'G0': return 'bg-[var(--emerald)]/15 border-[var(--emerald)]/40 text-[var(--emerald)]';
     case 'G1': return 'bg-[var(--cyan)]/15 border-[var(--cyan)]/40 text-[var(--cyan)]';

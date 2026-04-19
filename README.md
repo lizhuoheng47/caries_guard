@@ -45,6 +45,7 @@ Client / Script
 
 ```powershell
 docker compose up -d --build
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\wait-for-health.ps1
 Invoke-RestMethod http://127.0.0.1:8080/actuator/health
 Invoke-RestMethod http://127.0.0.1:8001/ai/v1/health
 ```

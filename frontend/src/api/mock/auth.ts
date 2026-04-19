@@ -8,7 +8,16 @@ export const mockAuthApi = {
       message: 'success',
       data: {
         token: 'mock-jwt-token-1234567890',
+        expireIn: 86400,
         expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        user: {
+          userId: 1,
+          username: 'doctor_admin',
+          nickName: 'Dr. Neural',
+          roleCodes: ['ROLE_ADMIN', 'ROLE_DOCTOR'],
+          orgId: 1001,
+          userTypeCode: 'DOCTOR',
+        }
       }
     });
   },
@@ -20,9 +29,10 @@ export const mockAuthApi = {
       data: {
         userId: 1,
         username: 'doctor_admin',
-        nickname: 'Dr. Neural',
+        nickName: 'Dr. Neural',
         roleCodes: ['ROLE_ADMIN', 'ROLE_DOCTOR'],
         orgId: 1001,
+        userTypeCode: 'DOCTOR',
       }
     });
   },
@@ -32,6 +42,9 @@ export const mockAuthApi = {
       code: '00000',
       message: 'success',
       data: {
+        userId: 1,
+        roles: ['ROLE_ADMIN', 'ROLE_DOCTOR'],
+        permissions: ['*:*:*'],
         permissionCodes: ['*:*:*'],
         menus: [
           {

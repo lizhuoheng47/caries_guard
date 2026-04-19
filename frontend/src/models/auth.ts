@@ -10,6 +10,7 @@ export interface User {
   nickname: string;
   roles: string[];
   orgId: number;
+  userTypeCode?: string;
 }
 
 export interface MenuItem {
