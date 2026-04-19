@@ -261,6 +261,9 @@ class KnowledgeService:
         document["versions"] = self.repository.list_document_versions(doc_id)
         current_version_no = document.get("current_version_no") or document.get("doc_version")
         document["currentVersion"] = self.repository.get_document_version(doc_id, current_version_no)
+        document["embeddingProvider"] = self.open_search_index_service.embedding_provider.metadata.provider
+        document["embeddingModel"] = self.open_search_index_service.embedding_provider.metadata.model
+        document["embeddingVersion"] = self.open_search_index_service.embedding_provider.metadata.version
         return document
 
     def list_documents(self, kb_code: str | None, org_id: int | None, keyword: str | None = None) -> list[dict[str, Any]]:
@@ -277,6 +280,13 @@ class KnowledgeService:
             kb_id = kb["id"] if kb else None
         overview = self.repository.overview(kb_id=kb_id, org_id=org_id)
         overview.update(self.graph_repository.entity_counts())
+        overview.update(
+            {
+                "embeddingProvider": self.open_search_index_service.embedding_provider.metadata.provider,
+                "embeddingModel": self.open_search_index_service.embedding_provider.metadata.model,
+                "embeddingVersion": self.open_search_index_service.embedding_provider.metadata.version,
+            }
+        )
         return overview
 
     def list_ingest_jobs(self, org_id: int | None) -> list[dict[str, Any]]:
@@ -288,6 +298,17 @@ class KnowledgeService:
             kb = self.repository.get_knowledge_base(kb_code=kb_code)
             kb_id = kb["id"] if kb else None
         return self.repository.list_rebuild_jobs(kb_id=kb_id, org_id=org_id)
+
+    def graph_statistics(self, kb_code: str | None, org_id: int | None) -> dict[str, Any]:
+        overview = self.overview(kb_code=kb_code, org_id=org_id)
+        return {
+            "kbCode": kb_code or self.settings.rag_default_kb_code,
+            "entityCount": overview.get("entityCount", 0),
+            "relationCount": overview.get("relationCount", 0),
+            "embeddingProvider": self.open_search_index_service.embedding_provider.metadata.provider,
+            "embeddingModel": self.open_search_index_service.embedding_provider.metadata.model,
+            "embeddingVersion": self.open_search_index_service.embedding_provider.metadata.version,
+        }
 
     def rebuild(self, request: KnowledgeRebuildRequest) -> dict[str, Any]:
         kb = self.ensure_knowledge_base(
@@ -308,20 +329,29 @@ class KnowledgeService:
         )
         try:
             documents = self.repository.list_documents(kb_id=kb["id"], org_id=request.org_id)
+            report: list[dict[str, Any]] = []
+            total_chunks = 0
             for document in documents:
                 version_no = document.get("published_version_no")
                 if not version_no:
                     continue
                 version = self.repository.get_document_version(document["id"], version_no)
-                chunks = self.repository.list_chunks_for_version(document["id"], version_no)
-                if chunks:
-                    self.open_search_index_service.delete_document_chunks(document["id"])
-                    self.open_search_index_service.index_document_version(kb["kb_code"], document, version, chunks)
-            finished = rag_repository.finish_rebuild_job(job["id"], "SUCCESS", 0)
+                rebuilt = self._rebuild_document_version(
+                    kb=kb,
+                    document=document,
+                    version=version,
+                    request=request,
+                )
+                total_chunks += rebuilt["chunkCount"]
+                report.append(rebuilt)
+            finished = rag_repository.finish_rebuild_job(job["id"], "SUCCESS", total_chunks)
             return {
                 "rebuildJobNo": finished["rebuild_job_no"],
                 "rebuildStatusCode": finished["rebuild_status_code"],
                 "kbCode": kb["kb_code"],
+                "chunkCount": total_chunks,
+                "documents": report,
+                "graphStats": self.graph_statistics(kb["kb_code"], request.org_id),
             }
         except Exception as exc:
             rag_repository.finish_rebuild_job(job["id"], "FAILED", 0, str(exc))
@@ -481,6 +511,75 @@ class KnowledgeService:
             "chunkCount": len(stored_chunks),
             "entityCount": len(entities),
             "relationCount": len(stored_relations),
+        }
+
+    def _rebuild_document_version(
+        self,
+        *,
+        kb: dict[str, Any],
+        document: dict[str, Any],
+        version: dict[str, Any],
+        request: KnowledgeRebuildRequest,
+    ) -> dict[str, Any]:
+        content_text = version.get("normalized_content") or document.get("content_text") or ""
+        parsed = {
+            "normalized_markdown": content_text,
+            "structured_json": version.get("structured_json"),
+            "section_tree": version.get("section_tree"),
+            "table_json": version.get("table_json"),
+            "metadata_json": version.get("metadata_json"),
+        }
+        if request.rebuild_parse and self.settings.rag_rebuild_parse_enabled:
+            parsed = self.parser_service.parse_bytes(f"{document['doc_no']}.md", content_text.encode("utf-8"))
+        chunks = self.chunk_build_service.build(
+            parsed["normalized_markdown"],
+            doc_title=document["doc_title"],
+            doc_source_code=document["doc_source_code"],
+            source_uri=document.get("source_uri"),
+            org_id=document.get("org_id"),
+        )
+        stored_chunks = self.repository.replace_chunks(
+            kb_id=kb["id"],
+            doc_id=document["id"],
+            version_no=version["version_no"],
+            chunks=chunks,
+            embedding_model=self.settings.rag_embedding_model,
+            vector_store_path=kb.get("vector_store_path"),
+            publish_status="PUBLISHED",
+        )
+        indexing_report = {"indexedChunkCount": 0}
+        if request.rebuild_lexical or request.rebuild_dense:
+            self.open_search_index_service.delete_document_chunks(document["id"])
+            indexing_report = self.open_search_index_service.index_document_version(kb["kb_code"], document, version, stored_chunks)
+        entity_count = 0
+        relation_count = 0
+        if request.cleanup_stale and request.rebuild_graph and self.settings.rag_rebuild_cleanup_enabled:
+            self.graph_repository.delete_document_graph(document["id"])
+            self.graph_upsert_service.cleanup_document_graph(document["id"])
+        if request.rebuild_graph and self.settings.rag_rebuild_graph_enabled:
+            chunk_entities, relations, chunk_refs = self.entity_extraction_service.extract(stored_chunks)
+            entities, stored_relations = self.graph_upsert_service.sync_document_graph(
+                doc_id=document["id"],
+                doc_title=document["doc_title"],
+                version_no=version["version_no"],
+                chunk_entities=chunk_entities,
+                relations=relations,
+                org_id=document.get("org_id"),
+                created_by=document.get("updated_by"),
+            )
+            self.repository.update_chunk_graph_refs(chunk_refs)
+            entity_count = len(entities)
+            relation_count = len(stored_relations)
+        return {
+            "docId": document["id"],
+            "docNo": document["doc_no"],
+            "versionNo": version["version_no"],
+            "chunkCount": len(stored_chunks),
+            "entityCount": entity_count,
+            "relationCount": relation_count,
+            "embeddingProvider": indexing_report.get("embeddingProvider"),
+            "embeddingModel": indexing_report.get("embeddingModel"),
+            "embeddingVersion": indexing_report.get("embeddingVersion"),
         }
 
     @staticmethod

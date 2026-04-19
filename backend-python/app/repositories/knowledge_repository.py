@@ -495,10 +495,11 @@ class KnowledgeRepository:
     def update_chunk_graph_refs(self, chunk_refs: list[dict[str, Any]]) -> None:
         with session_scope() as session:
             for item in chunk_refs:
+                graph_refs = item.get("concept_ids") or item.get("entity_names") or []
                 session.execute(
                     update(KnowledgeDocumentChunk)
                     .where(KnowledgeDocumentChunk.id == item["chunk_id"])
-                    .values(graph_entity_refs=item.get("entity_names") or [])
+                    .values(graph_entity_refs=graph_refs)
                 )
 
     def submit_review(self, doc_id: int, version_no: str, reviewer_id: int | None) -> None:

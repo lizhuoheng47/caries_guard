@@ -28,6 +28,7 @@ class RagService:
             org_id=request.org_id,
             trace_id=request.trace_id,
             context_text=self.case_context_builder.build(request.case_summary),
+            include_debug=False,
         )
 
     def doctor_qa(self, request: DoctorQaRequest) -> dict[str, Any]:
@@ -41,6 +42,7 @@ class RagService:
             org_id=request.org_id,
             trace_id=request.trace_id,
             context_text=self.case_context_builder.build(request.clinical_context),
+            include_debug=False,
         )
 
     def ask(self, request: RagAskRequest) -> dict[str, Any]:
@@ -56,6 +58,7 @@ class RagService:
             org_id=request.org_id,
             trace_id=request.trace_id,
             context_text=self.case_context_builder.build(request.case_context),
+            include_debug=request.include_debug,
         )
 
     @staticmethod

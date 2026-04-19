@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-import re
+from app.infra.rerank.base_rerank_provider import BaseRerankProvider
 
 
 class RerankService:
+    def __init__(self, provider: BaseRerankProvider) -> None:
+        self.provider = provider
+
     def rerank(self, query: str, candidates: list[dict], top_k: int) -> list[dict]:
-        query_tokens = self._tokens(query)
-        for candidate in candidates:
-            text_tokens = self._tokens(candidate.get("chunk_text") or candidate.get("evidence_text") or "")
-            overlap = len(query_tokens & text_tokens)
-            candidate["rerank_score"] = round(candidate.get("fusion_score", 0.0) + overlap * 0.1, 6)
+        scores = self.provider.score(query, candidates)
+        for candidate, score in zip(candidates, scores):
+            candidate["rerank_score"] = score
+            candidate["rerank_provider"] = self.provider.metadata.provider
+            candidate["rerank_model"] = self.provider.metadata.model
+            candidate["rerank_version"] = self.provider.metadata.version
         candidates.sort(key=lambda item: item["rerank_score"], reverse=True)
         for idx, item in enumerate(candidates, start=1):
             item["final_rank"] = idx
         return candidates[:top_k]
-
-    @staticmethod
-    def _tokens(text: str) -> set[str]:
-        return {token for token in re.findall(r"[A-Za-z0-9\u4e00-\u9fff]+", text.lower()) if token}

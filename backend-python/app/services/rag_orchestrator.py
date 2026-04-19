@@ -8,7 +8,7 @@ from app.infra.llm.base_llm_client import BaseLlmClient
 from app.repositories.knowledge_repository import KnowledgeRepository
 from app.repositories.rag_repository import RagRepository
 from app.schemas.base import dump_camel
-from app.schemas.rag import RagAnswer, RagGraphEvidence
+from app.schemas.rag import RagAnswer, RagDebugMeta
 from app.services.answer_validator_service import AnswerValidatorService
 from app.services.citation_assembler import CitationAssembler
 from app.services.dense_retriever import DenseRetriever
@@ -69,6 +69,7 @@ class RagOrchestrator:
         org_id: int | None,
         trace_id: str | None,
         context_text: str | None,
+        include_debug: bool = False,
     ) -> dict[str, Any]:
         started = time.perf_counter()
         kb = self.knowledge_repository.get_knowledge_base(kb_code=kb_code or self.settings.rag_default_kb_code)
@@ -104,13 +105,24 @@ class RagOrchestrator:
         reranked = self.rerank_service.rerank(rewritten_query, fused, self.settings.rerank_top_k)
         self.rag_repository.create_rerank_logs(request_log["id"], reranked)
 
-        evidence_for_answer = []
-        for item in reranked[: self.settings.answer_evidence_top_k]:
-            if item["channel"] == "GRAPH":
-                evidence_for_answer.append({"chunk_text": item.get("evidence_text") or "", "doc_title": item.get("cypher_template_code")})
-            else:
-                evidence_for_answer.append(item)
-        refusal_reason = self.refusal_policy_service.evaluate(rewritten_query, len(evidence_for_answer))
+        evidence_bundle = self.citation_assembler.evidence(reranked)
+        evidence_for_answer = [
+            {
+                "chunk_text": item.chunk_text or item.evidence_text or "",
+                "doc_title": item.doc_title,
+                "channel": item.channel,
+                "evidence_type": item.evidence_type,
+            }
+            for item in evidence_bundle[: self.settings.answer_evidence_top_k]
+        ]
+        distinct_doc_count = len({item.doc_id for item in evidence_bundle if item.doc_id is not None})
+        evidence_sufficient = self._evidence_sufficient(evidence_bundle)
+        refusal_reason = self.refusal_policy_service.evaluate(
+            rewritten_query,
+            len(evidence_bundle),
+            distinct_doc_count=distinct_doc_count,
+            evidence_sufficient=evidence_sufficient,
+        )
         if refusal_reason is not None:
             answer_text = self._refusal_text(refusal_reason)
             llm_latency_ms = 0
@@ -147,24 +159,16 @@ class RagOrchestrator:
                 status_code=llm_status,
                 org_id=org_id,
             )
-        citations = self.citation_assembler.citations(kb, [item for item in reranked if item["channel"] != "GRAPH"])
-        retrieved_chunks = self.citation_assembler.retrieved_chunks([item for item in reranked if item["channel"] != "GRAPH"])
-        graph_evidence = [
-            RagGraphEvidence(
-                graph_path_id=item["graph_path_id"],
-                cypher_template_code=item.get("cypher_template_code"),
-                score=item.get("score", 0.0),
-                evidence_text=item.get("evidence_text"),
-                result_path_json=item.get("result_path_json"),
-                chunk_id=item.get("chunk_id"),
-                doc_id=item.get("doc_id"),
-            )
-            for item in reranked
-            if item["channel"] == "GRAPH"
-        ]
-        safety_flags = self.answer_validator_service.validate(answer_text, dump_camel(citations))
+        citations = self.citation_assembler.citations(kb, reranked[: self.settings.answer_evidence_top_k])
+        retrieved_chunks = self.citation_assembler.retrieved_chunks(reranked[: self.settings.answer_evidence_top_k])
+        graph_evidence = self.citation_assembler.graph_evidence(reranked[: self.settings.answer_evidence_top_k])
+        safety_flags = self.answer_validator_service.validate(
+            answer_text,
+            [dump_camel(item) for item in citations],
+            [dump_camel(item) for item in evidence_bundle],
+        )
         total_latency_ms = int((time.perf_counter() - started) * 1000)
-        confidence = self._confidence(reranked, refusal_reason)
+        confidence = self._confidence(reranked, evidence_bundle, refusal_reason, safety_flags)
         self.rag_repository.finish_rag_request(
             request_id=request_log["id"],
             answer_text=answer_text,
@@ -175,11 +179,25 @@ class RagOrchestrator:
             confidence_score=confidence,
             trace_id=trace_id,
         )
+        debug = None
+        if include_debug:
+            debug = RagDebugMeta(
+                rewritten_query=rewritten_query,
+                intent_code=intent_code,
+                linked_entities=linked_entities,
+                lexical_hit_count=len(lexical_hits),
+                dense_hit_count=len(dense_hits),
+                graph_hit_count=len(graph_hits),
+                evidence_sufficient=evidence_sufficient,
+                rerank_provider=reranked[0].get("rerank_provider") if reranked else None,
+                rerank_model=reranked[0].get("rerank_model") if reranked else None,
+            )
         answer = RagAnswer(
             session_no=session["session_no"],
             request_no=request_log["request_no"],
             answer_text=answer_text,
             citations=citations,
+            evidence=evidence_bundle[: self.settings.answer_evidence_top_k],
             retrieved_chunks=retrieved_chunks,
             graph_evidence=graph_evidence,
             knowledge_base_code=kb["kb_code"],
@@ -192,17 +210,26 @@ class RagOrchestrator:
             case_context_summary=context_text,
             trace_id=trace_id,
             latency_ms=total_latency_ms,
+            debug=debug,
         )
         payload = dump_camel(answer)
         payload["answer"] = payload["answerText"]
         return payload
 
+    def _evidence_sufficient(self, evidence_bundle: list) -> bool:
+        if len(evidence_bundle) < self.settings.rag_evidence_min_count:
+            return False
+        distinct_doc_count = len({item.doc_id for item in evidence_bundle if item.doc_id is not None})
+        return distinct_doc_count >= self.settings.rag_evidence_min_distinct_docs
+
     @staticmethod
-    def _confidence(reranked: list[dict], refusal_reason: str | None) -> float:
+    def _confidence(reranked: list[dict], evidence_bundle: list, refusal_reason: str | None, safety_flags: list[str]) -> float:
         if refusal_reason is not None or not reranked:
             return 0.0
-        total = sum(float(item.get("rerank_score") or 0.0) for item in reranked[:3])
-        return round(min(1.0, total / 3), 4)
+        top_scores = [float(item.get("rerank_score") or 0.0) for item in reranked[:3]]
+        evidence_diversity = len({item.doc_id for item in evidence_bundle[:3] if item.doc_id is not None}) / 3
+        penalty = 0.1 if "NO_PROVENANCE" in safety_flags else 0.0
+        return round(max(0.0, min(1.0, (sum(top_scores) / max(1, len(top_scores))) + evidence_diversity * 0.15 - penalty)), 4)
 
     @staticmethod
     def _refusal_text(reason: str) -> str:

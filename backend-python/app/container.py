@@ -4,9 +4,10 @@ from app.core.config import Settings
 from app.infra.graph.neo4j_client import create_neo4j_driver
 from app.infra.llm.llm_gateway_factory import create_llm_client
 from app.infra.model.model_registry import ModelRegistry
+from app.infra.rerank.rerank_factory import create_rerank_provider
 from app.infra.search.opensearch_client import create_opensearch_client
 from app.infra.storage.minio_client import MinioStorageClient
-from app.infra.vector.hashing_embedder import HashingEmbedder
+from app.infra.vector.embedding_factory import create_embedding_provider
 from app.infra.vector.simple_vector_store import SimpleVectorStore
 from app.pipelines.detection_pipeline import DetectionPipeline
 from app.pipelines.grading_pipeline import GradingPipeline
@@ -26,6 +27,7 @@ from app.services.callback_service import CallbackService
 from app.services.case_context_builder import CaseContextBuilder
 from app.services.citation_assembler import CitationAssembler
 from app.services.chunk_build_service import ChunkBuildService
+from app.services.concept_normalization_service import ConceptNormalizationService
 from app.services.cypher_template_registry import CypherTemplateRegistry
 from app.services.dense_retriever import DenseRetriever
 from app.services.document_parse_service import DocumentParseService
@@ -70,13 +72,15 @@ class AppContainer:
         self.governance_repository = GovernanceRepository()
         self.callback_service = CallbackService(settings, self.ai_runtime_repository)
         self.vector_store = SimpleVectorStore()
-        self.embedder = HashingEmbedder(settings.rag_embedding_dimension)
+        self.concept_normalization_service = ConceptNormalizationService()
+        self.embedding_provider = create_embedding_provider(settings)
+        self.rerank_provider = create_rerank_provider(settings, self.embedding_provider)
         self.opensearch_client = create_opensearch_client(settings)
         self.neo4j_driver = create_neo4j_driver(settings)
         self.document_parse_service = DocumentParseService()
         self.chunk_build_service = ChunkBuildService()
-        self.entity_extraction_service = EntityExtractionService()
-        self.open_search_index_service = OpenSearchIndexService(settings, self.opensearch_client, self.embedder)
+        self.entity_extraction_service = EntityExtractionService(self.concept_normalization_service)
+        self.open_search_index_service = OpenSearchIndexService(settings, self.opensearch_client, self.embedding_provider)
         self.cypher_template_registry = CypherTemplateRegistry()
         self.graph_upsert_service = GraphUpsertService(settings, self.neo4j_driver, self.graph_repository)
         self.lexical_retriever = LexicalRetriever(self.open_search_index_service)
@@ -101,12 +105,16 @@ class AppContainer:
             llm_client=self.llm_client,
             query_rewrite_service=QueryRewriteService(),
             intent_classifier_service=IntentClassifierService(),
-            entity_linking_service=EntityLinkingService(self.graph_repository),
+            entity_linking_service=EntityLinkingService(
+                self.graph_repository,
+                self.concept_normalization_service,
+                self.entity_extraction_service,
+            ),
             lexical_retriever=self.lexical_retriever,
             dense_retriever=self.dense_retriever,
             graph_retriever=self.graph_retriever,
-            fusion_service=FusionService(),
-            rerank_service=RerankService(),
+            fusion_service=FusionService(settings),
+            rerank_service=RerankService(self.rerank_provider),
             citation_assembler=CitationAssembler(),
             refusal_policy_service=RefusalPolicyService(),
             answer_validator_service=AnswerValidatorService(),

@@ -28,6 +28,11 @@ class GraphRepository:
         with session_scope() as session:
             chunk_ids = {item.get("source_chunk_id") for item in chunk_entities if item.get("source_chunk_id")}
             if chunk_ids:
+                entity_ids = session.execute(
+                    select(KnowledgeEntity.id).where(KnowledgeEntity.source_chunk_id.in_(chunk_ids))
+                ).scalars().all()
+                if entity_ids:
+                    session.execute(delete(KnowledgeEntityAlias).where(KnowledgeEntityAlias.entity_id.in_(entity_ids)))
                 session.execute(
                     delete(KnowledgeRelation).where(KnowledgeRelation.evidence_chunk_id.in_(chunk_ids))
                 )
@@ -54,7 +59,15 @@ class GraphRepository:
                 session.add(row)
                 session.flush()
                 entity_id_by_key[item["entity_key"]] = row.id
-                stored_entities.append(_row_to_dict(row))
+                stored_entities.append(
+                    {
+                        **_row_to_dict(row),
+                        "entity_key": item["entity_key"],
+                        "concept_id": item.get("concept_id"),
+                        "canonical_name": item.get("canonical_name"),
+                        "aliases": item.get("aliases") or [],
+                    }
+                )
                 for alias in item.get("aliases", []):
                     session.add(
                         KnowledgeEntityAlias(
@@ -86,7 +99,13 @@ class GraphRepository:
                 )
                 session.add(row)
                 session.flush()
-                stored_relations.append(_row_to_dict(row))
+                stored_relations.append(
+                    {
+                        **_row_to_dict(row),
+                        "source_concept_id": item.get("source_concept_id"),
+                        "target_concept_id": item.get("target_concept_id"),
+                    }
+                )
             return stored_entities, stored_relations
 
     def list_entities_by_names(self, names: list[str], only_approved: bool = True) -> list[dict[str, Any]]:
@@ -124,6 +143,20 @@ class GraphRepository:
                 "entityCount": session.execute(select(func.count(KnowledgeEntity.id))).scalar_one(),
                 "relationCount": session.execute(select(func.count(KnowledgeRelation.id))).scalar_one(),
             }
+
+    def delete_document_graph(self, doc_id: int) -> None:
+        with session_scope() as session:
+            entity_ids = session.execute(
+                select(KnowledgeEntity.id).where(KnowledgeEntity.source_doc_id == doc_id)
+            ).scalars().all()
+            chunk_ids = session.execute(
+                select(KnowledgeEntity.source_chunk_id).where(KnowledgeEntity.source_doc_id == doc_id)
+            ).scalars().all()
+            if chunk_ids:
+                session.execute(delete(KnowledgeRelation).where(KnowledgeRelation.evidence_chunk_id.in_(chunk_ids)))
+            if entity_ids:
+                session.execute(delete(KnowledgeEntityAlias).where(KnowledgeEntityAlias.entity_id.in_(entity_ids)))
+            session.execute(delete(KnowledgeEntity).where(KnowledgeEntity.source_doc_id == doc_id))
 
     @staticmethod
     def normalize(value: str) -> str:

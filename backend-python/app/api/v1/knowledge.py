@@ -135,6 +135,12 @@ def rebuild_jobs(kb_code: str | None = None, org_id: int | None = None) -> dict:
     return success_response(data=container.knowledge_service.list_rebuild_jobs(kb_code, org_id))
 
 
+@router.get("/knowledge/graph-stats")
+def graph_stats(kb_code: str | None = None, org_id: int | None = None) -> dict:
+    container = get_container()
+    return success_response(data=container.knowledge_service.graph_statistics(kb_code, org_id))
+
+
 @router.post("/knowledge/rebuild")
 def rebuild_knowledge(request: KnowledgeRebuildRequest) -> dict:
     container = get_container()

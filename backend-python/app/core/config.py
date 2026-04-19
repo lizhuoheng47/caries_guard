@@ -1,4 +1,5 @@
 import os
+import json
 from dataclasses import dataclass, field
 
 
@@ -32,6 +33,14 @@ def csv_env(name: str, default: list[str]) -> list[str]:
     if value is None or value.strip() == "":
         return list(default)
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def json_env(name: str, default: dict[str, float]) -> dict[str, float]:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return dict(default)
+    loaded = json.loads(value)
+    return {str(key): float(item) for key, item in loaded.items()}
 
 
 def _validate_runtime_mode(raw: str) -> str:
@@ -119,9 +128,14 @@ class Settings:
     rag_default_kb_code: str = os.getenv("CG_RAG_DEFAULT_KB_CODE", "caries-default")
     rag_default_kb_name: str = os.getenv("CG_RAG_DEFAULT_KB_NAME", "CariesGuard Default Knowledge Base")
     rag_knowledge_version: str = os.getenv("CG_RAG_KNOWLEDGE_VERSION", "v1.0")
-    rag_embedding_model: str = os.getenv("CG_RAG_EMBEDDING_MODEL", "hashing-embedding-v1")
-    rag_embedding_provider: str = os.getenv("CG_RAG_EMBEDDING_PROVIDER", "HASHING").strip().upper()
+    rag_embedding_model: str = os.getenv("CG_RAG_EMBEDDING_MODEL", "text-embedding-3-small")
+    rag_embedding_provider: str = os.getenv("CG_RAG_EMBEDDING_PROVIDER", "OPENAI_COMPATIBLE").strip().upper()
     rag_embedding_dimension: int = int_env("CG_RAG_EMBEDDING_DIMENSION", 256)
+    rag_embedding_version: str = os.getenv("CG_RAG_EMBEDDING_VERSION", "2026-04")
+    rag_embedding_base_url: str = os.getenv("CG_RAG_EMBEDDING_BASE_URL", os.getenv("CG_LLM_BASE_URL", ""))
+    rag_embedding_api_key: str = os.getenv("CG_RAG_EMBEDDING_API_KEY", os.getenv("CG_LLM_API_KEY", ""))
+    rag_embedding_batch_size: int = int_env("CG_RAG_EMBEDDING_BATCH_SIZE", 16)
+    rag_embedding_timeout_seconds: int = int_env("CG_RAG_EMBEDDING_TIMEOUT_SECONDS", 30)
     rag_vector_store_type: str = _validate_vector_store_type(os.getenv("CG_RAG_VECTOR_STORE_TYPE", "OPENSEARCH"))
     rag_top_k: int = int_env("CG_RAG_TOP_K", 5)
     lexical_top_k: int = int_env("CG_RAG_LEXICAL_TOP_K", 20)
@@ -130,6 +144,45 @@ class Settings:
     fusion_top_k: int = int_env("CG_RAG_FUSION_TOP_K", 12)
     rerank_top_k: int = int_env("CG_RAG_RERANK_TOP_K", 8)
     answer_evidence_top_k: int = int_env("CG_RAG_ANSWER_EVIDENCE_TOP_K", 6)
+    rag_evidence_min_count: int = int_env("CG_RAG_EVIDENCE_MIN_COUNT", 2)
+    rag_evidence_min_distinct_docs: int = int_env("CG_RAG_EVIDENCE_MIN_DISTINCT_DOCS", 1)
+    rag_rebuild_graph_enabled: bool = bool_env("CG_RAG_REBUILD_GRAPH_ENABLED", True)
+    rag_rebuild_parse_enabled: bool = bool_env("CG_RAG_REBUILD_PARSE_ENABLED", True)
+    rag_rebuild_cleanup_enabled: bool = bool_env("CG_RAG_REBUILD_CLEANUP_ENABLED", True)
+    rag_rebuild_lexical_enabled: bool = bool_env("CG_RAG_REBUILD_LEXICAL_ENABLED", True)
+    rag_rebuild_dense_enabled: bool = bool_env("CG_RAG_REBUILD_DENSE_ENABLED", True)
+    rag_eval_enabled: bool = bool_env("CG_RAG_EVAL_ENABLED", True)
+    rag_channel_weights: dict[str, float] = field(
+        default_factory=lambda: json_env(
+            "CG_RAG_CHANNEL_WEIGHTS",
+            {
+                "LEXICAL": 1.0,
+                "DENSE": 1.15,
+                "GRAPH": 1.2,
+            },
+        )
+    )
+    rag_source_authority_weights: dict[str, float] = field(
+        default_factory=lambda: json_env(
+            "CG_RAG_SOURCE_AUTHORITY_WEIGHTS",
+            {
+                "GUIDELINE": 1.0,
+                "MANUAL": 0.9,
+                "INTERNAL": 0.75,
+                "UPLOAD": 0.7,
+            },
+        )
+    )
+    rag_freshness_decay_days: int = int_env("CG_RAG_FRESHNESS_DECAY_DAYS", 365)
+    rag_graph_confidence_weight: float = float_env("CG_RAG_GRAPH_CONFIDENCE_WEIGHT", 0.2)
+    rerank_provider: str = os.getenv("CG_RAG_RERANK_PROVIDER", "EMBEDDING").strip().upper()
+    rerank_model_name: str = os.getenv("CG_RAG_RERANK_MODEL_NAME", "embedding-similarity-reranker")
+    rerank_base_url: str = os.getenv("CG_RAG_RERANK_BASE_URL", os.getenv("CG_LLM_BASE_URL", ""))
+    rerank_api_key: str = os.getenv("CG_RAG_RERANK_API_KEY", os.getenv("CG_LLM_API_KEY", ""))
+    rerank_timeout_seconds: int = int_env("CG_RAG_RERANK_TIMEOUT_SECONDS", 20)
+    rerank_semantic_weight: float = float_env("CG_RAG_RERANK_SEMANTIC_WEIGHT", 0.7)
+    rerank_lexical_weight: float = float_env("CG_RAG_RERANK_LEXICAL_WEIGHT", 0.2)
+    rerank_prior_weight: float = float_env("CG_RAG_RERANK_PRIOR_WEIGHT", 0.1)
     opensearch_hosts: list[str] = field(default_factory=lambda: csv_env("CG_OPENSEARCH_HOSTS", ["http://127.0.0.1:9200"]))
     opensearch_username: str = os.getenv("CG_OPENSEARCH_USERNAME", "")
     opensearch_password: str = os.getenv("CG_OPENSEARCH_PASSWORD", "")

@@ -3,70 +3,90 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.services.concept_normalization_service import CanonicalConcept, ConceptNormalizationService
+from app.services.entity_dictionary import DEFAULT_ENTITY_DICTIONARY
+
 
 class EntityExtractionService:
-    ENTITY_DICTIONARY: dict[str, list[str]] = {
-        "Disease": ["龋病", "龋齿", "早期龋", "中龋", "深龋"],
-        "Severity": ["低风险", "中风险", "高风险", "轻度", "中度", "重度"],
-        "RiskFactor": ["高糖饮食", "夜奶", "口腔卫生差", "牙菌斑", "窝沟深", "低氟", "频繁进食"],
-        "Recommendation": ["定期复查", "窝沟封闭", "局部涂氟", "控制糖摄入", "规范刷牙", "及时复诊"],
-        "Population": ["儿童", "学龄前儿童", "青少年", "成人", "孕妇"],
-    }
+    def __init__(
+        self,
+        normalizer: ConceptNormalizationService | None = None,
+        entity_dictionary: dict[str, list[str]] | None = None,
+    ) -> None:
+        self.normalizer = normalizer or ConceptNormalizationService()
+        self.entity_dictionary = entity_dictionary or DEFAULT_ENTITY_DICTIONARY
 
-    def extract(self, chunks: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    def extract(
+        self,
+        chunks: list[dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
         chunk_entities: list[dict[str, Any]] = []
         relations: list[dict[str, Any]] = []
-        refs_by_chunk: dict[int, list[str]] = {}
+        refs_by_chunk: dict[int, dict[str, list[str]]] = {}
         for chunk in chunks:
             entities = self._extract_entities_for_chunk(chunk)
-            refs_by_chunk[chunk["id"]] = [entity["entity_name"] for entity in entities]
+            refs_by_chunk[chunk["id"]] = {
+                "entity_names": [entity["canonical_name"] for entity in entities],
+                "concept_ids": [entity["concept_id"] for entity in entities],
+            }
             chunk_entities.extend(entities)
             relations.extend(self._extract_relations(chunk["id"], entities, chunk["chunk_text"]))
-        return chunk_entities, relations, [
-            {"chunk_id": chunk_id, "entity_names": entity_names} for chunk_id, entity_names in refs_by_chunk.items()
-        ]
+        return (
+            chunk_entities,
+            relations,
+            [
+                {
+                    "chunk_id": chunk_id,
+                    "entity_names": payload["entity_names"],
+                    "concept_ids": payload["concept_ids"],
+                }
+                for chunk_id, payload in refs_by_chunk.items()
+            ],
+        )
+
+    def extract_query_entities(self, query: str) -> list[dict[str, Any]]:
+        linked = []
+        for concept in self.normalizer.match_terms(query):
+            linked.append(self._concept_payload(source_key="query", chunk_id=None, concept=concept))
+        return linked
 
     def _extract_entities_for_chunk(self, chunk: dict[str, Any]) -> list[dict[str, Any]]:
         text = chunk["chunk_text"]
         result: list[dict[str, Any]] = []
-        seen: set[tuple[str, str]] = set()
-        for entity_type, candidates in self.ENTITY_DICTIONARY.items():
+        seen: set[str] = set()
+        for entity_type, candidates in self.entity_dictionary.items():
             for candidate in candidates:
-                if candidate in text and (entity_type, candidate) not in seen:
-                    seen.add((entity_type, candidate))
-                    result.append(
-                        {
-                            "entity_key": f"{chunk['id']}::{entity_type}::{candidate}",
-                            "entity_name": candidate,
-                            "entity_type_code": entity_type,
-                            "source_chunk_id": chunk["id"],
-                            "confidence_score": 0.82,
-                            "aliases": [candidate.lower()],
-                        }
-                    )
+                if candidate and candidate in text:
+                    concept = self.normalizer.canonicalize(entity_type, candidate, confidence_score=0.82)
+                    if concept.concept_id in seen:
+                        continue
+                    seen.add(concept.concept_id)
+                    result.append(self._concept_payload(source_key=str(chunk["id"]), chunk_id=chunk["id"], concept=concept))
         for match in re.findall(r"(\d+\s*(?:天|周|月))", text):
-            result.append(
-                {
-                    "entity_key": f"{chunk['id']}::FollowUpInterval::{match}",
-                    "entity_name": match,
-                    "entity_type_code": "FollowUpInterval",
-                    "source_chunk_id": chunk["id"],
-                    "confidence_score": 0.88,
-                    "aliases": [],
-                }
-            )
+            concept = self.normalizer.canonicalize("FollowUpInterval", match, confidence_score=0.88)
+            if concept.concept_id not in seen:
+                seen.add(concept.concept_id)
+                result.append(self._concept_payload(source_key=str(chunk["id"]), chunk_id=chunk["id"], concept=concept))
         for match in re.findall(r"\b[1-4][1-8]\b", text):
-            result.append(
-                {
-                    "entity_key": f"{chunk['id']}::ToothPosition::{match}",
-                    "entity_name": match,
-                    "entity_type_code": "ToothPosition",
-                    "source_chunk_id": chunk["id"],
-                    "confidence_score": 0.8,
-                    "aliases": [],
-                }
-            )
+            concept = self.normalizer.canonicalize("ToothPosition", match, confidence_score=0.8)
+            if concept.concept_id not in seen:
+                seen.add(concept.concept_id)
+                result.append(self._concept_payload(source_key=str(chunk["id"]), chunk_id=chunk["id"], concept=concept))
         return result
+
+    def _concept_payload(self, source_key: str, chunk_id: int | None, concept: CanonicalConcept) -> dict[str, Any]:
+        return {
+            "entity_key": f"{source_key}::{concept.entity_type_code}::{concept.concept_id}",
+            "entity_name": concept.canonical_name,
+            "canonical_name": concept.canonical_name,
+            "entity_type_code": concept.entity_type_code,
+            "source_chunk_id": chunk_id,
+            "confidence_score": concept.confidence_score,
+            "aliases": concept.aliases,
+            "concept_id": concept.concept_id,
+            "normalized_name": concept.normalized_name,
+            "provenance": {"canonicalName": concept.canonical_name, "aliases": concept.aliases},
+        }
 
     @staticmethod
     def _extract_relations(chunk_id: int, entities: list[dict[str, Any]], text: str) -> list[dict[str, Any]]:
@@ -74,52 +94,34 @@ class EntityExtractionService:
         for entity in entities:
             by_type.setdefault(entity["entity_type_code"], []).append(entity)
         relations: list[dict[str, Any]] = []
-        if "RiskFactor" in by_type and "Recommendation" in by_type:
-            for left in by_type["RiskFactor"]:
-                for right in by_type["Recommendation"]:
+        relation_rules = [
+            ("RiskFactor", "Recommendation", "SUGGESTS", 0.76),
+            ("Severity", "FollowUpInterval", "REQUIRES_FOLLOWUP", 0.84),
+            ("Severity", "Recommendation", "RECOMMENDED_FOR", 0.8),
+            ("Population", "Recommendation", "APPLIES_TO", 0.72),
+            ("Population", "Contraindication", "CONTRAINDICATED_FOR", 0.7),
+            ("Disease", "RiskFactor", "HAS_RISK_FACTOR", 0.71),
+            ("Disease", "Recommendation", "RECOMMENDED_FOR", 0.78),
+            ("ImagingFinding", "Disease", "INDICATES", 0.8),
+            ("Disease", "ImagingFinding", "RELATED_TO", 0.75),
+            ("Recommendation", "Guideline", "SUPPORTED_BY", 0.66),
+        ]
+        for left_type, right_type, relation_code, confidence in relation_rules:
+            if left_type not in by_type or right_type not in by_type:
+                continue
+            if relation_code == "HAS_RISK_FACTOR" and "风险" not in text and "危险" not in text:
+                continue
+            for left in by_type[left_type]:
+                for right in by_type[right_type]:
                     relations.append(
                         {
                             "source_entity_key": left["entity_key"],
                             "target_entity_key": right["entity_key"],
-                            "relation_type_code": "SUGGESTS",
+                            "relation_type_code": relation_code,
                             "evidence_chunk_id": chunk_id,
-                            "confidence_score": 0.76,
-                        }
-                    )
-        if "Severity" in by_type and "FollowUpInterval" in by_type:
-            for left in by_type["Severity"]:
-                for right in by_type["FollowUpInterval"]:
-                    relations.append(
-                        {
-                            "source_entity_key": left["entity_key"],
-                            "target_entity_key": right["entity_key"],
-                            "relation_type_code": "REQUIRES_FOLLOWUP",
-                            "evidence_chunk_id": chunk_id,
-                            "confidence_score": 0.84,
-                        }
-                    )
-        if "Population" in by_type and "Recommendation" in by_type:
-            for left in by_type["Population"]:
-                for right in by_type["Recommendation"]:
-                    relations.append(
-                        {
-                            "source_entity_key": left["entity_key"],
-                            "target_entity_key": right["entity_key"],
-                            "relation_type_code": "APPLIES_TO",
-                            "evidence_chunk_id": chunk_id,
-                            "confidence_score": 0.72,
-                        }
-                    )
-        if "Disease" in by_type and "RiskFactor" in by_type and "风险" in text:
-            for left in by_type["Disease"]:
-                for right in by_type["RiskFactor"]:
-                    relations.append(
-                        {
-                            "source_entity_key": left["entity_key"],
-                            "target_entity_key": right["entity_key"],
-                            "relation_type_code": "HAS_RISK_FACTOR",
-                            "evidence_chunk_id": chunk_id,
-                            "confidence_score": 0.71,
+                            "confidence_score": confidence,
+                            "source_concept_id": left["concept_id"],
+                            "target_concept_id": right["concept_id"],
                         }
                     )
         return relations
