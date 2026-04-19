@@ -12,6 +12,7 @@ AI 用于辅助分析、解释和风险提示，不替代医生最终诊断。
 
 ```text
 Client / Script
+  -> frontend-web
   -> Java Backend
       -> caries_biz (MySQL)
       -> Redis
@@ -19,8 +20,9 @@ Client / Script
       -> MinIO
       -> Python Backend
           -> caries_ai (MySQL)
-          -> Vector Index
-          -> General LLM Provider
+          -> OpenSearch
+          -> Neo4j
+          -> OpenAI-compatible LLM Provider
 ```
 
 职责边界：
@@ -72,6 +74,7 @@ docker compose --env-file env/competition.env up -d --build
 
 - `backend-java/`：Java 业务后端，多模块 Maven 工程
 - `backend-python/`：Python AI/RAG 服务，FastAPI + MQ Worker
+- `frontend-web/`：Vue 3 + Vite + TypeScript 后台前端，仅调用 Java BFF
 - `Documents/`：保留后的项目正式文档
 - `scripts/`：启动、验收、演示和灌数脚本
 - `infra/`：基础设施初始化资源
@@ -79,6 +82,6 @@ docker compose --env-file env/competition.env up -d --build
 
 ## 运行建议
 
-- 稳定演示优先使用 `mock`。
-- 需要验证真实适配能力时再切换到 `hybrid`。
-- `real` 模式应在模型、依赖和回调链路已确认时使用。
+- 正式知识治理与 RAG 主路径为 `OpenSearch + Neo4j + OpenAI-compatible provider`。
+- `mock`、`LOCAL_JSON` 仅用于开发兜底或局部离线联调，不作为正式默认路径。
+- `real` 模式应在模型、依赖、回调链路、索引与图谱都已确认时使用。

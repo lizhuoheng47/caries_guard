@@ -145,6 +145,13 @@ class EvalRepository:
             rows = session.execute(select(RagEvalDataset).order_by(RagEvalDataset.id)).scalars().all()
             return [_row_to_dict(row) for row in rows]
 
+    def get_dataset(self, dataset_id: int) -> dict[str, Any] | None:
+        with session_scope() as session:
+            row = session.execute(
+                select(RagEvalDataset).where(RagEvalDataset.id == dataset_id)
+            ).scalar_one_or_none()
+            return _row_to_dict(row) if row else None
+
     def create_run(self, dataset_id: int, org_id: int | None, created_by: int | None) -> dict[str, Any]:
         now = local_naive_now()
         with session_scope() as session:
@@ -202,5 +209,50 @@ class EvalRepository:
 
     def list_runs(self) -> list[dict[str, Any]]:
         with session_scope() as session:
-            rows = session.execute(select(RagEvalRun).order_by(desc(RagEvalRun.created_at))).scalars().all()
-            return [_row_to_dict(row) for row in rows]
+            rows = session.execute(
+                select(RagEvalRun, RagEvalDataset)
+                .join(RagEvalDataset, RagEvalDataset.id == RagEvalRun.dataset_id)
+                .order_by(desc(RagEvalRun.created_at))
+            ).all()
+            result: list[dict[str, Any]] = []
+            for run, dataset in rows:
+                payload = _row_to_dict(run)
+                payload["dataset_code"] = dataset.dataset_code
+                payload["dataset_name"] = dataset.dataset_name
+                result.append(payload)
+            return result
+
+    def get_run(self, run_no: str) -> dict[str, Any] | None:
+        with session_scope() as session:
+            row = session.execute(
+                select(RagEvalRun, RagEvalDataset)
+                .join(RagEvalDataset, RagEvalDataset.id == RagEvalRun.dataset_id)
+                .where(RagEvalRun.run_no == run_no)
+            ).one_or_none()
+            if row is None:
+                return None
+            run, dataset = row
+            payload = _row_to_dict(run)
+            payload["dataset_code"] = dataset.dataset_code
+            payload["dataset_name"] = dataset.dataset_name
+            return payload
+
+    def list_results(self, run_id: int) -> list[dict[str, Any]]:
+        with session_scope() as session:
+            rows = session.execute(
+                select(RagEvalResult, RagEvalQuestion)
+                .join(RagEvalQuestion, RagEvalQuestion.id == RagEvalResult.question_id)
+                .where(RagEvalResult.run_id == run_id)
+                .order_by(RagEvalResult.question_id)
+            ).all()
+            result: list[dict[str, Any]] = []
+            for eval_result, question in rows:
+                payload = _row_to_dict(eval_result)
+                payload["question_no"] = question.question_no
+                payload["scene_code"] = question.scene_code
+                payload["question_text"] = question.question_text
+                payload["case_context_json"] = question.case_context_json
+                payload["expected_refusal_flag"] = question.expected_refusal_flag
+                payload["expected_risk_level"] = question.expected_risk_level
+                result.append(payload)
+            return result

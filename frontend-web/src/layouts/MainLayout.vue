@@ -10,8 +10,13 @@
         <el-menu-item index="/kb/documents">文档管理</el-menu-item>
         <el-menu-item index="/kb/upload">文档导入</el-menu-item>
         <el-menu-item index="/kb/review">审核发布</el-menu-item>
-        <el-menu-item index="/kb/tasks">任务列表</el-menu-item>
-        <el-menu-item index="/rag/debug">检索调试</el-menu-item>
+        <el-menu-item index="/kb/publish-history">发布回滚记录</el-menu-item>
+        <el-menu-item index="/kb/ingest-jobs">Ingest Job</el-menu-item>
+        <el-menu-item index="/kb/rebuild-jobs">Rebuild Job</el-menu-item>
+        <el-menu-item index="/kb/graph-stats">图谱统计</el-menu-item>
+        <el-menu-item index="/rag/doctor-qa">Doctor QA</el-menu-item>
+        <el-menu-item index="/rag/patient-explanation">Patient Explain</el-menu-item>
+        <el-menu-item index="/rag/retrieval">检索明细</el-menu-item>
         <el-menu-item index="/rag/graph">图谱证据</el-menu-item>
         <el-menu-item index="/rag/logs">RAG 日志</el-menu-item>
         <el-menu-item index="/rag/eval">评估</el-menu-item>

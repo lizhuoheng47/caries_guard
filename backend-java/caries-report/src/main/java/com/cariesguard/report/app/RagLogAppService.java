@@ -35,7 +35,18 @@ public class RagLogAppService {
 
     @SuppressWarnings("unchecked")
     public Object graphLogs(String requestNo) {
-        Object detail = requestDetail(requestNo);
-        return detail instanceof Map<?, ?> map ? map.get("graphLogs") : List.of();
+        return ragAdminClient.get("/logs/graph/" + requestNo, Map.of(), TraceIdUtils.currentTraceId());
+    }
+
+    public Object fusionLogs(String requestNo) {
+        return ragAdminClient.get("/logs/fusion/" + requestNo, Map.of(), TraceIdUtils.currentTraceId());
+    }
+
+    public Object rerankLogs(String requestNo) {
+        return ragAdminClient.get("/logs/rerank/" + requestNo, Map.of(), TraceIdUtils.currentTraceId());
+    }
+
+    public Object llmLogs(String requestNo) {
+        return ragAdminClient.get("/logs/llm/" + requestNo, Map.of(), TraceIdUtils.currentTraceId());
     }
 }

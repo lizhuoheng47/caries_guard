@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ragApi } from '../../api/rag'
 
+const router = useRouter()
 const requests = ref<any[]>([])
 const detail = ref<any>(null)
 
@@ -11,6 +13,14 @@ const load = async () => {
 
 const openDetail = async (requestNo: string) => {
   detail.value = await ragApi.requestDetail(requestNo)
+}
+
+const openRetrieval = (requestNo: string) => {
+  router.push(`/rag/retrieval/${requestNo}`)
+}
+
+const openGraph = (requestNo: string) => {
+  router.push(`/rag/graph/${requestNo}`)
 }
 
 onMounted(load)
@@ -28,6 +38,8 @@ onMounted(load)
         <el-table-column label="操作">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDetail(row.request_no)">详情</el-button>
+            <el-button link type="primary" @click="openRetrieval(row.request_no)">检索明细</el-button>
+            <el-button link type="primary" @click="openGraph(row.request_no)">图谱证据</el-button>
           </template>
         </el-table-column>
       </el-table>

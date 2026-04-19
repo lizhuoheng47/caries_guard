@@ -1,19 +1,48 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from app.repositories.eval_repository import EvalRepository
 from app.schemas.rag import RagAskRequest
-from app.services.rag_service import RagService
+
+if TYPE_CHECKING:
+    from app.services.rag_service import RagService
 
 
 class EvalService:
-    def __init__(self, eval_repository: EvalRepository, rag_service: RagService) -> None:
+    def __init__(self, eval_repository: EvalRepository, rag_service: RagService | None) -> None:
         self.eval_repository = eval_repository
         self.rag_service = rag_service
 
     def list_runs(self) -> list[dict]:
         return self.eval_repository.list_runs()
 
+    def list_datasets(self) -> list[dict]:
+        return self.eval_repository.list_datasets()
+
+    def dataset_detail(self, dataset_id: int) -> dict:
+        dataset = self.eval_repository.get_dataset(dataset_id)
+        if dataset is None:
+            raise ValueError(f"dataset {dataset_id} not found")
+        dataset["questions"] = self.eval_repository.list_questions(dataset_id)
+        return dataset
+
+    def run_detail(self, run_no: str) -> dict:
+        run = self.eval_repository.get_run(run_no)
+        if run is None:
+            raise ValueError(f"run {run_no} not found")
+        run["results"] = self.eval_repository.list_results(run["id"])
+        return run
+
+    def run_results(self, run_no: str) -> list[dict]:
+        run = self.eval_repository.get_run(run_no)
+        if run is None:
+            raise ValueError(f"run {run_no} not found")
+        return self.eval_repository.list_results(run["id"])
+
     def run_dataset(self, dataset_id: int, org_id: int | None, created_by: int | None) -> dict:
+        if self.rag_service is None:
+            raise ValueError("rag service is required for dataset execution")
         run = self.eval_repository.create_run(dataset_id, org_id, created_by)
         questions = self.eval_repository.list_questions(dataset_id)
         citation_hits = 0

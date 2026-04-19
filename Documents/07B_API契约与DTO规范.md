@@ -31,6 +31,7 @@
 | `/api/v1/kb/rebuild` | `POST` | `RagKbRebuildCommand` |
 | `/api/v1/kb/rebuild-jobs` | `GET` | `kbCode?` |
 | `/api/v1/kb/ingest-jobs` | `GET` | 无 |
+| `/api/v1/kb/graph-stats` | `GET` | `kbCode?` |
 
 ### 2.2 RAG 与日志接口
 
@@ -43,7 +44,14 @@
 | `/api/v1/rag/logs/requests/{requestNo}` | `GET` | path `requestNo` |
 | `/api/v1/rag/logs/retrievals/{requestNo}` | `GET` | path `requestNo` |
 | `/api/v1/rag/logs/graph/{requestNo}` | `GET` | path `requestNo` |
+| `/api/v1/rag/logs/fusion/{requestNo}` | `GET` | path `requestNo` |
+| `/api/v1/rag/logs/rerank/{requestNo}` | `GET` | path `requestNo` |
+| `/api/v1/rag/logs/llm/{requestNo}` | `GET` | path `requestNo` |
+| `/api/v1/rag/eval/datasets` | `GET` | 无 |
+| `/api/v1/rag/eval/datasets/{datasetId}` | `GET` | path `datasetId` |
 | `/api/v1/rag/eval/runs` | `GET` | 无 |
+| `/api/v1/rag/eval/runs/{runNo}` | `GET` | path `runNo` |
+| `/api/v1/rag/eval/runs/{runNo}/results` | `GET` | path `runNo` |
 | `/api/v1/rag/eval/run` | `POST` | `RagEvalRunCommand` |
 
 ## 3. Java -> Python DTO 对应

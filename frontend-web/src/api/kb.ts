@@ -4,6 +4,7 @@ const kbClient = createApiClient('/api/v1/kb')
 
 export const kbApi = {
   overview: (kbCode?: string) => kbClient.get('/overview', { params: { kbCode } }),
+  graphStats: (kbCode?: string) => kbClient.get('/graph-stats', { params: { kbCode } }),
   documents: (params?: Record<string, unknown>) => kbClient.get('/documents', { params }),
   documentDetail: (id: string | number) => kbClient.get(`/documents/${id}`),
   importText: (payload: Record<string, unknown>) => kbClient.post('/documents/import-text', payload),

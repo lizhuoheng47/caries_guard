@@ -50,10 +50,52 @@ public class RagLogController {
         return ApiResponse.success(ragLogAppService.graphLogs(requestNo), TraceIdUtils.currentTraceId());
     }
 
+    @GetMapping("/logs/fusion/{requestNo}")
+    @RequirePermission("report:view")
+    public ApiResponse<Object> fusionLogs(@PathVariable String requestNo) {
+        return ApiResponse.success(ragLogAppService.fusionLogs(requestNo), TraceIdUtils.currentTraceId());
+    }
+
+    @GetMapping("/logs/rerank/{requestNo}")
+    @RequirePermission("report:view")
+    public ApiResponse<Object> rerankLogs(@PathVariable String requestNo) {
+        return ApiResponse.success(ragLogAppService.rerankLogs(requestNo), TraceIdUtils.currentTraceId());
+    }
+
+    @GetMapping("/logs/llm/{requestNo}")
+    @RequirePermission("report:view")
+    public ApiResponse<Object> llmLogs(@PathVariable String requestNo) {
+        return ApiResponse.success(ragLogAppService.llmLogs(requestNo), TraceIdUtils.currentTraceId());
+    }
+
+    @GetMapping("/eval/datasets")
+    @RequirePermission("report:view")
+    public ApiResponse<Object> datasets() {
+        return ApiResponse.success(ragEvalAppService.datasets(), TraceIdUtils.currentTraceId());
+    }
+
+    @GetMapping("/eval/datasets/{datasetId}")
+    @RequirePermission("report:view")
+    public ApiResponse<Object> datasetDetail(@PathVariable Long datasetId) {
+        return ApiResponse.success(ragEvalAppService.datasetDetail(datasetId), TraceIdUtils.currentTraceId());
+    }
+
     @GetMapping("/eval/runs")
     @RequirePermission("report:view")
     public ApiResponse<Object> runs() {
         return ApiResponse.success(ragEvalAppService.runs(), TraceIdUtils.currentTraceId());
+    }
+
+    @GetMapping("/eval/runs/{runNo}")
+    @RequirePermission("report:view")
+    public ApiResponse<Object> runDetail(@PathVariable String runNo) {
+        return ApiResponse.success(ragEvalAppService.runDetail(runNo), TraceIdUtils.currentTraceId());
+    }
+
+    @GetMapping("/eval/runs/{runNo}/results")
+    @RequirePermission("report:view")
+    public ApiResponse<Object> runResults(@PathVariable String runNo) {
+        return ApiResponse.success(ragEvalAppService.runResults(runNo), TraceIdUtils.currentTraceId());
     }
 
     @PostMapping("/eval/run")

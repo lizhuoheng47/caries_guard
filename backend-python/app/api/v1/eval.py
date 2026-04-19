@@ -15,6 +15,30 @@ def list_runs() -> dict:
     return success_response(data=container.eval_service.list_runs())
 
 
+@router.get("/eval/datasets")
+def list_datasets() -> dict:
+    container = get_container()
+    return success_response(data=container.eval_service.list_datasets())
+
+
+@router.get("/eval/datasets/{dataset_id}")
+def dataset_detail(dataset_id: int) -> dict:
+    container = get_container()
+    return success_response(data=container.eval_service.dataset_detail(dataset_id))
+
+
+@router.get("/eval/runs/{run_no}")
+def run_detail(run_no: str) -> dict:
+    container = get_container()
+    return success_response(data=container.eval_service.run_detail(run_no))
+
+
+@router.get("/eval/runs/{run_no}/results")
+def run_results(run_no: str) -> dict:
+    container = get_container()
+    return success_response(data=container.eval_service.run_results(run_no))
+
+
 @router.post("/eval/run")
 def run_eval(payload: RagEvalRunRequest) -> dict:
     container = get_container()

@@ -259,6 +259,8 @@ class KnowledgeService:
         if document is None:
             raise ValueError(f"document {doc_id} not found")
         document["versions"] = self.repository.list_document_versions(doc_id)
+        document["reviewRecords"] = self.repository.list_review_records(doc_id)
+        document["publishRecords"] = self.repository.list_publish_records(doc_id)
         current_version_no = document.get("current_version_no") or document.get("doc_version")
         document["currentVersion"] = self.repository.get_document_version(doc_id, current_version_no)
         document["embeddingProvider"] = self.open_search_index_service.embedding_provider.metadata.provider

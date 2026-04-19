@@ -147,6 +147,14 @@ public class RagKbAppService {
         return ragAdminClient.get("/knowledge/rebuild-jobs", query, TraceIdUtils.currentTraceId());
     }
 
+    public Object graphStats(String kbCode) {
+        AuthenticatedUser user = SecurityContextUtils.currentUser();
+        Map<String, Object> query = new LinkedHashMap<>();
+        query.put("kb_code", kbCode);
+        query.put("org_id", user.getOrgId());
+        return ragAdminClient.get("/knowledge/graph-stats", query, TraceIdUtils.currentTraceId());
+    }
+
     private Object versionAction(String path, RagVersionActionCommand command) {
         AuthenticatedUser user = SecurityContextUtils.currentUser();
         Map<String, Object> payload = new LinkedHashMap<>();

@@ -22,6 +22,22 @@ public class RagEvalAppService {
         return ragAdminClient.get("/eval/runs", Map.of(), TraceIdUtils.currentTraceId());
     }
 
+    public Object datasets() {
+        return ragAdminClient.get("/eval/datasets", Map.of(), TraceIdUtils.currentTraceId());
+    }
+
+    public Object datasetDetail(Long datasetId) {
+        return ragAdminClient.get("/eval/datasets/" + datasetId, Map.of(), TraceIdUtils.currentTraceId());
+    }
+
+    public Object runDetail(String runNo) {
+        return ragAdminClient.get("/eval/runs/" + runNo, Map.of(), TraceIdUtils.currentTraceId());
+    }
+
+    public Object runResults(String runNo) {
+        return ragAdminClient.get("/eval/runs/" + runNo + "/results", Map.of(), TraceIdUtils.currentTraceId());
+    }
+
     public Object run(RagEvalRunCommand command) {
         AuthenticatedUser user = SecurityContextUtils.currentUser();
         Map<String, Object> payload = new LinkedHashMap<>();

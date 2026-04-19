@@ -127,4 +127,10 @@ public class RagKbController {
     public ApiResponse<Object> ingestJobs() {
         return ApiResponse.success(ragKbAppService.ingestJobs(), TraceIdUtils.currentTraceId());
     }
+
+    @GetMapping("/graph-stats")
+    @RequirePermission("report:view")
+    public ApiResponse<Object> graphStats(@RequestParam(required = false) String kbCode) {
+        return ApiResponse.success(ragKbAppService.graphStats(kbCode), TraceIdUtils.currentTraceId());
+    }
 }

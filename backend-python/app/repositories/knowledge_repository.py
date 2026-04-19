@@ -410,6 +410,24 @@ class KnowledgeRepository:
             ).scalars().all()
             return [_row_to_dict(row) for row in rows]
 
+    def list_review_records(self, doc_id: int) -> list[dict[str, Any]]:
+        with session_scope() as session:
+            rows = session.execute(
+                select(KnowledgeReviewRecord)
+                .where(KnowledgeReviewRecord.doc_id == doc_id)
+                .order_by(desc(KnowledgeReviewRecord.reviewed_at))
+            ).scalars().all()
+            return [_row_to_dict(row) for row in rows]
+
+    def list_publish_records(self, doc_id: int) -> list[dict[str, Any]]:
+        with session_scope() as session:
+            rows = session.execute(
+                select(KnowledgePublishRecord)
+                .where(KnowledgePublishRecord.doc_id == doc_id)
+                .order_by(desc(KnowledgePublishRecord.published_at))
+            ).scalars().all()
+            return [_row_to_dict(row) for row in rows]
+
     def replace_chunks(
         self,
         kb_id: int,
