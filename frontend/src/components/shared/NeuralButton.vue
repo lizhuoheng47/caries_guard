@@ -26,7 +26,15 @@ defineEmits(['click']);
 
 <style scoped>
 .neural-btn {
-  @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-sm transition-all;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.125rem;
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;

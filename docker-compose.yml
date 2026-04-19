@@ -104,7 +104,6 @@ services:
       CARIES_BUCKET_REPORT: ${CARIES_BUCKET_REPORT:-caries-report}
       CARIES_BUCKET_EXPORT: ${CARIES_BUCKET_EXPORT:-caries-export}
       CARIES_BUCKET_KNOWLEDGE: ${CARIES_BUCKET_KNOWLEDGE:-caries-knowledge}
-      CARIES_BUCKET_KNOWLEDGE: ${CARIES_BUCKET_KNOWLEDGE:-caries-knowledge}
     entrypoint:
       - /bin/sh
       - -c

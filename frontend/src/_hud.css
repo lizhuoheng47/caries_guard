@@ -1,0 +1,59 @@
+/* Glow Utilities */
+.glow-cyan {
+  box-shadow: 0 0 12px rgba(0,229,255,0.4);
+}
+.glow-amber {
+  box-shadow: 0 0 12px rgba(255,181,71,0.4);
+}
+.glow-magenta {
+  box-shadow: 0 0 12px rgba(255,61,127,0.4);
+}
+
+/* Glassmorphism */
+.glass-panel {
+  background: rgba(10, 20, 40, 0.6);
+  backdrop-filter: blur(16px);
+  border: 0.5px solid var(--line-subtle);
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+}
+
+.glass-panel-elevated {
+  background: rgba(10, 20, 40, 0.85);
+  backdrop-filter: blur(24px);
+  border: 0.5px solid rgba(0,229,255,0.15);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,229,255,0.05);
+}
+
+/* Corner Cuts */
+.corner-cut-tl {
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+}
+.corner-cut-tr {
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+}
+.corner-cut-br {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+.corner-cut-bl {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+
+/* Reticle Utilities */
+.reticle-corner {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-color: inherit;
+  border-style: inherit;
+}
+.reticle-tl { top: -1px; left: -1px; border-width: 1.5px 0 0 1.5px; }
+.reticle-tr { top: -1px; right: -1px; border-width: 1.5px 1.5px 0 0; }
+.reticle-bl { bottom: -1px; left: -1px; border-width: 0 0 1.5px 1.5px; }
+.reticle-br { bottom: -1px; right: -1px; border-width: 0 1.5px 1.5px 0; }
+
+/* Value Colors */
+.val-emerald { color: var(--emerald); text-shadow: 0 0 8px rgba(0,255,163,0.4); }
+.val-cyan { color: var(--cyan); text-shadow: 0 0 8px rgba(0,229,255,0.4); }
+.val-amber { color: var(--amber); text-shadow: 0 0 8px rgba(255,181,71,0.4); }
+.val-magenta { color: var(--magenta); text-shadow: 0 0 8px rgba(255,61,127,0.4); }
+.val-violet { color: var(--violet); text-shadow: 0 0 8px rgba(139,92,246,0.4); }

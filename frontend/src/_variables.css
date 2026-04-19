@@ -1,0 +1,34 @@
+:root {
+  /* Colors */
+  --cyan: #00E5FF;
+  --cyan-soft: #5FDCFF;
+  --violet: #8B5CF6;
+  --amber: #FFB547;
+  --magenta: #FF3D7F;
+  --emerald: #00FFA3;
+  --void: #030812;
+  --surf: #0A1428;
+  --elev: #0F1B33;
+  --tp: #E4F0FF;
+  --ts: #8BA3C7;
+  --td: #4A5F82;
+  --ln: rgba(100,200,255,0.12);
+  --lh: rgba(100,200,255,0.25);
+  
+  /* Radii */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  
+  /* Spacing */
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 12px;
+  --gap-lg: 16px;
+  --gap-xl: 22px;
+  --gap-xxl: 32px;
+  
+  /* Fonts */
+  --font-mono: 'SF Mono', Consolas, Monaco, monospace;
+}

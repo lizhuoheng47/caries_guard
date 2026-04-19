@@ -80,7 +80,12 @@ class CorrectionFeedbackAppServiceTests {
                 0.42,
                 false,
                 "doctor corrected tooth grade",
-                true));
+                true,
+                null,
+                null,
+                null,
+                null,
+                null));
 
         assertThat(result.caseId()).isEqualTo(3001L);
         assertThat(result.originalAiGrade()).isEqualTo("C2");

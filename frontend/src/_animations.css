@@ -1,0 +1,37 @@
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes scanline {
+  0% { top: -10%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 110%; opacity: 0; }
+}
+
+@keyframes float-particle {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.8; }
+  50% { transform: translateY(-20px) scale(1.5); opacity: 0.2; }
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-pulse-opacity {
+  animation: pulse-opacity 2s infinite ease-in-out;
+}
+
+.animate-scanline {
+  animation: scanline 4s infinite linear;
+}
+
+.animate-float-particle {
+  animation: float-particle 6s infinite ease-in-out;
+}
+
+.animate-orbit {
+  animation: orbit 10s infinite linear;
+}

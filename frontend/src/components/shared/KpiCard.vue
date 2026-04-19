@@ -11,11 +11,12 @@
     <div class="font-mono text-xl mb-1" :class="[`val-${color}`]">{{ value }}</div>
     
     <div class="flex justify-between items-end">
-      <div class="font-mono text-[8px] flex items-center gap-1" :class="trend > 0 ? 'text-safe-emerald' : 'text-alert-amber'">
+      <div v-if="trend !== undefined" class="font-mono text-[8px] flex items-center gap-1" :class="trend > 0 ? 'text-safe-emerald' : 'text-alert-amber'">
         <span v-if="trend > 0">▲</span>
         <span v-else-if="trend < 0">▼</span>
-        <span v-if="trend !== undefined">{{ trend > 0 ? '+' : '' }}{{ trend }}%</span>
+        <span>{{ trend > 0 ? '+' : '' }}{{ trend }}%</span>
       </div>
+      <div v-else></div>
       
       <!-- Placeholder for sparkline SVG -->
       <div class="w-[42px] h-[16px] opacity-70 flex items-end">
