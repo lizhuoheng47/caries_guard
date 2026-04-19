@@ -8,6 +8,7 @@ import com.cariesguard.report.domain.model.RagAnswerModel;
 import com.cariesguard.report.domain.model.RagCitationModel;
 import com.cariesguard.report.domain.model.RagAskRequestModel;
 import com.cariesguard.report.domain.model.RagDoctorQaRequestModel;
+import com.cariesguard.report.domain.model.RagGraphEvidenceModel;
 import com.cariesguard.report.domain.model.RagPatientExplanationRequestModel;
 import com.cariesguard.report.domain.model.RagRetrievedChunkModel;
 import com.cariesguard.report.domain.model.ReportRenderDataModel;
@@ -17,6 +18,7 @@ import com.cariesguard.report.interfaces.command.PatientExplanationCommand;
 import com.cariesguard.report.interfaces.command.RagAskCommand;
 import com.cariesguard.report.interfaces.vo.RagAnswerVO;
 import com.cariesguard.report.interfaces.vo.RagCitationVO;
+import com.cariesguard.report.interfaces.vo.RagGraphEvidenceVO;
 import com.cariesguard.report.interfaces.vo.RagRetrievedChunkVO;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -155,6 +157,7 @@ public class RagAppService {
                 answer.answerText(),
                 answer.citations().stream().map(this::toCitationVO).toList(),
                 answer.retrievedChunks().stream().map(this::toRetrievedChunkVO).toList(),
+                answer.graphEvidence().stream().map(this::toGraphEvidenceVO).toList(),
                 answer.knowledgeBaseCode(),
                 answer.knowledgeVersion(),
                 answer.modelName(),
@@ -190,5 +193,16 @@ public class RagAppService {
                 chunk.score(),
                 chunk.chunkText(),
                 chunk.docTitle());
+    }
+
+    private RagGraphEvidenceVO toGraphEvidenceVO(RagGraphEvidenceModel graphEvidence) {
+        return new RagGraphEvidenceVO(
+                graphEvidence.graphPathId(),
+                graphEvidence.cypherTemplateCode(),
+                graphEvidence.score(),
+                graphEvidence.evidenceText(),
+                graphEvidence.resultPathJson(),
+                graphEvidence.chunkId(),
+                graphEvidence.docId());
     }
 }

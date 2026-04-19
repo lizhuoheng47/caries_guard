@@ -8,10 +8,12 @@ import com.cariesguard.report.domain.model.RagAnswerModel;
 import com.cariesguard.report.domain.model.RagAskRequestModel;
 import com.cariesguard.report.domain.model.RagCitationModel;
 import com.cariesguard.report.domain.model.RagDoctorQaRequestModel;
+import com.cariesguard.report.domain.model.RagGraphEvidenceModel;
 import com.cariesguard.report.domain.model.RagPatientExplanationRequestModel;
 import com.cariesguard.report.domain.model.RagRetrievedChunkModel;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -20,6 +22,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -65,13 +68,17 @@ public class HttpRagClient implements RagClient {
     private RagAnswerModel post(String path, Object requestPayload) {
         try {
             String requestBody = objectMapper.writeValueAsString(requestPayload);
-            HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint(path)))
+            JsonNode requestNode = objectMapper.valueToTree(requestPayload);
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(URI.create(endpoint(path)))
                     .version(HttpClient.Version.HTTP_1_1)
                     .timeout(timeout(properties.getRequestTimeoutMillis()))
                     .header("Accept", "application/json")
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                    .build();
+                    .header("Content-Type", "application/json");
+            String traceId = text(requestNode, "traceId");
+            if (StringUtils.hasText(traceId)) {
+                requestBuilder.header("X-Trace-Id", traceId);
+            }
+            HttpRequest request = requestBuilder.POST(HttpRequest.BodyPublishers.ofString(requestBody)).build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw externalError("RAG service returned HTTP " + response.statusCode());
@@ -127,6 +134,20 @@ public class HttpRagClient implements RagClient {
                         text(chunk, "docTitle")));
             }
         }
+        List<RagGraphEvidenceModel> graphEvidence = new ArrayList<>();
+        JsonNode graphEvidenceNodes = data.path("graphEvidence");
+        if (graphEvidenceNodes.isArray()) {
+            for (JsonNode graphItem : graphEvidenceNodes) {
+                graphEvidence.add(new RagGraphEvidenceModel(
+                        text(graphItem, "graphPathId"),
+                        text(graphItem, "cypherTemplateCode"),
+                        doubleValue(graphItem, "score"),
+                        text(graphItem, "evidenceText"),
+                        object(graphItem, "resultPathJson"),
+                        longValue(graphItem, "chunkId"),
+                        longValue(graphItem, "docId")));
+            }
+        }
 
         return new RagAnswerModel(
                 text(data, "sessionNo"),
@@ -134,6 +155,7 @@ public class HttpRagClient implements RagClient {
                 coalesce(text(data, "answerText"), text(data, "answer")),
                 citations,
                 retrievedChunks,
+                graphEvidence,
                 text(data, "knowledgeBaseCode"),
                 text(data, "knowledgeVersion"),
                 text(data, "modelName"),
@@ -194,6 +216,14 @@ public class HttpRagClient implements RagClient {
             }
         }
         return result;
+    }
+
+    private Map<String, Object> object(JsonNode node, String fieldName) {
+        JsonNode value = node.get(fieldName);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        return objectMapper.convertValue(value, new TypeReference<Map<String, Object>>() { });
     }
 
     private static String coalesce(String first, String second) {

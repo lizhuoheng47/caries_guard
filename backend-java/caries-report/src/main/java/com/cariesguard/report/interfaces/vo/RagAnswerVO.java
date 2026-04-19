@@ -9,6 +9,7 @@ public record RagAnswerVO(
         String answer,
         List<RagCitationVO> citations,
         List<RagRetrievedChunkVO> retrievedChunks,
+        List<RagGraphEvidenceVO> graphEvidence,
         String knowledgeBaseCode,
         String knowledgeVersion,
         String modelName,

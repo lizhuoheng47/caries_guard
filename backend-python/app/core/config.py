@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 
 _VALID_RUNTIME_MODES = {"mock", "hybrid", "real"}
+_VALID_VECTOR_STORE_TYPES = {"LOCAL_JSON", "OPENSEARCH"}
 
 
 def bool_env(name: str, default: bool) -> bool:
@@ -26,6 +27,13 @@ def float_env(name: str, default: float) -> float:
     return float(value)
 
 
+def csv_env(name: str, default: list[str]) -> list[str]:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return list(default)
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 def _validate_runtime_mode(raw: str) -> str:
     mode = raw.strip().lower()
     if mode not in _VALID_RUNTIME_MODES:
@@ -34,6 +42,16 @@ def _validate_runtime_mode(raw: str) -> str:
             f"allowed values: {sorted(_VALID_RUNTIME_MODES)}"
         )
     return mode
+
+
+def _validate_vector_store_type(raw: str) -> str:
+    value = raw.strip().upper()
+    if value not in _VALID_VECTOR_STORE_TYPES:
+        raise ValueError(
+            f"CG_RAG_VECTOR_STORE_TYPE={raw!r} is invalid; "
+            f"allowed values: {sorted(_VALID_VECTOR_STORE_TYPES)}"
+        )
+    return value
 
 
 @dataclass(frozen=True)
@@ -80,6 +98,7 @@ class Settings:
     bucket_visual: str = os.getenv("CG_BUCKET_VISUAL", os.getenv("CG_MINIO_BUCKET_VISUAL", "caries-visual"))
     bucket_report: str = os.getenv("CG_BUCKET_REPORT", "caries-report")
     bucket_export: str = os.getenv("CG_BUCKET_EXPORT", "caries-export")
+    bucket_knowledge: str = os.getenv("CG_BUCKET_KNOWLEDGE", "caries-knowledge")
     temp_dir: str = os.getenv("CG_TEMP_DIR", "/tmp/cariesguard")
 
     allow_bucket_create: bool = bool_env("CG_MINIO_ALLOW_BUCKET_CREATE", False)
@@ -101,15 +120,34 @@ class Settings:
     rag_default_kb_name: str = os.getenv("CG_RAG_DEFAULT_KB_NAME", "CariesGuard Default Knowledge Base")
     rag_knowledge_version: str = os.getenv("CG_RAG_KNOWLEDGE_VERSION", "v1.0")
     rag_embedding_model: str = os.getenv("CG_RAG_EMBEDDING_MODEL", "hashing-embedding-v1")
-    rag_vector_store_type: str = os.getenv("CG_RAG_VECTOR_STORE_TYPE", "LOCAL_JSON")
+    rag_embedding_provider: str = os.getenv("CG_RAG_EMBEDDING_PROVIDER", "HASHING").strip().upper()
+    rag_embedding_dimension: int = int_env("CG_RAG_EMBEDDING_DIMENSION", 256)
+    rag_vector_store_type: str = _validate_vector_store_type(os.getenv("CG_RAG_VECTOR_STORE_TYPE", "OPENSEARCH"))
     rag_top_k: int = int_env("CG_RAG_TOP_K", 5)
-    llm_provider_code: str = os.getenv("CG_LLM_PROVIDER_CODE", "MOCK")
-    llm_model_name: str = os.getenv("CG_LLM_MODEL_NAME", "template-llm-v1")
-    llm_base_url: str = os.getenv("CG_LLM_BASE_URL", "")
+    lexical_top_k: int = int_env("CG_RAG_LEXICAL_TOP_K", 20)
+    dense_top_k: int = int_env("CG_RAG_DENSE_TOP_K", 20)
+    graph_top_k: int = int_env("CG_RAG_GRAPH_TOP_K", 10)
+    fusion_top_k: int = int_env("CG_RAG_FUSION_TOP_K", 12)
+    rerank_top_k: int = int_env("CG_RAG_RERANK_TOP_K", 8)
+    answer_evidence_top_k: int = int_env("CG_RAG_ANSWER_EVIDENCE_TOP_K", 6)
+    opensearch_hosts: list[str] = field(default_factory=lambda: csv_env("CG_OPENSEARCH_HOSTS", ["http://127.0.0.1:9200"]))
+    opensearch_username: str = os.getenv("CG_OPENSEARCH_USERNAME", "")
+    opensearch_password: str = os.getenv("CG_OPENSEARCH_PASSWORD", "")
+    opensearch_verify_certs: bool = bool_env("CG_OPENSEARCH_VERIFY_CERTS", False)
+    opensearch_chunk_index: str = os.getenv("CG_OPENSEARCH_CHUNK_INDEX", "kb_chunk_index")
+    opensearch_doc_index: str = os.getenv("CG_OPENSEARCH_DOC_INDEX", "kb_doc_index")
+    neo4j_uri: str = os.getenv("CG_NEO4J_URI", "bolt://127.0.0.1:7687")
+    neo4j_username: str = os.getenv("CG_NEO4J_USERNAME", "neo4j")
+    neo4j_password: str = os.getenv("CG_NEO4J_PASSWORD", "cariesguard")
+    neo4j_database: str = os.getenv("CG_NEO4J_DATABASE", "neo4j")
+    llm_provider_code: str = os.getenv("CG_LLM_PROVIDER_CODE", "OPENAI_COMPATIBLE")
+    llm_model_name: str = os.getenv("CG_LLM_MODEL_NAME", "gpt-4o-mini")
+    llm_base_url: str = os.getenv("CG_LLM_BASE_URL", "https://api.openai.com/v1")
     llm_api_key: str = os.getenv("CG_LLM_API_KEY", "")
     llm_timeout_seconds: int = int_env("CG_LLM_TIMEOUT_SECONDS", 30)
     llm_retry_count: int = int_env("CG_LLM_RETRY_COUNT", 1)
     llm_temperature: float = float_env("CG_LLM_TEMPERATURE", 0.2)
+    llm_enable_fallback_mock: bool = bool_env("CG_LLM_ENABLE_FALLBACK_MOCK", True)
 
     # ── Phase 5: Model Runtime ──────────────────────────────────────────
     ai_runtime_mode: str = _validate_runtime_mode(os.getenv("CG_AI_RUNTIME_MODE", "mock"))
@@ -127,6 +165,7 @@ class Settings:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "ai_runtime_mode", _validate_runtime_mode(self.ai_runtime_mode))
+        object.__setattr__(self, "rag_vector_store_type", _validate_vector_store_type(self.rag_vector_store_type))
 
     def build_mysql_url(self) -> str:
         return (

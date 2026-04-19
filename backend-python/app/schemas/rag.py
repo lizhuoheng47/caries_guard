@@ -6,6 +6,7 @@ from app.schemas.base import CamelModel
 
 
 class KnowledgeDocumentRequest(CamelModel):
+    trace_id: str | None = None
     kb_code: str | None = None
     kb_name: str | None = None
     kb_type_code: str = "PATIENT_GUIDE"
@@ -20,6 +21,7 @@ class KnowledgeDocumentRequest(CamelModel):
 
 
 class KnowledgeRebuildRequest(CamelModel):
+    trace_id: str | None = None
     kb_code: str | None = None
     kb_name: str | None = None
     kb_type_code: str = "PATIENT_GUIDE"
@@ -76,12 +78,23 @@ class RagRetrievedChunk(CamelModel):
     doc_title: str | None = None
 
 
+class RagGraphEvidence(CamelModel):
+    graph_path_id: str
+    cypher_template_code: str | None = None
+    score: float
+    evidence_text: str | None = None
+    result_path_json: dict[str, Any] | None = None
+    chunk_id: int | None = None
+    doc_id: int | None = None
+
+
 class RagAnswer(CamelModel):
     session_no: str
     request_no: str
     answer_text: str
     citations: list[RagCitation]
     retrieved_chunks: list[RagRetrievedChunk] = []
+    graph_evidence: list[RagGraphEvidence] = []
     knowledge_base_code: str | None = None
     knowledge_version: str
     model_name: str

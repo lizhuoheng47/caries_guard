@@ -9,12 +9,15 @@ from sqlalchemy.orm import Session
 from app.core.db import session_scope
 from app.core.time_utils import local_naive_now
 from app.models.rag import (
+    LlmCallLog,
     KnowledgeBase,
     KnowledgeDocument,
     KnowledgeDocumentChunk,
     KnowledgeRebuildJob,
-    LlmCallLog,
+    RagFusionLog,
+    RagGraphRetrievalLog,
     RagRequestLog,
+    RagRerankLog,
     RagRetrievalLog,
     RagSession,
 )
@@ -330,6 +333,9 @@ class RagRepository:
         status_code: str,
         latency_ms: int,
         safety_flag: str = "0",
+        refusal_reason: str | None = None,
+        confidence_score: float | None = None,
+        trace_id: str | None = None,
     ) -> None:
         now = local_naive_now()
         with session_scope() as session:
@@ -341,6 +347,9 @@ class RagRepository:
                     request_status_code=status_code,
                     latency_ms=latency_ms,
                     safety_flag=safety_flag,
+                    refusal_reason=refusal_reason,
+                    confidence_score=confidence_score,
+                    trace_id=trace_id,
                     updated_at=now,
                 )
             )
@@ -359,6 +368,7 @@ class RagRepository:
                         request_id=request_id,
                         chunk_id=hit["chunk_id"],
                         rank_no=rank,
+                        retrieval_channel_code=hit.get("channel"),
                         retrieval_score=hit.get("score"),
                         doc_id=hit["doc_id"],
                         chunk_text_snapshot=hit.get("chunk_text"),
@@ -397,7 +407,106 @@ class RagRepository:
                     latency_ms=latency_ms,
                     call_status_code=status_code,
                     error_message=error_message,
+                    response_json=None,
                     org_id=org_id,
                     created_at=now,
                 )
             )
+
+    def create_fusion_logs(self, request_id: int, candidates: list[dict[str, Any]]) -> None:
+        now = local_naive_now()
+        with session_scope() as session:
+            for candidate in candidates:
+                session.add(
+                    RagFusionLog(
+                        request_id=request_id,
+                        candidate_id=str(candidate.get("evidence_id") or candidate.get("graph_path_id")),
+                        candidate_type=candidate.get("channel", "UNKNOWN"),
+                        origin_channels_json=candidate.get("origin_channels"),
+                        fusion_score=candidate.get("fusion_score"),
+                        final_rank=candidate.get("fusion_rank"),
+                        created_at=now,
+                    )
+                )
+
+    def create_rerank_logs(self, request_id: int, candidates: list[dict[str, Any]]) -> None:
+        now = local_naive_now()
+        with session_scope() as session:
+            for candidate in candidates:
+                session.add(
+                    RagRerankLog(
+                        request_id=request_id,
+                        candidate_id=str(candidate.get("evidence_id") or candidate.get("graph_path_id")),
+                        candidate_type=candidate.get("channel", "UNKNOWN"),
+                        origin_channel=candidate.get("channel"),
+                        pre_score=candidate.get("fusion_score"),
+                        rerank_score=candidate.get("rerank_score"),
+                        final_rank=candidate.get("final_rank"),
+                        created_at=now,
+                    )
+                )
+
+    def create_graph_logs(self, request_id: int, graph_hits: list[dict[str, Any]]) -> None:
+        now = local_naive_now()
+        with session_scope() as session:
+            for hit in graph_hits:
+                session.add(
+                    RagGraphRetrievalLog(
+                        request_id=request_id,
+                        cypher_template_code=hit.get("cypher_template_code"),
+                        query_entity_json=hit.get("query_entity_json"),
+                        result_path_json=hit.get("result_path_json"),
+                        score=hit.get("score"),
+                        created_at=now,
+                    )
+                )
+
+    def list_requests(self, org_id: int | None = None) -> list[dict[str, Any]]:
+        with session_scope() as session:
+            stmt = select(RagRequestLog)
+            if org_id is not None:
+                stmt = stmt.where(RagRequestLog.org_id == org_id)
+            rows = session.execute(stmt.order_by(RagRequestLog.created_at.desc())).scalars().all()
+            return [_row_to_dict(row) for row in rows]
+
+    def get_request_by_no(self, request_no: str) -> dict[str, Any] | None:
+        with session_scope() as session:
+            row = session.execute(select(RagRequestLog).where(RagRequestLog.request_no == request_no)).scalar_one_or_none()
+            return _row_to_dict(row) if row else None
+
+    def list_retrieval_logs(self, request_id: int) -> list[dict[str, Any]]:
+        with session_scope() as session:
+            rows = session.execute(
+                select(RagRetrievalLog).where(RagRetrievalLog.request_id == request_id).order_by(RagRetrievalLog.rank_no)
+            ).scalars().all()
+            return [_row_to_dict(row) for row in rows]
+
+    def list_graph_logs(self, request_id: int) -> list[dict[str, Any]]:
+        with session_scope() as session:
+            rows = session.execute(
+                select(RagGraphRetrievalLog)
+                .where(RagGraphRetrievalLog.request_id == request_id)
+                .order_by(RagGraphRetrievalLog.id)
+            ).scalars().all()
+            return [_row_to_dict(row) for row in rows]
+
+    def list_fusion_logs(self, request_id: int) -> list[dict[str, Any]]:
+        with session_scope() as session:
+            rows = session.execute(
+                select(RagFusionLog).where(RagFusionLog.request_id == request_id).order_by(RagFusionLog.final_rank)
+            ).scalars().all()
+            return [_row_to_dict(row) for row in rows]
+
+    def list_rerank_logs(self, request_id: int) -> list[dict[str, Any]]:
+        with session_scope() as session:
+            rows = session.execute(
+                select(RagRerankLog).where(RagRerankLog.request_id == request_id).order_by(RagRerankLog.final_rank)
+            ).scalars().all()
+            return [_row_to_dict(row) for row in rows]
+
+    def list_llm_call_logs(self, request_id: int) -> list[dict[str, Any]]:
+        with session_scope() as session:
+            rows = session.execute(
+                select(LlmCallLog).where(LlmCallLog.request_id == request_id).order_by(LlmCallLog.id)
+            ).scalars().all()
+            return [_row_to_dict(row) for row in rows]
