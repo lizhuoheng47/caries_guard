@@ -22,7 +22,7 @@ export const useAnalysisStore = defineStore('analysis', {
       }
     },
     
-    async fetchDetail(taskId: number) {
+    async fetchDetail(taskId: string | number) {
       this.loading = true;
       try {
         const res = await analysisApi.getTaskDetail(taskId);

@@ -52,12 +52,12 @@ export const mockAnalysisApi = {
     });
   },
 
-  getTaskDetail(taskId: number): Promise<ApiResponse<AnalysisDetailViewDTO>> {
+  getTaskDetail(taskId: string | number): Promise<ApiResponse<AnalysisDetailViewDTO>> {
     return Promise.resolve({
       code: '00000',
       message: 'success',
       data: {
-        task: { taskId, taskNo: `TSK-${taskId}`, statusCode: 'REVIEW', createdAt: new Date().toISOString() },
+        task: { taskId: Number(taskId), taskNo: `TSK-${taskId}`, statusCode: 'REVIEW', createdAt: new Date().toISOString() },
         patient: { patientId: 10023, nameMasked: '张*明', gender: 'M', age: 34 },
         caseInfo: { caseId: 501, caseNo: 'CASE-2026-001', visitTime: new Date().toISOString() },
         image: { imageId: 801, imageUrl: '/mock-xray.jpg' },

@@ -11,7 +11,7 @@ export const analysisApi = {
     return request.get('/analysis/tasks', { params });
   },
 
-  getTaskDetail(taskId: number): Promise<ApiResponse<AnalysisDetailViewDTO>> {
+  getTaskDetail(taskId: string | number): Promise<ApiResponse<AnalysisDetailViewDTO>> {
     if (USE_MOCK) return mockAnalysisApi.getTaskDetail(taskId);
     return request.get(`/analysis/tasks/${taskId}/view`);
   }

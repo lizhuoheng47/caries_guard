@@ -50,20 +50,20 @@
       <!-- Panel 1: Uncertainty Distribution -->
       <Panel title="不确定度分布" color="amber">
         <template #meta><span class="font-mono text-[10px] text-[var(--td)]">N=2,847</span></template>
-        <div class="w-full h-full relative flex items-end pb-4">
+        <div class="w-full h-full relative flex items-end pt-2 pb-4">
           <!-- Mock SVG Area Chart -->
-          <svg class="w-full h-[80%] overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg class="w-full h-[88%] overflow-visible" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet">
             <!-- Background horizontal line -->
-            <line x1="0" y1="65" x2="100" y2="65" stroke="var(--ln)" stroke-width="0.5" stroke-dasharray="4" opacity="0.3" />
+            <line x1="0" y1="50" x2="100" y2="50" stroke="var(--ln)" stroke-width="0.5" stroke-dasharray="4" opacity="0.3" />
             
             <!-- Area under the curve -->
-            <path d="M0,90 C15,90 25,40 35,40 C45,40 60,90 100,90 L100,100 L0,100 Z" fill="url(#amber-glow-grad)" opacity="0.4" />
+            <path d="M15,50 C25,50 30,20 35,20 C40,20 45,50 60,50 L60,60 L15,60 Z" fill="url(#amber-glow-grad)" opacity="0.4" />
             
             <!-- Peak Indicator Line -->
-            <line x1="35" y1="40" x2="35" y2="100" stroke="var(--amber)" stroke-width="1" stroke-dasharray="2" opacity="0.6" />
+            <line x1="35" y1="20" x2="35" y2="50" stroke="var(--amber)" stroke-width="0.8" stroke-dasharray="2" opacity="0.6" />
             
             <!-- Main Curve -->
-            <path d="M0,90 C15,90 25,40 35,40 C45,40 60,90 100,90" fill="none" stroke="var(--amber)" stroke-width="3" stroke-linecap="round" style="filter: drop-shadow(0 0 10px var(--amber));" />
+            <path d="M15,50 C25,50 30,20 35,20 C40,20 45,50 60,50" fill="none" stroke="var(--amber)" stroke-width="1" stroke-linecap="round" style="filter: drop-shadow(0 0 8px var(--amber));" />
             
             <defs>
               <linearGradient id="amber-glow-grad" x1="0" y1="0" x2="0" y2="1">
@@ -74,12 +74,15 @@
             </defs>
             
             <!-- Peak Point Marker -->
-            <circle cx="35" cy="40" r="2.5" fill="var(--amber)" style="filter: drop-shadow(0 0 6px var(--amber));" />
+            <circle cx="35" cy="20" r="1" fill="var(--amber)" style="filter: drop-shadow(0 0 4px var(--amber));" />
             
             <!-- Labels -->
-            <text x="35" y="28" fill="var(--amber)" font-family="monospace" font-size="7" text-anchor="middle" font-weight="bold">峰值</text>
-            <text x="35" y="18" fill="var(--amber)" font-family="monospace" font-size="9" text-anchor="middle" font-weight="bold" letter-spacing="1">Θ 0.35</text>
+            <text x="35" y="14" fill="var(--amber)" font-family="monospace" font-size="4" text-anchor="middle" font-weight="bold">峰值</text>
+            <text x="35" y="8" fill="var(--amber)" font-family="monospace" font-size="5" text-anchor="middle" font-weight="bold">Θ 0.35</text>
           </svg>
+
+
+
           <!-- X Axis -->
           <div class="absolute bottom-0 left-0 right-0 flex justify-between px-2 text-[var(--td)] font-mono text-[10px]">
             <span>0.0</span><span>0.25</span><span>0.5</span><span>0.75</span><span>1.0</span>

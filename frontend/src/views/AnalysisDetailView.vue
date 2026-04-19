@@ -226,7 +226,7 @@ const router = useRouter();
 const store = useAnalysisStore();
 
 onMounted(() => {
-  const taskId = parseInt(route.params.taskId as string) || 1;
+  const taskId = (route.params.taskId as string) || '1';
   store.fetchDetail(taskId);
 });
 </script>
