@@ -1,0 +1,43 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--void);
+  color: var(--ts);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+#app {
+  height: 100%;
+  width: 100%;
+}
+
+.page-bg {
+  background:
+    radial-gradient(ellipse at top right, rgba(0,229,255,0.06) 0%, transparent 45%),
+    radial-gradient(ellipse at bottom left, rgba(139,92,246,0.05) 0%, transparent 45%),
+    var(--void);
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+/* 叠加网格纹理 */
+.page-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Base styles for numbers */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
