@@ -37,10 +37,10 @@
     <div class="flex-1 overflow-y-auto min-h-0 pr-1">
       <div class="grid grid-cols-3 gap-3">
         <div 
-          v-for="(c, idx) in cases" 
-          :key="idx" 
+          v-for="c in store.tasks.items" 
+          :key="c.id" 
           class="glass-panel rounded-md overflow-hidden cursor-pointer hover:border-[var(--cyan)]/40 transition-all group relative"
-          @click="router.push(`/analysis/${c.taskId}`)"
+          @click="router.push(`/analysis/${c.id}`)"
         >
           <!-- Left accent -->
           <div class="absolute left-0 top-0 bottom-0 w-[2px] z-20" :class="getGradeAccent(c.grade)"></div>
@@ -70,7 +70,7 @@
             <!-- Bottom left scan info -->
             <div class="absolute bottom-2 left-2 z-10 flex items-center gap-1.5">
               <div class="w-1.5 h-1.5 rounded-full bg-[var(--cyan)] shadow-[0_0_4px_var(--cyan)]"></div>
-              <span class="font-mono text-[8px] text-[var(--cyan-soft)]">{{ c.scanDate }}</span>
+              <span class="font-mono text-[8px] text-[var(--cyan-soft)]">{{ new Date(c.createdAt).toLocaleDateString() }}</span>
             </div>
             
             <!-- Scanline on hover -->
@@ -82,10 +82,10 @@
             <!-- Patient Info -->
             <div class="flex justify-between items-start">
               <div class="flex flex-col">
-                <span class="text-[12px] text-[var(--tp)] font-medium">{{ c.patientId }}</span>
-                <span class="font-mono text-[9px] text-[var(--td)]">{{ c.demographics }}</span>
+                <span class="text-[12px] text-[var(--tp)] font-medium">{{ c.patientName || c.patientId }}</span>
+                <span class="font-mono text-[9px] text-[var(--td)]">{{ c.patientId }} | {{ c.no }}</span>
               </div>
-              <span class="font-mono text-[8px] text-[var(--td)] uppercase">{{ c.visitDate }}</span>
+              <span class="font-mono text-[8px] text-[var(--td)] uppercase">{{ c.caseNo }}</span>
             </div>
             
             <!-- Bottom: Status + Grade + Uncertainty mini bar -->
@@ -99,9 +99,9 @@
               <!-- Uncertainty mini bar -->
               <div class="flex items-center gap-2 flex-1 max-w-[120px]">
                 <div class="flex-1 h-[3px] bg-[var(--void)] border border-[var(--ln)] rounded-full overflow-hidden">
-                  <div class="h-full" :style="{ width: `${c.uncertainty * 100}%` }" :class="c.uncertainty > 0.35 ? 'bg-[var(--amber)] shadow-[0_0_4px_var(--amber)]' : 'bg-[var(--cyan)] shadow-[0_0_4px_var(--cyan)]'"></div>
+                  <div class="h-full" :style="{ width: `${(c.uncertainty || 0) * 100}%` }" :class="(c.uncertainty || 0) > 0.35 ? 'bg-[var(--amber)] shadow-[0_0_4px_var(--amber)]' : 'bg-[var(--cyan)] shadow-[0_0_4px_var(--cyan)]'"></div>
                 </div>
-                <span class="font-mono text-[8px] tabular-nums" :class="c.uncertainty > 0.35 ? 'text-[var(--amber)]' : 'text-[var(--ts)]'">{{ c.uncertainty.toFixed(2) }}</span>
+                <span class="font-mono text-[8px] tabular-nums" :class="(c.uncertainty || 0) > 0.35 ? 'text-[var(--amber)]' : 'text-[var(--ts)]'">{{ (c.uncertainty || 0).toFixed(2) }}</span>
               </div>
             </div>
           </div>
@@ -174,35 +174,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import NeuralButton from '../components/shared/NeuralButton.vue';
+import { useAnalysisStore } from '../stores/analysis';
 
 const router = useRouter();
 const showNewCase = ref(false);
+const store = useAnalysisStore();
 
-interface CaseItem {
-  taskId: string;
-  patientId: string;
-  demographics: string;
-  scanDate: string;
-  visitDate: string;
-  grade: string;
-  status: string;
-  uncertainty: number;
-}
-
-const cases = ref<CaseItem[]>([
-  { taskId: 'T-20260418001', patientId: 'P-1001', demographics: 'M · 52Y', scanDate: 'SCAN 2026-04-18', visitDate: '2026-04-18', grade: 'G3', status: 'REVIEW', uncertainty: 0.72 },
-  { taskId: 'T-20260418002', patientId: 'P-1002', demographics: 'F · 34Y', scanDate: 'SCAN 2026-04-18', visitDate: '2026-04-18', grade: 'G1', status: 'DONE', uncertainty: 0.12 },
-  { taskId: 'T-20260418003', patientId: 'P-1003', demographics: 'M · 67Y', scanDate: 'SCAN 2026-04-18', visitDate: '2026-04-18', grade: 'G4', status: 'REVIEW', uncertainty: 0.58 },
-  { taskId: 'T-20260417004', patientId: 'P-1004', demographics: 'F · 28Y', scanDate: 'SCAN 2026-04-17', visitDate: '2026-04-17', grade: 'G0', status: 'DONE', uncertainty: 0.08 },
-  { taskId: 'T-20260417005', patientId: 'P-1005', demographics: 'M · 41Y', scanDate: 'SCAN 2026-04-17', visitDate: '2026-04-17', grade: 'G2', status: 'DONE', uncertainty: 0.25 },
-  { taskId: 'T-20260417006', patientId: 'P-1006', demographics: 'F · 55Y', scanDate: 'SCAN 2026-04-17', visitDate: '2026-04-17', grade: 'G3', status: 'RUNNING', uncertainty: 0.41 },
-  { taskId: 'T-20260416007', patientId: 'P-1007', demographics: 'M · 19Y', scanDate: 'SCAN 2026-04-16', visitDate: '2026-04-16', grade: 'G1', status: 'DONE', uncertainty: 0.15 },
-  { taskId: 'T-20260416008', patientId: 'P-1008', demographics: 'F · 73Y', scanDate: 'SCAN 2026-04-16', visitDate: '2026-04-16', grade: 'G4', status: 'FAILED', uncertainty: 0.82 },
-  { taskId: 'T-20260416009', patientId: 'P-1009', demographics: 'M · 36Y', scanDate: 'SCAN 2026-04-16', visitDate: '2026-04-16', grade: 'G2', status: 'DONE', uncertainty: 0.22 },
-]);
+onMounted(() => {
+  store.fetchTasks({ pageNum: 1, pageSize: 12 });
+});
 
 const getGradeAccent = (grade: string) => {
   switch (grade) {

@@ -1,13 +1,12 @@
 <template>
   <div class="w-[180px] h-full flex flex-col shrink-0 border-r border-[var(--ln)] relative z-20" style="background: rgba(3,8,18,0.7); backdrop-filter: blur(20px);">
-    <!-- Brand Area -->
     <div class="flex items-center gap-3 p-4 border-b border-[var(--ln)]">
       <div class="relative w-[26px] h-[26px] flex items-center justify-center">
         <div class="absolute inset-0 border border-[var(--cyan)] rotate-45 opacity-60 shadow-[0_0_8px_rgba(0,229,255,0.4)]"></div>
         <div class="w-[16px] h-[16px] bg-gradient-to-br from-[var(--cyan)] to-[var(--violet)] rotate-45 shadow-[0_0_8px_var(--cyan)]"></div>
       </div>
       <div class="flex flex-col">
-        <span class="text-[12px] font-medium text-[var(--tp)] leading-tight">CariesGuard</span>
+        <span class="text-[12px] font-medium text-[var(--tp)] leading-tight">{{ authStore.user?.username || 'CariesGuard' }}</span>
         <span class="font-mono text-[8px] text-[var(--cyan)] tracking-[0.2em] leading-tight mt-[2px] val-cyan">NEURAL V2</span>
       </div>
     </div>
@@ -65,8 +64,28 @@
       </div>
 
     </div>
+    <!-- User Actions -->
+    <div class="p-3 border-t border-[var(--ln)] flex flex-col gap-2">
+      <button @click="handleLogout" class="flex items-center justify-center gap-2 w-full py-2 rounded border border-[var(--ln)] bg-[rgba(255,59,48,0.05)] hover:bg-[rgba(255,59,48,0.1)] hover:border-[var(--rose)] transition-colors text-[var(--ts)] hover:text-[var(--rose)]">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+        <span class="text-[11px]">System Disconnect</span>
+      </button>
+    </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { useAuthStore } from '@/stores/auth';
+import { useRouter } from 'vue-router';
+
+const authStore = useAuthStore();
+const router = useRouter();
+
+const handleLogout = () => {
+  authStore.logout();
+  router.push('/login');
+};
+</script>
 
 <style scoped>
 .nav-item {

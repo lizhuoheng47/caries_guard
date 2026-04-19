@@ -15,16 +15,16 @@
       
       <div class="flex-1 overflow-y-auto p-2 flex flex-col gap-2">
         <!-- Active Card -->
-        <div class="p-3 border rounded-[4px] border-[var(--amber)] bg-[var(--amber)]/5 shadow-[0_0_12px_rgba(255,181,71,0.15)] relative cursor-pointer">
+        <div v-if="workbenchData" class="p-3 border rounded-[4px] border-[var(--amber)] bg-[var(--amber)]/5 shadow-[0_0_12px_rgba(255,181,71,0.15)] relative cursor-pointer">
           <div class="absolute left-0 top-2 bottom-2 w-[2px] bg-[var(--amber)] shadow-[0_0_8px_var(--amber)]"></div>
           <div class="flex justify-between items-start mb-2 pl-1">
-            <span class="font-mono text-[10px] text-[var(--amber)]">T-20260418001</span>
-            <span class="font-mono text-[8px] text-[var(--td)]">14:02</span>
+            <span class="font-mono text-[10px] text-[var(--amber)]">{{ workbenchData.task.taskNo || 'T-' + workbenchData.task.taskId }}</span>
+            <span class="font-mono text-[8px] text-[var(--td)]">{{ new Date(workbenchData.task.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</span>
           </div>
           <div class="flex items-center gap-2 pl-1">
-            <GradeBadge grade="G3" />
-            <div class="font-mono text-[9px] text-[var(--ts)] flex-1">P-1002</div>
-            <span class="font-mono text-[9px] text-[var(--amber)]">UC 0.72</span>
+            <GradeBadge :grade="workbenchData.aiResult.gradingLabel" />
+            <div class="font-mono text-[9px] text-[var(--ts)] flex-1">{{ workbenchData.caseInfo.caseNo }}</div>
+            <span class="font-mono text-[9px] text-[var(--amber)]">UC {{ workbenchData.aiResult.uncertaintyScore.toFixed(2) }}</span>
           </div>
         </div>
         
@@ -48,7 +48,7 @@
       <div class="flex items-center justify-between mb-4 shrink-0">
         <div class="flex items-center gap-3">
           <h2 class="text-[18px] font-medium text-[var(--tp)] m-0">复核工作台</h2>
-          <span class="font-mono text-[10px] text-[var(--amber)] tracking-[0.1em]">T-20260418001</span>
+          <span class="font-mono text-[10px] text-[var(--amber)] tracking-[0.1em]" v-if="workbenchData">{{ workbenchData.task.taskNo || 'T-' + workbenchData.task.taskId }}</span>
         </div>
       </div>
       
@@ -61,12 +61,13 @@
               <div class="absolute inset-0 z-0 opacity-[0.03]" style="background-image: linear-gradient(var(--cyan) 1px, transparent 1px), linear-gradient(90deg, var(--cyan) 1px, transparent 1px); background-size: 16px 16px;"></div>
               
               <div class="absolute inset-4 z-10 bg-black/50 border border-[var(--ln)] rounded-[4px] flex items-center justify-center overflow-hidden">
-                <div class="absolute inset-0 flex items-center justify-center gap-1">
+                <div class="absolute inset-0 flex items-center justify-center gap-1" v-if="!workbenchData || workbenchData.image.imageUrl.includes('mock')">
                   <div class="w-12 h-32 bg-gradient-to-b from-white/20 to-transparent rounded-[40%_40%_10%_10%]"></div>
                   <div class="w-12 h-32 bg-gradient-to-b from-white/20 to-transparent rounded-[40%_40%_10%_10%] relative">
                     <div class="absolute inset-0 bg-[var(--amber)]/20 blur-[8px] mix-blend-screen rounded-full scale-[0.6] top-4"></div>
                   </div>
                 </div>
+                <img v-else :src="workbenchData.image.imageUrl" alt="X-Ray" class="max-w-full max-h-full object-contain opacity-80 mix-blend-screen" />
               </div>
               
               <!-- AI Original Box (50% opacity) -->
@@ -98,12 +99,12 @@
               <div class="flex items-center justify-between p-3 border border-[var(--ln)] rounded-[4px] bg-[rgba(10,20,40,0.5)]">
                 <div class="flex flex-col items-center flex-1">
                   <span class="font-mono text-[8px] text-[var(--td)] mb-1">AI GRADE</span>
-                  <span class="font-mono text-[18px] text-[var(--amber)] val-amber">G3</span>
+                  <span class="font-mono text-[18px] text-[var(--amber)] val-amber">{{ workbenchData?.aiResult.gradingLabel || 'G3' }}</span>
                 </div>
                 <svg class="w-5 h-5 text-[var(--td)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                 <div class="flex flex-col items-center flex-1">
                   <span class="font-mono text-[8px] text-[var(--emerald)] mb-1">DOCTOR</span>
-                  <span class="font-mono text-[18px] text-[var(--emerald)] val-emerald">G2</span>
+                  <span class="font-mono text-[18px] text-[var(--emerald)] val-emerald">{{ selectedGrade || 'G2' }}</span>
                 </div>
               </div>
               
@@ -111,11 +112,12 @@
               <div>
                 <span class="font-mono text-[9px] text-[var(--td)] tracking-widest uppercase mb-2 block">Correct Grade</span>
                 <div class="flex gap-2">
-                  <button v-for="g in ['G0','G1','G2','G3','G4']" :key="g" 
+                  <button v-for="g in (workbenchData?.reviewOptions.gradeOptions || ['G0','G1','G2','G3','G4'])" :key="g" 
+                          @click="selectedGrade = g"
                           class="flex-1 py-2 rounded-[3px] border font-mono text-[10px] transition-colors relative"
-                          :class="g === 'G2' ? 'bg-[var(--emerald)]/20 border-[var(--emerald)] text-[var(--emerald)] shadow-[0_0_8px_rgba(0,255,163,0.2)]' : g === 'G3' ? 'border-[var(--amber)]/30 text-[var(--amber)] opacity-50' : 'border-[var(--ln)] text-[var(--td)] hover:text-[var(--ts)] bg-[rgba(3,8,18,0.5)]'">
+                          :class="g === selectedGrade ? 'bg-[var(--emerald)]/20 border-[var(--emerald)] text-[var(--emerald)] shadow-[0_0_8px_rgba(0,255,163,0.2)]' : g === workbenchData?.aiResult.gradingLabel ? 'border-[var(--amber)]/30 text-[var(--amber)] opacity-50' : 'border-[var(--ln)] text-[var(--td)] hover:text-[var(--ts)] bg-[rgba(3,8,18,0.5)]'">
                     {{ g }}
-                    <div v-if="g === 'G2'" class="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-[var(--emerald)] rounded-full flex items-center justify-center shadow-[0_0_8px_var(--emerald)]">
+                    <div v-if="g === selectedGrade" class="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-[var(--emerald)] rounded-full flex items-center justify-center shadow-[0_0_8px_var(--emerald)]">
                       <svg class="w-2.5 h-2.5 text-[var(--void)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
                     </div>
                   </button>
@@ -126,11 +128,12 @@
               <div>
                 <span class="font-mono text-[9px] text-[var(--td)] tracking-widest uppercase mb-2 block">Reason</span>
                 <div class="flex flex-wrap gap-2">
-                  <button class="px-3 py-1.5 rounded-[3px] border border-[var(--cyan)] bg-[var(--cyan)]/20 text-[var(--cyan)] font-mono text-[9px] shadow-[0_0_8px_rgba(0,229,255,0.2)]">病灶范围过估</button>
-                  <button class="px-3 py-1.5 rounded-[3px] border border-[var(--ln)] bg-[rgba(3,8,18,0.5)] text-[var(--td)] hover:text-[var(--ts)] font-mono text-[9px]">边界误判</button>
-                  <button class="px-3 py-1.5 rounded-[3px] border border-[var(--ln)] bg-[rgba(3,8,18,0.5)] text-[var(--td)] hover:text-[var(--ts)] font-mono text-[9px]">影像伪影</button>
-                  <button class="px-3 py-1.5 rounded-[3px] border border-[var(--cyan)] bg-[var(--cyan)]/20 text-[var(--cyan)] font-mono text-[9px] shadow-[0_0_8px_rgba(0,229,255,0.2)]">深度判断偏差</button>
-                  <button class="px-3 py-1.5 rounded-[3px] border border-[var(--ln)] bg-[rgba(3,8,18,0.5)] text-[var(--td)] hover:text-[var(--ts)] font-mono text-[9px]">其他</button>
+                  <button v-for="tag in (workbenchData?.reviewOptions.reasonTags || ['病灶范围过估', '边界误判', '影像伪影', '深度判断偏差', '其他'])" :key="tag"
+                          @click="toggleTag(tag)"
+                          class="px-3 py-1.5 rounded-[3px] border font-mono text-[9px] transition-colors"
+                          :class="selectedTags.includes(tag) ? 'border-[var(--cyan)] bg-[var(--cyan)]/20 text-[var(--cyan)] shadow-[0_0_8px_rgba(0,229,255,0.2)]' : 'border-[var(--ln)] bg-[rgba(3,8,18,0.5)] text-[var(--td)] hover:text-[var(--ts)]'">
+                    {{ tag }}
+                  </button>
                 </div>
               </div>
               
@@ -139,9 +142,10 @@
                 <span class="font-mono text-[9px] text-[var(--td)] tracking-widest uppercase mb-2 block">Clinical Note</span>
                 <div class="flex-1 relative">
                   <textarea 
+                    v-model="clinicalNote"
                     class="w-full h-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[4px] p-3 text-[12px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] transition-colors resize-none"
                     placeholder="Enter observations..."
-                  >病变尚未波及牙本质内层，属于 G2 级，AI 可能将局部重叠阴影误判为深层扩展。</textarea>
+                  ></textarea>
                 </div>
               </div>
               
@@ -149,7 +153,7 @@
               <div class="grid grid-cols-3 gap-2 mt-auto">
                 <NeuralButton variant="ghost" class="text-[var(--td)] border-[var(--td)]/30 hover:border-[var(--td)]">SAVE DRAFT</NeuralButton>
                 <NeuralButton variant="danger">2ND OPINION</NeuralButton>
-                <NeuralButton variant="success">SUBMIT & LOG</NeuralButton>
+                <NeuralButton variant="success" @click="submitReview" :loading="submitting">SUBMIT & LOG</NeuralButton>
               </div>
             </div>
           </Panel>
@@ -160,8 +164,68 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import Panel from '../components/shared/Panel.vue';
 import NeuralButton from '../components/shared/NeuralButton.vue';
 import GradeBadge from '../components/shared/GradeBadge.vue';
 import HudChip from '../components/shared/HudChip.vue';
+import { reviewApi } from '../api/review';
+
+const route = useRoute();
+const router = useRouter();
+
+const workbenchData = ref<any>(null);
+const selectedGrade = ref('G2');
+const selectedTags = ref<string[]>([]);
+const clinicalNote = ref('');
+const submitting = ref(false);
+
+const fetchWorkbench = async () => {
+  const taskId = parseInt(route.params.taskId as string) || 1;
+  try {
+    const res = await reviewApi.getReviewWorkbench(taskId);
+    workbenchData.value = res.data;
+    if (res.data.doctorDraft) {
+      selectedGrade.value = res.data.doctorDraft.revisedGrade || res.data.aiResult.gradingLabel;
+      selectedTags.value = res.data.doctorDraft.reasonTags || [];
+      clinicalNote.value = res.data.doctorDraft.note || '';
+    } else {
+      selectedGrade.value = res.data.aiResult.gradingLabel;
+    }
+  } catch (error) {
+    console.error('Failed to fetch review workbench', error);
+  }
+};
+
+const toggleTag = (tag: string) => {
+  const index = selectedTags.value.indexOf(tag);
+  if (index > -1) {
+    selectedTags.value.splice(index, 1);
+  } else {
+    selectedTags.value.push(tag);
+  }
+};
+
+const submitReview = async () => {
+  if (!workbenchData.value) return;
+  submitting.value = true;
+  try {
+    await reviewApi.submitReview({
+      taskId: workbenchData.value.task.taskId,
+      revisedGrade: selectedGrade.value,
+      reasonTags: selectedTags.value,
+      note: clinicalNote.value
+    });
+    router.push('/analysis');
+  } catch (error) {
+    console.error('Failed to submit review', error);
+  } finally {
+    submitting.value = false;
+  }
+};
+
+onMounted(() => {
+  fetchWorkbench();
+});
 </script>

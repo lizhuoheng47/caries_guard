@@ -6,6 +6,7 @@ import com.cariesguard.analysis.interfaces.command.CreateAnalysisTaskCommand;
 import com.cariesguard.analysis.interfaces.command.RetryAnalysisTaskCommand;
 import com.cariesguard.analysis.interfaces.query.AnalysisTaskPageQuery;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskDetailVO;
+import com.cariesguard.analysis.interfaces.vo.AnalysisDetailViewVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskPageVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskVO;
 import com.cariesguard.common.api.ApiResponse;
@@ -28,11 +29,14 @@ public class AnalysisTaskController {
 
     private final AnalysisTaskAppService analysisTaskAppService;
     private final AnalysisQueryAppService analysisQueryAppService;
+    private final com.cariesguard.analysis.app.AnalysisBffAppService analysisBffAppService;
 
     public AnalysisTaskController(AnalysisTaskAppService analysisTaskAppService,
-                                  AnalysisQueryAppService analysisQueryAppService) {
+                                  AnalysisQueryAppService analysisQueryAppService,
+                                  com.cariesguard.analysis.app.AnalysisBffAppService analysisBffAppService) {
         this.analysisTaskAppService = analysisTaskAppService;
         this.analysisQueryAppService = analysisQueryAppService;
+        this.analysisBffAppService = analysisBffAppService;
     }
 
     @Operation(summary = "创建分析任务")
@@ -54,6 +58,13 @@ public class AnalysisTaskController {
     @RequirePermission("analysis:view")
     public ApiResponse<AnalysisTaskDetailVO> getAnalysisTaskDetail(@PathVariable Long taskId) {
         return ApiResponse.success(analysisQueryAppService.getTaskDetail(taskId), TraceIdUtils.currentTraceId());
+    }
+
+    @Operation(summary = "查询任务视图(BFF聚合)")
+    @GetMapping("/{taskId}/view")
+    @RequirePermission("analysis:view")
+    public ApiResponse<AnalysisDetailViewVO> getAnalysisTaskDetailView(@PathVariable Long taskId) {
+        return ApiResponse.success(analysisBffAppService.getTaskDetailView(taskId), TraceIdUtils.currentTraceId());
     }
 
     @Operation(summary = "分页查询任务")

@@ -62,45 +62,39 @@
         <Panel title="Diagnostic Conversation" color="cyan">
           <div class="flex flex-col h-full">
             <div class="flex-1 overflow-y-auto pr-2 flex flex-col gap-4 pb-4">
-              
-              <!-- AI Msg 1 -->
-              <div class="flex gap-3 max-w-[85%]">
-                <div class="w-[28px] h-[28px] rounded-[4px] bg-[var(--violet)]/20 border border-[var(--violet)] flex items-center justify-center shrink-0">
-                  <div class="w-3 h-3 bg-gradient-to-br from-[var(--cyan)] to-[var(--violet)] shadow-[0_0_8px_var(--violet)] rounded-xs rotate-45"></div>
-                </div>
-                <div class="bg-[var(--violet)]/5 border-l-2 border-l-[var(--violet)] border border-[var(--violet)]/20 rounded-[4px] p-3 text-[12px] text-[var(--tp)] leading-relaxed">
-                  系统已完成全景X光片的初步推理。在右下颌第一磨牙远中邻面检测到 <strong>G3 级</strong> 龋坏。该病变表现为典型的透射影像，深度已突破釉质牙本质界（DEJ），位于牙本质中层<CitationTag id="1" />。<br/><br/>
-                  由于该区域边缘存在伪影（Uncertainty 0.72），系统已自动将此病例标记为需医生复核。
-                </div>
-              </div>
-              
-              <!-- User Msg -->
-              <div class="flex gap-3 max-w-[85%] self-end flex-row-reverse">
-                <div class="w-[28px] h-[28px] rounded-[4px] bg-[rgba(3,8,18,0.8)] border border-[var(--ln)] flex items-center justify-center shrink-0">
-                  <svg class="w-4 h-4 text-[var(--ts)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                </div>
-                <div class="bg-[var(--cyan)]/10 border border-[var(--cyan)]/30 rounded-[4px] p-3 text-[12px] text-[var(--tp)] leading-relaxed">
-                  根据临床指南，这种深度的病变现在应该采取什么保守治疗措施？
-                </div>
-              </div>
-              
-              <!-- AI Msg 2 -->
-              <div class="flex gap-3 max-w-[85%]">
-                <div class="w-[28px] h-[28px] rounded-[4px] bg-[var(--violet)]/20 border border-[var(--violet)] flex items-center justify-center shrink-0">
-                  <div class="w-3 h-3 bg-gradient-to-br from-[var(--cyan)] to-[var(--violet)] shadow-[0_0_8px_var(--violet)] rounded-xs rotate-45"></div>
-                </div>
-                <div class="flex flex-col gap-2">
-                  <div class="bg-[var(--violet)]/5 border-l-2 border-l-[var(--violet)] border border-[var(--violet)]/20 rounded-[4px] p-3 text-[12px] text-[var(--tp)] leading-relaxed">
-                    对于 G3 级（累及牙本质中层）但未波及牙髓的病变，最新版保守牙医学指南建议：<br/><br/>
-                    1. <strong>选择性去龋（Selective Caries Removal）</strong>：保留靠近牙髓的软化但可再矿化的感染牙本质，以避免露髓风险<CitationTag id="2" />。<br/>
-                    2. 使用具有良好密封性的生物活性材料（如树脂改性玻璃离子或含钙硅酸盐材料）进行垫底封闭<CitationTag id="3" />。<br/>
-                    3. 上方使用复合树脂进行最终充填重建接触关系。
+              <template v-for="(msg, index) in messages" :key="index">
+                <!-- AI Msg -->
+                <div v-if="msg.role === 'ai'" class="flex gap-3 max-w-[85%]">
+                  <div class="w-[28px] h-[28px] rounded-[4px] bg-[var(--violet)]/20 border border-[var(--violet)] flex items-center justify-center shrink-0">
+                    <div class="w-3 h-3 bg-gradient-to-br from-[var(--cyan)] to-[var(--violet)] shadow-[0_0_8px_var(--violet)] rounded-xs rotate-45"></div>
                   </div>
-                  <!-- Safety Flag -->
-                  <div class="bg-[var(--amber)]/10 border border-[var(--amber)]/30 rounded-[4px] p-2 flex items-center gap-2">
-                    <svg class="w-4 h-4 text-[var(--amber)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    <span class="text-[10px] text-[var(--amber)] font-mono">WARNING: AI 建议仅供参考，具体方案请结合患者临床症状和活力测试。</span>
+                  <div class="flex flex-col gap-2">
+                    <div class="bg-[var(--violet)]/5 border-l-2 border-l-[var(--violet)] border border-[var(--violet)]/20 rounded-[4px] p-3 text-[12px] text-[var(--tp)] leading-relaxed" v-html="msg.content">
+                    </div>
+                    <!-- Safety Flag -->
+                    <div v-if="msg.warning" class="bg-[var(--amber)]/10 border border-[var(--amber)]/30 rounded-[4px] p-2 flex items-center gap-2">
+                      <svg class="w-4 h-4 text-[var(--amber)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                      <span class="text-[10px] text-[var(--amber)] font-mono">{{ msg.warning }}</span>
+                    </div>
                   </div>
+                </div>
+                
+                <!-- User Msg -->
+                <div v-else class="flex gap-3 max-w-[85%] self-end flex-row-reverse">
+                  <div class="w-[28px] h-[28px] rounded-[4px] bg-[rgba(3,8,18,0.8)] border border-[var(--ln)] flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-[var(--ts)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  </div>
+                  <div class="bg-[var(--cyan)]/10 border border-[var(--cyan)]/30 rounded-[4px] p-3 text-[12px] text-[var(--tp)] leading-relaxed">
+                    {{ msg.content }}
+                  </div>
+                </div>
+              </template>
+              <div v-if="loading" class="flex gap-3 max-w-[85%]">
+                <div class="w-[28px] h-[28px] rounded-[4px] bg-[var(--violet)]/20 border border-[var(--violet)] flex items-center justify-center shrink-0">
+                  <div class="w-3 h-3 bg-[var(--cyan)] rounded-xs rotate-45 animate-ping"></div>
+                </div>
+                <div class="bg-[var(--violet)]/5 border border-[var(--violet)]/20 rounded-[4px] p-3 text-[12px] text-[var(--td)]">
+                  Thinking...
                 </div>
               </div>
               
@@ -110,10 +104,12 @@
             <div class="shrink-0 pt-3 border-t border-[var(--ln)]">
               <div class="relative">
                 <textarea 
+                  v-model="inputText"
+                  @keydown.enter.prevent="sendMessage"
                   class="w-full bg-[rgba(3,8,18,0.7)] border border-[var(--ln)] rounded-[4px] py-3 pl-3 pr-12 text-[12px] text-[var(--tp)] focus:outline-none focus:border-[var(--cyan)] transition-colors resize-none h-[48px]"
                   placeholder="Ask for deeper diagnostic details..."
                 ></textarea>
-                <button class="absolute right-2 top-1/2 -translate-y-1/2 w-[32px] h-[32px] flex items-center justify-center bg-[var(--cyan)]/20 border border-[var(--cyan)] text-[var(--cyan)] rounded-[3px] hover:shadow-[0_0_8px_rgba(0,229,255,0.4)] transition-all">
+                <button @click="sendMessage" class="absolute right-2 top-1/2 -translate-y-1/2 w-[32px] h-[32px] flex items-center justify-center bg-[var(--cyan)]/20 border border-[var(--cyan)] text-[var(--cyan)] rounded-[3px] hover:shadow-[0_0_8px_rgba(0,229,255,0.4)] transition-all">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                 </button>
               </div>
@@ -129,21 +125,18 @@
             <span class="font-mono text-[9px] text-[var(--td)] tracking-widest uppercase mb-3">Retrieved Chunks</span>
             
             <div class="flex-1 overflow-y-auto flex flex-col gap-3 pr-2">
-              <div v-for="i in 3" :key="i" class="p-3 bg-[rgba(3,8,18,0.5)] border border-[var(--ln)] hover:border-[var(--violet)]/50 rounded-[4px] cursor-pointer transition-colors relative">
+              <div v-for="(citation, index) in citations" :key="index" class="p-3 bg-[rgba(3,8,18,0.5)] border border-[var(--ln)] hover:border-[var(--violet)]/50 rounded-[4px] cursor-pointer transition-colors relative">
                 <div class="absolute -left-[1px] top-2 w-[2px] h-[16px] bg-[var(--violet)] shadow-[0_0_8px_var(--violet)]"></div>
                 <div class="flex justify-between items-start mb-1.5 pl-1.5">
                   <div class="flex items-center gap-1.5">
-                    <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[8px] text-[var(--violet)]">{{ i }}</div>
-                    <span class="font-mono text-[9px] text-[var(--tp)] truncate w-[140px]">{{ i === 1 ? '龋病诊断专家共识' : '现代牙体牙髓病学' }}</span>
+                    <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[8px] text-[var(--violet)]">{{ index + 1 }}</div>
+                    <span class="font-mono text-[9px] text-[var(--tp)] truncate w-[140px]">{{ citation.docTitle }}</span>
                   </div>
-                  <span class="font-mono text-[8px] text-[var(--td)]">P.{{ 40+i*12 }}</span>
+                  <span class="font-mono text-[8px] text-[var(--td)]">P.{{ citation.pageNumber || '?' }}</span>
                 </div>
                 <p class="text-[10px] text-[var(--ts)] leading-relaxed line-clamp-3 pl-1.5">
-                  {{ i === 1 ? '当影像学显示透射区位于牙本质外1/2或中层，且临床表现无不可逆性牙髓炎症状时，应避免彻底去除靠近髓腔的感染牙本质...' : '树脂改性玻璃离子具有良好的边缘封闭性和一定程度的氟释放能力，是垫底的理想材料...' }}
+                  {{ citation.chunkText }}
                 </p>
-                <div class="flex justify-end mt-2">
-                  <span class="font-mono text-[8px] text-[var(--emerald)] val-emerald">MATCH 9{{ 8-i }}%</span>
-                </div>
               </div>
             </div>
             
@@ -166,6 +159,50 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import Panel from '../components/shared/Panel.vue';
 import CitationTag from '../components/shared/CitationTag.vue';
+import { ragApi } from '../api/rag';
+
+interface Message {
+  role: 'ai' | 'user';
+  content: string;
+  warning?: string;
+}
+
+const inputText = ref('');
+const loading = ref(false);
+const messages = ref<Message[]>([
+  {
+    role: 'ai',
+    content: '系统已完成全景X光片的初步推理。在右下颌第一磨牙远中邻面检测到 <strong>G3 级</strong> 龋坏。该病变表现为典型的透射影像，深度已突破釉质牙本质界（DEJ），位于牙本质中层。<br/><br/>请问有什么可以帮助您？'
+  }
+]);
+const citations = ref<any[]>([]);
+
+const sendMessage = async () => {
+  const text = inputText.value.trim();
+  if (!text || loading.value) return;
+
+  messages.value.push({ role: 'user', content: text });
+  inputText.value = '';
+  loading.value = true;
+
+  try {
+    const res = await ragApi.ask(text);
+    messages.value.push({
+      role: 'ai',
+      content: res.data.answerText || res.data.answer,
+      warning: res.data.safetyFlag === '1' ? 'WARNING: AI 建议仅供参考' : undefined
+    });
+    citations.value = res.data.citations || [];
+  } catch (e) {
+    messages.value.push({
+      role: 'ai',
+      content: 'I encountered an error retrieving the information.'
+    });
+  } finally {
+    loading.value = false;
+  }
+};
 </script>

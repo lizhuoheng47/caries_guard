@@ -28,12 +28,19 @@
     </div>
     
     <!-- KPI Row -->
-    <div class="grid grid-cols-5 gap-3 mb-4 shrink-0">
-      <KpiCard label="TOTAL SCANS" value="2,847" trend="18.2" color="cyan" sparkline="0,12 10,8 20,14 30,5 42,10" />
-      <KpiCard label="AGREEMENT" value="94.2%" trend="0.8" color="emerald" sparkline="0,10 10,12 20,8 30,6 42,4" />
-      <KpiCard label="REVIEW RATE" value="12.4%" trend="-1.2" color="amber" sparkline="0,5 10,6 20,4 30,8 42,5" />
-      <KpiCard label="RAG CALLS" value="1,203" trend="24.6" color="violet" sparkline="0,2 10,5 20,8 30,12 42,15" />
-      <KpiCard label="AVG LATENCY" value="2.34s" trend="-0.28" color="magenta" sparkline="0,8 10,6 20,7 30,4 42,4" />
+    <div class="grid grid-cols-5 gap-3 mb-4 shrink-0" v-if="dashboardData">
+      <KpiCard label="TOTAL SCANS" :value="dashboardData.kpi.totalScans.toLocaleString()" trend="18.2" color="cyan" sparkline="0,12 10,8 20,14 30,5 42,10" />
+      <KpiCard label="AGREEMENT" :value="(dashboardData.kpi.agreementRate * 100).toFixed(1) + '%'" trend="0.8" color="emerald" sparkline="0,10 10,12 20,8 30,6 42,4" />
+      <KpiCard label="REVIEW RATE" :value="(dashboardData.kpi.reviewRate * 100).toFixed(1) + '%'" trend="-1.2" color="amber" sparkline="0,5 10,6 20,4 30,8 42,5" />
+      <KpiCard label="RAG CALLS" :value="dashboardData.kpi.ragCalls.toLocaleString()" trend="24.6" color="violet" sparkline="0,2 10,5 20,8 30,12 42,15" />
+      <KpiCard label="AVG LATENCY" :value="(dashboardData.kpi.avgLatencyMs / 1000).toFixed(2) + 's'" trend="-0.28" color="magenta" sparkline="0,8 10,6 20,7 30,4 42,4" />
+    </div>
+    <div class="grid grid-cols-5 gap-3 mb-4 shrink-0 opacity-50" v-else>
+      <KpiCard label="TOTAL SCANS" value="—" color="cyan" />
+      <KpiCard label="AGREEMENT" value="—" color="emerald" />
+      <KpiCard label="REVIEW RATE" value="—" color="amber" />
+      <KpiCard label="RAG CALLS" value="—" color="violet" />
+      <KpiCard label="AVG LATENCY" value="—" color="magenta" />
     </div>
     
     <!-- 2x3 Grid Panels -->
@@ -169,10 +176,10 @@
             <div class="w-[80px] flex items-center justify-between">
               <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-[var(--emerald)] shadow-[0_0_4px_var(--emerald)]"></div><span class="font-mono text-[10px] text-[var(--td)]">G0 <span class="text-[var(--emerald)] ml-1 opacity-80">NORMAL</span></span></div>
             </div>
-            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">433</div>
-            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">15.2%</div>
+            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">{{ getGradeCount('G0') }}</div>
+            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">{{ getGradePct('G0') }}%</div>
             <div class="flex-1 h-[2px] bg-[var(--ln)] rounded-full overflow-hidden flex items-center">
-              <div class="h-full bg-[var(--emerald)] shadow-[0_0_8px_var(--emerald)]" style="width: 15.2%"></div>
+              <div class="h-full bg-[var(--emerald)] shadow-[0_0_8px_var(--emerald)]" :style="{ width: getGradePct('G0') + '%' }"></div>
             </div>
           </div>
           <!-- G1 -->
@@ -180,10 +187,10 @@
             <div class="w-[80px] flex items-center justify-between">
               <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-[var(--cyan)] shadow-[0_0_4px_var(--cyan)]"></div><span class="font-mono text-[10px] text-[var(--td)]">G1 <span class="text-[var(--cyan)] ml-1 opacity-80">MILD</span></span></div>
             </div>
-            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">423</div>
-            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">14.9%</div>
+            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">{{ getGradeCount('G1') }}</div>
+            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">{{ getGradePct('G1') }}%</div>
             <div class="flex-1 h-[2px] bg-[var(--ln)] rounded-full overflow-hidden flex items-center">
-              <div class="h-full bg-[var(--cyan)] shadow-[0_0_8px_var(--cyan)]" style="width: 14.9%"></div>
+              <div class="h-full bg-[var(--cyan)] shadow-[0_0_8px_var(--cyan)]" :style="{ width: getGradePct('G1') + '%' }"></div>
             </div>
           </div>
           <!-- G2 -->
@@ -191,10 +198,10 @@
             <div class="w-[80px] flex items-center justify-between">
               <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-[var(--amber)] shadow-[0_0_4px_var(--amber)]"></div><span class="font-mono text-[10px] text-[var(--td)]">G2 <span class="text-[var(--amber)] ml-1 opacity-80" style="font-size: 8px;">MODERATE</span></span></div>
             </div>
-            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">1,253</div>
-            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">44.0%</div>
+            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">{{ getGradeCount('G2') }}</div>
+            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">{{ getGradePct('G2') }}%</div>
             <div class="flex-1 h-[2px] bg-[var(--ln)] rounded-full overflow-hidden flex items-center">
-              <div class="h-full bg-[var(--amber)] shadow-[0_0_8px_var(--amber)]" style="width: 44%"></div>
+              <div class="h-full bg-[var(--amber)] shadow-[0_0_8px_var(--amber)]" :style="{ width: getGradePct('G2') + '%' }"></div>
             </div>
           </div>
           <!-- G3 -->
@@ -202,10 +209,10 @@
             <div class="w-[80px] flex items-center justify-between">
               <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-[var(--magenta)] shadow-[0_0_4px_var(--magenta)]"></div><span class="font-mono text-[10px] text-[var(--td)]">G3 <span class="text-[var(--magenta)] ml-1 opacity-80">DEEP</span></span></div>
             </div>
-            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">628</div>
-            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">22.1%</div>
+            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">{{ getGradeCount('G3') }}</div>
+            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">{{ getGradePct('G3') }}%</div>
             <div class="flex-1 h-[2px] bg-[var(--ln)] rounded-full overflow-hidden flex items-center">
-              <div class="h-full bg-[var(--magenta)] shadow-[0_0_8px_var(--magenta)]" style="width: 22.1%"></div>
+              <div class="h-full bg-[var(--magenta)] shadow-[0_0_8px_var(--magenta)]" :style="{ width: getGradePct('G3') + '%' }"></div>
             </div>
           </div>
           <!-- G4 -->
@@ -213,10 +220,10 @@
             <div class="w-[80px] flex items-center justify-between">
               <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-[var(--violet)] shadow-[0_0_4px_var(--violet)]"></div><span class="font-mono text-[10px] text-[var(--td)]">G4 <span class="text-[var(--violet)] ml-1 opacity-80 text-[8px]">CRITICAL</span></span></div>
             </div>
-            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">110</div>
-            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">3.8%</div>
+            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">{{ getGradeCount('G4') }}</div>
+            <div class="font-mono text-[10px] text-[var(--ts)] w-8 text-right">{{ getGradePct('G4') }}%</div>
             <div class="flex-1 h-[2px] bg-[var(--ln)] rounded-full overflow-hidden flex items-center">
-              <div class="h-full bg-[var(--violet)] shadow-[0_0_8px_var(--violet)]" style="width: 3.8%"></div>
+              <div class="h-full bg-[var(--violet)] shadow-[0_0_8px_var(--violet)]" :style="{ width: getGradePct('G4') + '%' }"></div>
             </div>
           </div>
         </div>
@@ -261,62 +268,17 @@
           </div>
         </template>
         <div class="flex flex-col gap-2 h-full overflow-y-auto pr-2">
-          <!-- Log 1 -->
-          <div class="flex items-center gap-3">
-            <span class="font-mono text-[9px] text-[var(--cyan-soft)] w-14">14:28:42</span>
-            <div class="font-mono text-[8px] px-1.5 py-0.5 rounded-xs bg-[var(--emerald)]/20 text-[var(--emerald)] border border-[var(--emerald)]/30 w-7 text-center">OK</div>
-            <div class="flex-1 border-b border-[var(--ln)]/30 border-dashed h-px relative top-1 mx-2"></div>
-            <span class="font-mono text-[9px] text-[var(--ts)]">2.3s</span>
-          </div>
-          <!-- Log 2 -->
-          <div class="flex items-center gap-3">
-            <span class="font-mono text-[9px] text-[var(--cyan-soft)] w-14">14:28:15</span>
-            <div class="font-mono text-[8px] px-1.5 py-0.5 rounded-xs bg-[var(--amber)]/20 text-[var(--amber)] border border-[var(--amber)]/30 w-7 text-center">WRN</div>
-            <div class="flex-1 border-b border-[var(--ln)]/30 border-dashed h-px relative top-1 mx-2"></div>
-            <span class="font-mono text-[9px] text-[var(--ts)]">0.72</span>
-          </div>
-          <!-- Log 3 -->
-          <div class="flex items-center gap-3">
-            <span class="font-mono text-[9px] text-[var(--cyan-soft)] w-14">14:27:58</span>
-            <div class="font-mono text-[8px] px-1.5 py-0.5 rounded-xs bg-[var(--cyan)]/20 text-[var(--cyan)] border border-[var(--cyan)]/30 w-7 text-center">INF</div>
-            <div class="flex-1 border-b border-[var(--ln)]/30 border-dashed h-px relative top-1 mx-2"></div>
-            <span class="font-mono text-[9px] text-[var(--ts)]">180ms</span>
-          </div>
-          <!-- Log 4 -->
-          <div class="flex items-center gap-3">
-            <span class="font-mono text-[9px] text-[var(--cyan-soft)] w-14">14:27:31</span>
-            <div class="font-mono text-[8px] px-1.5 py-0.5 rounded-xs bg-[var(--emerald)]/20 text-[var(--emerald)] border border-[var(--emerald)]/30 w-7 text-center">OK</div>
-            <div class="flex-1 border-b border-[var(--ln)]/30 border-dashed h-px relative top-1 mx-2"></div>
-            <span class="font-mono text-[9px] text-[var(--ts)]">2.1s</span>
-          </div>
-          <!-- Log 5 -->
-          <div class="flex items-center gap-3 opacity-80">
-            <span class="font-mono text-[9px] text-[var(--cyan-soft)] w-14">14:27:04</span>
-            <div class="font-mono text-[8px] px-1.5 py-0.5 rounded-xs bg-[var(--cyan)]/20 text-[var(--cyan)] border border-[var(--cyan)]/30 w-7 text-center">INF</div>
-            <div class="flex-1 border-b border-[var(--ln)]/30 border-dashed h-px relative top-1 mx-2"></div>
-            <span class="font-mono text-[9px] text-[var(--ts)]">—</span>
-          </div>
-          <!-- Log 6 -->
-          <div class="flex items-center gap-3 opacity-60">
-            <span class="font-mono text-[9px] text-[var(--cyan-soft)] w-14">14:26:47</span>
-            <div class="font-mono text-[8px] px-1.5 py-0.5 rounded-xs bg-[var(--magenta)]/20 text-[var(--magenta)] border border-[var(--magenta)]/30 w-7 text-center glow-magenta">ERR</div>
-            <div class="flex-1 border-b border-[var(--ln)]/30 border-dashed h-px relative top-1 mx-2"></div>
-            <span class="font-mono text-[9px] text-[var(--ts)]">#3</span>
-          </div>
-          <!-- Log 7 -->
-          <div class="flex items-center gap-3 opacity-40">
-            <span class="font-mono text-[9px] text-[var(--cyan-soft)] w-14">14:26:22</span>
-            <div class="font-mono text-[8px] px-1.5 py-0.5 rounded-xs bg-[var(--emerald)]/20 text-[var(--emerald)] border border-[var(--emerald)]/30 w-7 text-center">OK</div>
-            <div class="flex-1 border-b border-[var(--ln)]/30 border-dashed h-px relative top-1 mx-2"></div>
-            <span class="font-mono text-[9px] text-[var(--ts)]">—</span>
-          </div>
-          <!-- Log 8 -->
-          <div class="flex items-center gap-3 opacity-20">
-            <span class="font-mono text-[9px] text-[var(--cyan-soft)] w-14">14:26:01</span>
-            <div class="font-mono text-[8px] px-1.5 py-0.5 rounded-xs bg-[var(--cyan)]/20 text-[var(--cyan)] border border-[var(--cyan)]/30 w-7 text-center">INF</div>
-            <div class="flex-1 border-b border-[var(--ln)]/30 border-dashed h-px relative top-1 mx-2"></div>
-            <span class="font-mono text-[9px] text-[var(--ts)]">v1.0</span>
-          </div>
+          <template v-if="dashboardData">
+            <div v-for="event in dashboardData.events" :key="event.eventId" class="flex items-center gap-3">
+              <span class="font-mono text-[9px] text-[var(--cyan-soft)] w-14">{{ new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }}</span>
+              <div class="font-mono text-[8px] px-1.5 py-0.5 rounded-xs border w-7 text-center glow-magenta" 
+                   :class="event.type === 'ERROR' ? 'bg-[var(--magenta)]/20 text-[var(--magenta)] border-[var(--magenta)]/30' : event.type === 'WARNING' ? 'bg-[var(--amber)]/20 text-[var(--amber)] border-[var(--amber)]/30' : event.type === 'INFO' ? 'bg-[var(--cyan)]/20 text-[var(--cyan)] border-[var(--cyan)]/30' : 'bg-[var(--emerald)]/20 text-[var(--emerald)] border-[var(--emerald)]/30'">
+                {{ event.type === 'SUCCESS' ? 'OK' : event.type === 'WARNING' ? 'WRN' : event.type === 'ERROR' ? 'ERR' : 'INF' }}
+              </div>
+              <div class="flex-1 border-b border-[var(--ln)]/30 border-dashed h-px relative top-1 mx-2"></div>
+              <span class="font-mono text-[9px] text-[var(--ts)]">{{ event.message || '—' }}</span>
+            </div>
+          </template>
         </div>
       </Panel>
       
@@ -325,8 +287,39 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue';
 import Panel from '../components/shared/Panel.vue';
 import KpiCard from '../components/shared/KpiCard.vue';
 import NeuralButton from '../components/shared/NeuralButton.vue';
 import StatusChip from '../components/shared/StatusChip.vue';
+import { dashboardApi } from '../api/dashboard';
+
+const dashboardData = ref<any>(null);
+
+const fetchDashboard = async () => {
+  try {
+    const res = await dashboardApi.getNeuralDashboard();
+    dashboardData.value = res.data;
+  } catch (error) {
+    console.error('Failed to fetch dashboard', error);
+  }
+};
+
+const getGradeCount = (grade: string) => {
+  if (!dashboardData.value || !dashboardData.value.gradingDistribution) return 0;
+  const item = dashboardData.value.gradingDistribution.find((x: any) => x.grade === grade);
+  return item ? item.count : 0;
+};
+
+const getGradePct = (grade: string) => {
+  if (!dashboardData.value || !dashboardData.value.gradingDistribution) return 0;
+  const total = dashboardData.value.gradingDistribution.reduce((sum: number, x: any) => sum + x.count, 0);
+  if (total === 0) return 0;
+  const item = dashboardData.value.gradingDistribution.find((x: any) => x.grade === grade);
+  return item ? ((item.count / total) * 100).toFixed(1) : 0;
+};
+
+onMounted(() => {
+  fetchDashboard();
+});
 </script>
