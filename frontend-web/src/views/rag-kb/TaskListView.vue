@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { ragApi } from '../../api/rag'
+import { kbApi } from '../../api/kb'
 
 const ingestJobs = ref<any[]>([])
 const rebuildJobs = ref<any[]>([])
 onMounted(async () => {
-  ingestJobs.value = await ragApi.ingestJobs()
-  rebuildJobs.value = await ragApi.rebuildJobs()
+  ingestJobs.value = await kbApi.ingestJobs()
+  rebuildJobs.value = await kbApi.rebuildJobs()
 })
 </script>
 

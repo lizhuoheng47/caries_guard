@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ragApi } from '../../api/rag'
+import { kbApi } from '../../api/kb'
 
 const form = reactive({
   kbCode: 'caries-default',
@@ -18,12 +18,12 @@ const upload = async (file: File) => {
   const formData = new FormData()
   formData.append('file', file)
   Object.entries(form).forEach(([key, value]) => formData.append(key, value))
-  const result = await ragApi.upload(formData)
+  const result = await kbApi.upload(formData)
   ElMessage.success(`已创建导入任务 ${result.ingestJobNo}`)
 }
 
 const importText = async () => {
-  const result = await ragApi.importText({
+  const result = await kbApi.importText({
     kbCode: form.kbCode,
     kbName: form.kbName,
     kbTypeCode: form.kbTypeCode,

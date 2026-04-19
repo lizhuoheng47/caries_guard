@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/v1/rag/kb")
+@RequestMapping("/api/v1/kb")
 public class RagKbController {
 
     private final RagKbAppService ragKbAppService;

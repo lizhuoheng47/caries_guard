@@ -1,8 +1,11 @@
 import axios from 'axios'
 
-export const apiClient = axios.create({
-  baseURL: '/api/v1/rag',
-  timeout: 15000,
-})
+export const createApiClient = (baseURL: string) => {
+  const client = axios.create({
+    baseURL,
+    timeout: 15000,
+  })
 
-apiClient.interceptors.response.use((response) => response.data.data)
+  client.interceptors.response.use((response) => response.data.data)
+  return client
+}

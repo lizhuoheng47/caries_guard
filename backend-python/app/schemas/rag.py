@@ -34,6 +34,32 @@ class KnowledgeRebuildRequest(CamelModel):
     cleanup_stale: bool = True
 
 
+class KnowledgeDocumentUpdateRequest(CamelModel):
+    trace_id: str | None = None
+    doc_title: str | None = None
+    doc_source_code: str | None = None
+    source_uri: str | None = None
+    content_text: str
+    change_summary: str | None = None
+    operator_id: int | None = None
+
+
+class KnowledgeVersionActionRequest(CamelModel):
+    trace_id: str | None = None
+    version_no: str
+    comment: str | None = None
+    operator_id: int | None = None
+    reviewer_id: int | None = None
+    org_id: int | None = None
+
+
+class RagEvalRunRequest(CamelModel):
+    trace_id: str | None = None
+    dataset_id: int
+    org_id: int | None = None
+    operator_id: int | None = None
+
+
 class RagBaseRequest(CamelModel):
     trace_id: str | None = None
     kb_code: str | None = None

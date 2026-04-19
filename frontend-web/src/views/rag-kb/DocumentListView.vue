@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { ragApi } from '../../api/rag'
+import { kbApi } from '../../api/kb'
 
 const filters = reactive({ keyword: '' })
 const rows = ref<any[]>([])
 const load = async () => {
-  rows.value = await ragApi.documents({ keyword: filters.keyword || undefined })
+  rows.value = await kbApi.documents({ keyword: filters.keyword || undefined })
 }
 onMounted(load)
 </script>

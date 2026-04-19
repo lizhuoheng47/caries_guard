@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ragApi } from '../../api/rag'
+import { kbApi } from '../../api/kb'
 
 const rows = ref<any[]>([])
 const load = async () => {
-  rows.value = await ragApi.documents()
+  rows.value = await kbApi.documents()
 }
 const approve = async (row: any) => {
-  await ragApi.approve(row.id, { versionNo: row.current_version_no, comment: 'Approved from web' })
+  await kbApi.approve(row.id, { versionNo: row.current_version_no, comment: 'Approved from web' })
   ElMessage.success('审核通过')
   await load()
 }
 const publish = async (row: any) => {
-  await ragApi.publish(row.id, { versionNo: row.current_version_no, comment: 'Publish from web' })
+  await kbApi.publish(row.id, { versionNo: row.current_version_no, comment: 'Publish from web' })
   ElMessage.success('已发布')
   await load()
 }

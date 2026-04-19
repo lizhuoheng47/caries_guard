@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { ragApi } from '../../api/rag'
+import { kbApi } from '../../api/kb'
 
 const overview = ref<Record<string, any>>({})
 onMounted(async () => {
-  overview.value = await ragApi.overview()
+  overview.value = await kbApi.overview()
 })
 </script>
 

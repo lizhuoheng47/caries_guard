@@ -2,19 +2,19 @@
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ragApi } from '../../api/rag'
+import { kbApi } from '../../api/kb'
 
 const route = useRoute()
 const detail = ref<any>({})
 const draftText = ref('')
 
 const load = async () => {
-  detail.value = await ragApi.documentDetail(route.params.id as string)
+  detail.value = await kbApi.documentDetail(route.params.id as string)
   draftText.value = detail.value.currentVersion?.normalized_content || ''
 }
 
 const save = async () => {
-  await ragApi.updateDocument(route.params.id as string, {
+  await kbApi.updateDocument(route.params.id as string, {
     contentText: draftText.value,
     changeSummary: 'Web editor update',
   })
@@ -41,7 +41,7 @@ onMounted(load)
       <el-input v-model="draftText" type="textarea" :rows="18" />
       <div class="actions">
         <el-button type="primary" @click="save">保存新版本</el-button>
-        <el-button @click="ragApi.submitReview(route.params.id as string, { versionNo: detail.current_version_no })">提交审核</el-button>
+      <el-button @click="kbApi.submitReview(route.params.id as string, { versionNo: detail.current_version_no })">提交审核</el-button>
       </div>
     </div>
     <div class="glass-card panel">

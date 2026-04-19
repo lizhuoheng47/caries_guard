@@ -4,7 +4,12 @@ from fastapi import APIRouter, File, Form, UploadFile
 
 from app.container import get_container
 from app.schemas.common import success_response
-from app.schemas.rag import KnowledgeDocumentRequest, KnowledgeRebuildRequest
+from app.schemas.rag import (
+    KnowledgeDocumentRequest,
+    KnowledgeDocumentUpdateRequest,
+    KnowledgeRebuildRequest,
+    KnowledgeVersionActionRequest,
+)
 
 router = APIRouter(tags=["knowledge"])
 
@@ -73,54 +78,54 @@ async def upload_document(
 
 
 @router.put("/knowledge/documents/{doc_id}")
-def update_document(doc_id: int, payload: dict) -> dict:
+def update_document(doc_id: int, payload: KnowledgeDocumentUpdateRequest) -> dict:
     container = get_container()
     result = container.knowledge_service.update_document(
         doc_id=doc_id,
-        doc_title=payload.get("docTitle"),
-        doc_source_code=payload.get("docSourceCode"),
-        source_uri=payload.get("sourceUri"),
-        content_text=payload["contentText"],
-        change_summary=payload.get("changeSummary"),
-        operator_id=payload.get("operatorId"),
-        trace_id=payload.get("traceId"),
+        doc_title=payload.doc_title,
+        doc_source_code=payload.doc_source_code,
+        source_uri=payload.source_uri,
+        content_text=payload.content_text,
+        change_summary=payload.change_summary,
+        operator_id=payload.operator_id,
+        trace_id=payload.trace_id,
     )
-    return success_response(data=result, trace_id=payload.get("traceId"))
+    return success_response(data=result, trace_id=payload.trace_id)
 
 
 @router.post("/knowledge/documents/{doc_id}/submit-review")
-def submit_review(doc_id: int, payload: dict) -> dict:
+def submit_review(doc_id: int, payload: KnowledgeVersionActionRequest) -> dict:
     container = get_container()
-    container.knowledge_service.submit_review(doc_id, payload["versionNo"], payload.get("reviewerId"))
-    return success_response(data={"docId": doc_id, "versionNo": payload["versionNo"], "status": "REVIEW_PENDING"}, trace_id=payload.get("traceId"))
+    container.knowledge_service.submit_review(doc_id, payload.version_no, payload.reviewer_id)
+    return success_response(data={"docId": doc_id, "versionNo": payload.version_no, "status": "REVIEW_PENDING"}, trace_id=payload.trace_id)
 
 
 @router.post("/knowledge/documents/{doc_id}/approve")
-def approve_document(doc_id: int, payload: dict) -> dict:
+def approve_document(doc_id: int, payload: KnowledgeVersionActionRequest) -> dict:
     container = get_container()
-    container.knowledge_service.approve(doc_id, payload["versionNo"], payload.get("reviewerId"), payload.get("orgId"), payload.get("comment"))
-    return success_response(data={"docId": doc_id, "versionNo": payload["versionNo"], "status": "APPROVED"}, trace_id=payload.get("traceId"))
+    container.knowledge_service.approve(doc_id, payload.version_no, payload.reviewer_id, payload.org_id, payload.comment)
+    return success_response(data={"docId": doc_id, "versionNo": payload.version_no, "status": "APPROVED"}, trace_id=payload.trace_id)
 
 
 @router.post("/knowledge/documents/{doc_id}/reject")
-def reject_document(doc_id: int, payload: dict) -> dict:
+def reject_document(doc_id: int, payload: KnowledgeVersionActionRequest) -> dict:
     container = get_container()
-    container.knowledge_service.reject(doc_id, payload["versionNo"], payload.get("reviewerId"), payload.get("orgId"), payload.get("comment"))
-    return success_response(data={"docId": doc_id, "versionNo": payload["versionNo"], "status": "REJECTED"}, trace_id=payload.get("traceId"))
+    container.knowledge_service.reject(doc_id, payload.version_no, payload.reviewer_id, payload.org_id, payload.comment)
+    return success_response(data={"docId": doc_id, "versionNo": payload.version_no, "status": "REJECTED"}, trace_id=payload.trace_id)
 
 
 @router.post("/knowledge/documents/{doc_id}/publish")
-def publish_document(doc_id: int, payload: dict) -> dict:
+def publish_document(doc_id: int, payload: KnowledgeVersionActionRequest) -> dict:
     container = get_container()
-    container.knowledge_service.publish(doc_id, payload["versionNo"], payload.get("operatorId"), payload.get("orgId"), payload.get("comment"))
-    return success_response(data={"docId": doc_id, "versionNo": payload["versionNo"], "status": "PUBLISHED"}, trace_id=payload.get("traceId"))
+    container.knowledge_service.publish(doc_id, payload.version_no, payload.operator_id, payload.org_id, payload.comment)
+    return success_response(data={"docId": doc_id, "versionNo": payload.version_no, "status": "PUBLISHED"}, trace_id=payload.trace_id)
 
 
 @router.post("/knowledge/documents/{doc_id}/rollback")
-def rollback_document(doc_id: int, payload: dict) -> dict:
+def rollback_document(doc_id: int, payload: KnowledgeVersionActionRequest) -> dict:
     container = get_container()
-    container.knowledge_service.rollback(doc_id, payload["versionNo"], payload.get("operatorId"), payload.get("orgId"), payload.get("comment"))
-    return success_response(data={"docId": doc_id, "versionNo": payload["versionNo"], "status": "ROLLED_BACK"}, trace_id=payload.get("traceId"))
+    container.knowledge_service.rollback(doc_id, payload.version_no, payload.operator_id, payload.org_id, payload.comment)
+    return success_response(data={"docId": doc_id, "versionNo": payload.version_no, "status": "ROLLED_BACK"}, trace_id=payload.trace_id)
 
 
 @router.get("/knowledge/ingest-jobs")
