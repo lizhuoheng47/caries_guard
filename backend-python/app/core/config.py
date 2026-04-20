@@ -9,6 +9,16 @@ _VALID_MODEL_IMPL_TYPES = {"MOCK", "HEURISTIC", "ML_MODEL"}
 _VALID_QUALITY_FAIL_STRATEGIES = {"CONTINUE", "FAIL_FAST"}
 
 
+def first_non_empty(*values: str | None, default: str = "") -> str:
+    for raw in values:
+        if raw is None:
+            continue
+        value = raw.strip()
+        if value and value != "...":
+            return value
+    return default
+
+
 def bool_env(name: str, default: bool) -> bool:
     value = os.getenv(name)
     if value is None:
@@ -167,8 +177,18 @@ class Settings:
     rag_embedding_provider: str = os.getenv("CG_RAG_EMBEDDING_PROVIDER", "OPENAI_COMPATIBLE").strip().upper()
     rag_embedding_dimension: int = int_env("CG_RAG_EMBEDDING_DIMENSION", 256)
     rag_embedding_version: str = os.getenv("CG_RAG_EMBEDDING_VERSION", "2026-04")
-    rag_embedding_base_url: str = os.getenv("CG_RAG_EMBEDDING_BASE_URL", os.getenv("CG_LLM_BASE_URL", ""))
-    rag_embedding_api_key: str = os.getenv("CG_RAG_EMBEDDING_API_KEY", os.getenv("CG_LLM_API_KEY", ""))
+    rag_embedding_base_url: str = first_non_empty(
+        os.getenv("CG_RAG_EMBEDDING_BASE_URL"),
+        os.getenv("CG_LLM_BASE_URL"),
+        os.getenv("DASHSCOPE_BASE_URL"),
+        default="",
+    )
+    rag_embedding_api_key: str = first_non_empty(
+        os.getenv("CG_RAG_EMBEDDING_API_KEY"),
+        os.getenv("CG_LLM_API_KEY"),
+        os.getenv("DASHSCOPE_API_KEY"),
+        default="",
+    )
     rag_embedding_batch_size: int = int_env("CG_RAG_EMBEDDING_BATCH_SIZE", 16)
     rag_embedding_timeout_seconds: int = int_env("CG_RAG_EMBEDDING_TIMEOUT_SECONDS", 30)
     rag_vector_store_type: str = _validate_vector_store_type(os.getenv("CG_RAG_VECTOR_STORE_TYPE", "OPENSEARCH"))
@@ -212,8 +232,18 @@ class Settings:
     rag_graph_confidence_weight: float = float_env("CG_RAG_GRAPH_CONFIDENCE_WEIGHT", 0.2)
     rerank_provider: str = os.getenv("CG_RAG_RERANK_PROVIDER", "EMBEDDING").strip().upper()
     rerank_model_name: str = os.getenv("CG_RAG_RERANK_MODEL_NAME", "embedding-similarity-reranker")
-    rerank_base_url: str = os.getenv("CG_RAG_RERANK_BASE_URL", os.getenv("CG_LLM_BASE_URL", ""))
-    rerank_api_key: str = os.getenv("CG_RAG_RERANK_API_KEY", os.getenv("CG_LLM_API_KEY", ""))
+    rerank_base_url: str = first_non_empty(
+        os.getenv("CG_RAG_RERANK_BASE_URL"),
+        os.getenv("CG_LLM_BASE_URL"),
+        os.getenv("DASHSCOPE_BASE_URL"),
+        default="",
+    )
+    rerank_api_key: str = first_non_empty(
+        os.getenv("CG_RAG_RERANK_API_KEY"),
+        os.getenv("CG_LLM_API_KEY"),
+        os.getenv("DASHSCOPE_API_KEY"),
+        default="",
+    )
     rerank_timeout_seconds: int = int_env("CG_RAG_RERANK_TIMEOUT_SECONDS", 20)
     rerank_semantic_weight: float = float_env("CG_RAG_RERANK_SEMANTIC_WEIGHT", 0.7)
     rerank_lexical_weight: float = float_env("CG_RAG_RERANK_LEXICAL_WEIGHT", 0.2)
@@ -230,16 +260,34 @@ class Settings:
     neo4j_database: str = os.getenv("CG_NEO4J_DATABASE", "neo4j")
     llm_provider_code: str = os.getenv("CG_LLM_PROVIDER_CODE", "OPENAI_COMPATIBLE")
     llm_model_name: str = os.getenv("CG_LLM_MODEL_NAME", "gpt-4o-mini")
-    llm_base_url: str = os.getenv("CG_LLM_BASE_URL", "https://api.openai.com/v1")
-    llm_api_key: str = os.getenv("CG_LLM_API_KEY", "")
+    llm_base_url: str = first_non_empty(
+        os.getenv("CG_LLM_BASE_URL"),
+        os.getenv("DASHSCOPE_BASE_URL"),
+        default="https://api.openai.com/v1",
+    )
+    llm_api_key: str = first_non_empty(
+        os.getenv("CG_LLM_API_KEY"),
+        os.getenv("DASHSCOPE_API_KEY"),
+        default="",
+    )
     llm_timeout_seconds: int = int_env("CG_LLM_TIMEOUT_SECONDS", 30)
     llm_retry_count: int = int_env("CG_LLM_RETRY_COUNT", 1)
     llm_temperature: float = float_env("CG_LLM_TEMPERATURE", 0.2)
     llm_enable_fallback_mock: bool = bool_env("CG_LLM_ENABLE_FALLBACK_MOCK", True)
     qwen_vision_enabled: bool = bool_env("CG_QWEN_VISION_ENABLED", False)
     qwen_vision_model: str = os.getenv("CG_QWEN_VISION_MODEL", "qwen3-vl-plus")
-    qwen_vision_base_url: str = os.getenv("CG_QWEN_VISION_BASE_URL", os.getenv("CG_LLM_BASE_URL", ""))
-    qwen_vision_api_key: str = os.getenv("CG_QWEN_VISION_API_KEY", os.getenv("CG_LLM_API_KEY", ""))
+    qwen_vision_base_url: str = first_non_empty(
+        os.getenv("CG_QWEN_VISION_BASE_URL"),
+        os.getenv("CG_LLM_BASE_URL"),
+        os.getenv("DASHSCOPE_BASE_URL"),
+        default="",
+    )
+    qwen_vision_api_key: str = first_non_empty(
+        os.getenv("CG_QWEN_VISION_API_KEY"),
+        os.getenv("CG_LLM_API_KEY"),
+        os.getenv("DASHSCOPE_API_KEY"),
+        default="",
+    )
     qwen_vision_timeout_seconds: int = int_env("CG_QWEN_VISION_TIMEOUT_SECONDS", int_env("CG_LLM_TIMEOUT_SECONDS", 60))
     qwen_vision_temperature: float = float_env("CG_QWEN_VISION_TEMPERATURE", 0.1)
     analysis_kb_enhancement_enabled: bool = bool_env("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED", False)
@@ -261,6 +309,7 @@ class Settings:
     model_weights_dir: str = os.getenv("CG_MODEL_WEIGHTS_DIR", "/app/model-weights")
     model_confidence_threshold: float = float_env("CG_MODEL_CONFIDENCE_THRESHOLD", 0.5)
     quality_model_param_path: str = os.getenv("CG_QUALITY_MODEL_PARAM_PATH", "").strip()
+    quality_model_weights_path: str = os.getenv("CG_QUALITY_MODEL_WEIGHTS_PATH", "").strip()
     quality_fail_strategy: str = os.getenv("CG_QUALITY_FAIL_STRATEGY", "CONTINUE").upper()
     segmentation_force_fail: bool = bool_env("CG_SEGMENTATION_FORCE_FAIL", False)
     grading_force_fail: bool = bool_env("CG_GRADING_FORCE_FAIL", False)

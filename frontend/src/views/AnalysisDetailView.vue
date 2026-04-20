@@ -6,6 +6,10 @@
         <h1 class="page-hello-title">影像分析详情</h1>
       </div>
       <div style="display: flex; align-items: center; gap: 10px">
+        <button class="btn btn-primary" @click="openDoctorQa">
+          <AppIcon name="sparkle" :size="14" />
+          问答解释
+        </button>
         <button class="btn btn-ghost" @click="router.back()">
           <AppIcon name="chevron_right" :size="14" style="transform: rotate(180deg)" />
           返回
@@ -344,6 +348,12 @@ const timelineChipStyle = (status: string) => {
 }
 
 const formatDateTime = (value: string) => new Date(value).toLocaleString()
+
+const openDoctorQa = () => {
+  const taskNo = detail.value?.task.no || String(route.params.taskId || '')
+  if (!taskNo) return
+  router.push({ name: 'rag-console', query: { taskNo, mode: 'doctor' } })
+}
 
 const fetchDetail = async () => {
   const taskIdentifier = String(route.params.taskId || '')

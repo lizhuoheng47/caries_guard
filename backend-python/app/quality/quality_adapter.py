@@ -56,6 +56,7 @@ class QualityAssessmentAdapter(BaseModelAdapter):
         output = self._infer_model.infer(image_path)
         inference_millis = int((time.perf_counter() - started) * 1000)
         return {
+            "qualityStatus": output.quality_status,
             "qualityStatusCode": output.quality_status,
             "qualityScore": output.quality_score,
             "qualityIssues": output.quality_issues,
@@ -81,6 +82,8 @@ class QualityAssessmentAdapter(BaseModelAdapter):
         candidate = None
         if self._settings is not None:
             candidate = getattr(self._settings, "quality_model_param_path", None)
+            if not candidate:
+                candidate = getattr(self._settings, "quality_model_weights_path", None)
         if not candidate:
             candidate = str(Path(__file__).with_name("quality_model_params.json"))
         param_path = Path(candidate)

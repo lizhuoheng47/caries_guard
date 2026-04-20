@@ -4,6 +4,9 @@
 .env
 .env.*
 !.env.docker.example
+env/*.local.env
+env/*.secret.env
+env/*private*.env
 
 # Python
 __pycache__/

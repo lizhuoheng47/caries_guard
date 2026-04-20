@@ -8,21 +8,29 @@ from PIL import Image
 
 from app.core.config import Settings
 from app.core.exceptions import BusinessException
-from app.infra.model.base_model import ImplType
 from app.infra.model.model_registry import ModelRegistry
 from app.pipelines.quality_pipeline import QualityPipeline
 from app.schemas.request import ImageInput
 
 
 def _settings(**overrides) -> Settings:
+    repo_root = Path(__file__).resolve().parents[3]
     values = {
         "ai_runtime_mode": "mock",
         "model_quality_enabled": False,
+        "model_quality_impl_type": "HEURISTIC",
+        "model_weights_dir": str(repo_root / "model-weights"),
+        "quality_model_weights_path": str(
+            repo_root / "model-weights" / "quality" / "quality_model_params.json"
+        ),
         "model_confidence_threshold": 0.5,
     }
     mapping = {
         "CG_AI_RUNTIME_MODE": "ai_runtime_mode",
         "CG_MODEL_QUALITY_ENABLED": "model_quality_enabled",
+        "CG_MODEL_QUALITY_IMPL_TYPE": "model_quality_impl_type",
+        "CG_MODEL_WEIGHTS_DIR": "model_weights_dir",
+        "CG_QUALITY_MODEL_WEIGHTS_PATH": "quality_model_weights_path",
         "CG_MODEL_CONFIDENCE_THRESHOLD": "model_confidence_threshold",
     }
     for key, value in overrides.items():
@@ -85,6 +93,23 @@ class TestHybridMode:
         assert result.quality_score >= 0
         # Should NOT contain "mock" since it went through heuristic
         assert "mock" not in (result.suggestion_text or "")
+
+    def test_ml_model_path_when_enabled(self, sample_image: Path):
+        settings = _settings(
+            CG_AI_RUNTIME_MODE="hybrid",
+            CG_MODEL_QUALITY_ENABLED="true",
+            CG_MODEL_QUALITY_IMPL_TYPE="ML_MODEL",
+        )
+        registry = ModelRegistry(settings)
+        registry.startup()
+        pipeline = QualityPipeline(registry, settings)
+
+        result = pipeline.check(_image_input(), sample_image)
+        assert result.check_result_code in {"PASS", "WARN", "FAIL"}
+        assert result.impl_type == "ML_MODEL"
+        assert pipeline.get_last_impl_type() == "ML_MODEL"
+        assert result.model_version is not None
+        assert result.model_version.startswith("quality-ml-")
 
     def test_fallback_to_mock_on_error(self, tmp_path: Path):
         """Hybrid mode falls back to mock when inference fails."""

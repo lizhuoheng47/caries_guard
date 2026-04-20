@@ -6,7 +6,7 @@ export const RagAdapter = {
     return {
       session: dto.sessionNo,
       request: dto.requestNo,
-      text: dto.answer,
+      text: dto.answerText || dto.answer,
       citations: dto.citations.map(c => ({
         id: c.id,
         title: c.docTitle,

@@ -30,8 +30,16 @@ class QualityInferOutput:
     model_version: str
 
 
+@dataclass(frozen=True)
+class IssueModelHead:
+    bias: float
+    weights: dict[str, float]
+
+
 def _sigmoid(value: float) -> float:
-    return float(1.0 / (1.0 + np.exp(-value)))
+    # Avoid overflow in exp for extreme logits.
+    clipped = float(np.clip(value, -40.0, 40.0))
+    return float(1.0 / (1.0 + np.exp(-clipped)))
 
 
 def _clamp01(value: float) -> float:
@@ -46,7 +54,7 @@ def _safe_float(value: Any, default: float) -> float:
 
 
 class QualityInferModel:
-    """Real quality inference model based on multi-signal CV features."""
+    """Quality inference model using model-parameter-driven multi-head scoring."""
 
     def __init__(self, params: dict[str, Any]) -> None:
         self._params = params
@@ -65,6 +73,7 @@ class QualityInferModel:
                 "artifact": 0.13,
             }.items()
         }
+        self._issue_models = self._build_issue_models(params.get("issueModels"))
 
     @property
     def model_version(self) -> str:
@@ -163,6 +172,7 @@ class QualityInferModel:
             "center_dark_ratio": _clamp01(center_dark_ratio),
             "border_dark_ratio": _clamp01(border_dark_ratio),
             "border_bright_ratio": _clamp01(border_bright_ratio),
+            "border_extreme_ratio": _clamp01(max(border_dark_ratio, border_bright_ratio)),
             "edge_content_ratio": _clamp01(edge_content_ratio),
             "impulse_noise_ratio": _clamp01(impulse_noise_ratio),
             "stripe_anomaly": _clamp01(stripe_anomaly * 7.0),
@@ -170,52 +180,95 @@ class QualityInferModel:
         }
 
     def _issue_confidences(self, fv: dict[str, float]) -> dict[str, float]:
-        blur = _sigmoid(
-            3.2
-            - 3.0 * fv["laplacian_var_norm"]
-            - 2.2 * fv["tenengrad_norm"]
-            - 1.4 * fv["edge_content_ratio"]
-            - 1.1 * fv["entropy_norm"]
-        )
-        under_exposure = _sigmoid(
-            -1.1
-            + 3.1 * fv["low_ratio"]
-            + 1.4 * (1.0 - fv["mid_ratio"])
-            + 1.1 * (1.0 - fv["mean_norm"])
-            + 0.7 * (1.0 - fv["contrast_norm"])
-        )
-        over_exposure = _sigmoid(
-            -1.2
-            + 3.3 * fv["high_ratio"]
-            + 1.5 * (1.0 - fv["mid_ratio"])
-            + 1.0 * fv["mean_norm"]
-            + 0.6 * (1.0 - fv["contrast_norm"])
-        )
-        occlusion = _sigmoid(
-            -1.0
-            + 3.0 * fv["center_dark_ratio"]
-            + 1.3 * fv["border_dark_ratio"]
-            + 0.7 * (1.0 - fv["edge_content_ratio"])
-        )
-        field_cutoff = _sigmoid(
-            -0.9
-            + 2.5 * max(fv["border_dark_ratio"], fv["border_bright_ratio"])
-            + 1.4 * (1.0 - fv["mid_ratio"])
-            + 0.9 * (1.0 - fv["edge_content_ratio"])
-        )
-        artifact = _sigmoid(
-            -1.4
-            + 2.8 * fv["impulse_noise_ratio"]
-            + 1.6 * fv["stripe_anomaly"]
-            + 0.7 * (fv["low_ratio"] + fv["high_ratio"])
-        )
+        confidences: dict[str, float] = {}
+        for issue in _ISSUE_CODES:
+            head = self._issue_models[issue]
+            logit = head.bias
+            for feature, weight in head.weights.items():
+                logit += weight * float(fv.get(feature, 0.0))
+            confidences[issue] = _clamp01(_sigmoid(logit))
+        return confidences
+
+    def _build_issue_models(self, raw: Any) -> dict[str, IssueModelHead]:
+        models: dict[str, IssueModelHead] = {}
+        if isinstance(raw, dict):
+            for issue in _ISSUE_CODES:
+                node = raw.get(issue)
+                if not isinstance(node, dict):
+                    continue
+                weights_raw = node.get("weights")
+                if not isinstance(weights_raw, dict) or not weights_raw:
+                    continue
+                weights = {
+                    str(feature): _safe_float(weight, 0.0)
+                    for feature, weight in weights_raw.items()
+                }
+                models[issue] = IssueModelHead(
+                    bias=_safe_float(node.get("bias"), 0.0),
+                    weights=weights,
+                )
+
+        defaults = self._default_issue_models()
+        for issue in _ISSUE_CODES:
+            models.setdefault(issue, defaults[issue])
+        return models
+
+    @staticmethod
+    def _default_issue_models() -> dict[str, IssueModelHead]:
+        # Fallback model heads keep behavior stable when issueModels is absent.
         return {
-            "blur": _clamp01(blur),
-            "under_exposure": _clamp01(under_exposure),
-            "over_exposure": _clamp01(over_exposure),
-            "occlusion": _clamp01(occlusion),
-            "field_cutoff": _clamp01(field_cutoff),
-            "artifact": _clamp01(artifact),
+            "blur": IssueModelHead(
+                bias=3.2,
+                weights={
+                    "laplacian_var_norm": -3.0,
+                    "tenengrad_norm": -2.2,
+                    "edge_content_ratio": -1.4,
+                    "entropy_norm": -1.1,
+                },
+            ),
+            "under_exposure": IssueModelHead(
+                bias=2.1,
+                weights={
+                    "low_ratio": 3.1,
+                    "mid_ratio": -1.4,
+                    "mean_norm": -1.1,
+                    "contrast_norm": -0.7,
+                },
+            ),
+            "over_exposure": IssueModelHead(
+                bias=0.9,
+                weights={
+                    "high_ratio": 3.3,
+                    "mid_ratio": -1.5,
+                    "mean_norm": 1.0,
+                    "contrast_norm": -0.6,
+                },
+            ),
+            "occlusion": IssueModelHead(
+                bias=-0.3,
+                weights={
+                    "center_dark_ratio": 3.0,
+                    "border_dark_ratio": 1.3,
+                    "edge_content_ratio": -0.7,
+                },
+            ),
+            "field_cutoff": IssueModelHead(
+                bias=1.4,
+                weights={
+                    "border_extreme_ratio": 2.5,
+                    "mid_ratio": -1.4,
+                    "edge_content_ratio": -0.9,
+                },
+            ),
+            "artifact": IssueModelHead(
+                bias=-1.4,
+                weights={
+                    "impulse_noise_ratio": 2.8,
+                    "stripe_anomaly": 1.6,
+                    "low_ratio": 0.7,
+                    "high_ratio": 0.7,
+                },
+            ),
         }
 
     def _select_quality_issues(self, confidences: dict[str, float]) -> list[str]:

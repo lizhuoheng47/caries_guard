@@ -47,7 +47,7 @@ class OpenAiCompatibleLlmClient:
         return LlmResult(
             answer_text=str(answer).strip(),
             prompt_text=prompt,
-            provider="OPENAI_COMPATIBLE",
+            provider=(self.settings.llm_provider_code or "OPENAI_COMPATIBLE"),
             model=self.settings.llm_model_name,
             latency_ms=latency_ms,
             usage=usage,
