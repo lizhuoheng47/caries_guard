@@ -113,6 +113,8 @@ class QwenVisionService:
             "provider": "QWEN",
             "model": self._settings.qwen_vision_model,
             "baseUrl": self._settings.qwen_vision_base_url,
+            "imageWidth": width,
+            "imageHeight": height,
             "latencyMs": latency_ms,
             "usage": response_json.get("usage"),
             "finishReason": self._finish_reason(response_json),
@@ -303,8 +305,9 @@ class QwenVisionService:
         for item in raw_findings:
             if not isinstance(item, dict):
                 continue
-            bbox = self._normalize_bbox(item.get("bbox"), width, height)
-            polygon = self._normalize_polygon(item.get("polygon"), bbox, width, height)
+            polygon = self._parse_polygon(item.get("polygon"), width, height)
+            bbox = self._normalize_bbox(item.get("bbox"), polygon, width, height)
+            polygon = self._normalize_polygon(polygon, bbox)
             area_ratio = self._normalize_area_ratio(item.get("lesionAreaRatio"), bbox, polygon, width, height)
             confidence = self._clamp_score(item.get("confidenceScore"), default=0.7)
             uncertainty = self._clamp_score(item.get("uncertaintyScore"), default=1.0 - confidence)
@@ -372,19 +375,30 @@ class QwenVisionService:
         encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
         return f"data:{mime};base64,{encoded}"
 
-    def _normalize_bbox(self, value: Any, width: int, height: int) -> list[int]:
+    def _normalize_bbox(
+        self,
+        value: Any,
+        polygon: list[list[int]],
+        width: int,
+        height: int,
+    ) -> list[int]:
         if isinstance(value, list) and len(value) == 4:
             try:
                 x1, y1, x2, y2 = [int(round(float(item))) for item in value]
                 return self._clamp_box([x1, y1, x2, y2], width, height)
             except (TypeError, ValueError):
                 pass
+        if polygon:
+            xs = [point[0] for point in polygon]
+            ys = [point[1] for point in polygon]
+            return self._clamp_box([min(xs), min(ys), max(xs), max(ys)], width, height)
+        if self._settings.ai_runtime_mode == "real":
+            raise RuntimeError("Qwen vision finding is missing a valid bbox or polygon")
         return self._stable_box(width, height)
 
-    def _normalize_polygon(
+    def _parse_polygon(
         self,
         value: Any,
-        bbox: list[int],
         width: int,
         height: int,
     ) -> list[list[int]]:
@@ -401,6 +415,15 @@ class QwenVisionService:
                     continue
             if len(points) >= 3:
                 return points
+        return []
+
+    def _normalize_polygon(
+        self,
+        polygon: list[list[int]],
+        bbox: list[int],
+    ) -> list[list[int]]:
+        if polygon:
+            return polygon
         return [[point[0], point[1]] for point in self._bbox_polygon(bbox)]
 
     def _normalize_area_ratio(

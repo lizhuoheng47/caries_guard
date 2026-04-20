@@ -44,12 +44,13 @@ public class RagAppService {
 
     public RagAnswerVO doctorQa(DoctorQaCommand command) {
         AuthenticatedUser operator = SecurityContextUtils.currentUser();
+        String relatedBizNo = resolveRelatedBizNo(command.relatedBizNo(), command.taskNo());
         RagDoctorQaRequestModel request = new RagDoctorQaRequestModel(
                 TraceIdUtils.currentTraceId(),
                 command.question(),
                 command.kbCode(),
                 command.topK(),
-                command.relatedBizNo(),
+                relatedBizNo,
                 command.patientUuid(),
                 operator.getUserId(),
                 operator.getOrgId(),
@@ -59,12 +60,13 @@ public class RagAppService {
 
     public RagAnswerVO patientExplanation(PatientExplanationCommand command) {
         AuthenticatedUser operator = SecurityContextUtils.currentUser();
+        String relatedBizNo = resolveRelatedBizNo(command.relatedBizNo(), command.taskNo());
         RagPatientExplanationRequestModel request = new RagPatientExplanationRequestModel(
                 TraceIdUtils.currentTraceId(),
                 command.question(),
                 command.kbCode(),
                 command.topK(),
-                command.relatedBizNo(),
+                relatedBizNo,
                 command.patientUuid(),
                 operator.getUserId(),
                 operator.getOrgId(),
@@ -109,6 +111,16 @@ public class RagAppService {
             log.warn("RAG service call failed, using fallback answer: {}", exception.getMessage());
             return RagAnswerModel.fallback(FALLBACK_ANSWER);
         }
+    }
+
+    private String resolveRelatedBizNo(String relatedBizNo, String taskNo) {
+        if (StringUtils.hasText(relatedBizNo)) {
+            return relatedBizNo.trim();
+        }
+        if (StringUtils.hasText(taskNo)) {
+            return taskNo.trim();
+        }
+        return null;
     }
 
     private Map<String, Object> caseSummary(ReportRenderDataModel renderData) {

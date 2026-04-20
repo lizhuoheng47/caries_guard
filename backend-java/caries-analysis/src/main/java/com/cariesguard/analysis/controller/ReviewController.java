@@ -1,8 +1,9 @@
 package com.cariesguard.analysis.controller;
 
 import com.cariesguard.analysis.app.ReviewBffAppService;
-import com.cariesguard.analysis.interfaces.vo.AnalysisTaskDetailVO;
-import com.cariesguard.analysis.interfaces.vo.ReviewWorkbenchVO;
+import com.cariesguard.analysis.interfaces.query.ReviewQueueQuery;
+import com.cariesguard.analysis.interfaces.vo.ReviewQueuePageVO;
+import com.cariesguard.analysis.interfaces.vo.ReviewTaskDetailVO;
 import com.cariesguard.common.api.ApiResponse;
 import com.cariesguard.common.util.TraceIdUtils;
 import com.cariesguard.framework.security.authorization.RequirePermission;
@@ -12,7 +13,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import java.util.List;
 
 @Tag(name = "Review", description = "Doctor review workbench")
 @RestController
@@ -28,14 +28,21 @@ public class ReviewController {
     @Operation(summary = "Get review queue")
     @GetMapping("/queue")
     @RequirePermission("analysis:correct")
-    public ApiResponse<List<AnalysisTaskDetailVO>> getReviewQueue() {
-        return ApiResponse.success(reviewBffAppService.getReviewQueue(), TraceIdUtils.currentTraceId());
+    public ApiResponse<ReviewQueuePageVO> getReviewQueue(ReviewQueueQuery query) {
+        return ApiResponse.success(reviewBffAppService.getReviewQueue(query), TraceIdUtils.currentTraceId());
     }
 
     @Operation(summary = "Get review task view (BFF)")
-    @GetMapping("/tasks/{taskId}/view")
+    @GetMapping("/tasks/{taskIdentifier}")
     @RequirePermission("analysis:correct")
-    public ApiResponse<ReviewWorkbenchVO> getReviewTaskView(@PathVariable Long taskId) {
-        return ApiResponse.success(reviewBffAppService.getReviewTaskView(taskId), TraceIdUtils.currentTraceId());
+    public ApiResponse<ReviewTaskDetailVO> getReviewTaskView(@PathVariable String taskIdentifier) {
+        return ApiResponse.success(reviewBffAppService.getReviewTaskDetail(taskIdentifier), TraceIdUtils.currentTraceId());
+    }
+
+    @Operation(summary = "Get review task view alias (BFF)")
+    @GetMapping("/tasks/{taskIdentifier}/view")
+    @RequirePermission("analysis:correct")
+    public ApiResponse<ReviewTaskDetailVO> getReviewTaskViewAlias(@PathVariable String taskIdentifier) {
+        return ApiResponse.success(reviewBffAppService.getReviewTaskDetail(taskIdentifier), TraceIdUtils.currentTraceId());
     }
 }

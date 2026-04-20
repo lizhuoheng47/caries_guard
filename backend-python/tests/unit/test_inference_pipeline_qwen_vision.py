@@ -2,6 +2,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 from PIL import Image
 
 from app.core.config import Settings
@@ -11,6 +12,7 @@ from app.pipelines.grading_pipeline import GradingPipeline
 from app.pipelines.inference_pipeline import InferencePipeline
 from app.pipelines.quality_pipeline import QualityPipeline
 from app.services.image_fetch_service import FetchedImage, ImageFetchService
+from app.services.analysis_knowledge_service import AnalysisKnowledgeService
 from app.services.qwen_vision_service import (
     QwenVisionService,
     VisionAnalysisResult,
@@ -79,6 +81,8 @@ class FakeQwenVisionService(QwenVisionService):
             raw_result={
                 "provider": "QWEN",
                 "model": "qwen3-vl-plus",
+                "imageWidth": 512,
+                "imageHeight": 256,
                 "finishReason": "stop",
             },
         )
@@ -99,14 +103,42 @@ class FakeQwenVisionService(QwenVisionService):
         return VisionRenderResult(mask_path=mask_path, overlay_path=overlay_path, heatmap_path=heatmap_path)
 
 
+class FakeAnalysisKnowledgeService(AnalysisKnowledgeService):
+    def __init__(self, settings: Settings) -> None:
+        self._settings = settings
+
+    def is_enabled(self) -> bool:
+        return True
+
+    def generate_guidance(self, task, vision_result, risk_assessment):
+        return {
+            "question": "Provide grounded follow-up advice.",
+            "answer": "Recommend restorative consultation and 3-month follow-up after dentist confirmation.",
+            "knowledgeVersion": "v1.0",
+            "confidence": 0.81,
+            "safetyFlags": [],
+            "refusalReason": None,
+            "citations": [
+                {
+                    "documentCode": "GUIDE-001",
+                    "docTitle": "Caries treatment guide",
+                    "chunkText": "Moderate lesions should be clinically confirmed and treated promptly.",
+                    "sourceUri": "kb://guide-001",
+                }
+            ],
+        }
+
+
 def _settings(tmp_path: Path, **overrides) -> Settings:
     values = {
         "ai_runtime_mode": "hybrid",
+        "llm_provider_code": "MOCK",
         "model_quality_enabled": False,
         "model_tooth_detect_enabled": False,
         "model_segmentation_enabled": False,
         "model_grading_enabled": False,
         "qwen_vision_enabled": True,
+        "analysis_kb_enhancement_enabled": True,
         "qwen_vision_model": "qwen3-vl-plus",
         "temp_dir": str(tmp_path / "work"),
         "download_images": True,
@@ -166,6 +198,7 @@ def test_pipeline_uses_qwen_vision_result_for_annotations(tmp_path: Path):
         segmentation_pipeline=None,
         grading_pipeline=GradingPipeline(registry, settings),
         qwen_vision_service=FakeQwenVisionService(settings),
+        analysis_knowledge_service=FakeAnalysisKnowledgeService(settings),
     )
 
     result = pipeline.run(_task_payload())
@@ -174,13 +207,53 @@ def test_pipeline_uses_qwen_vision_result_for_annotations(tmp_path: Path):
     assert result["summary"]["overallHighestSeverity"] == "C2"
     assert raw["annotationProvider"] == "QWEN"
     assert raw["annotationModel"] == "qwen3-vl-plus"
+    assert raw["annotationImageWidth"] == 512
+    assert raw["annotationImageHeight"] == 256
     assert raw["segmentationImplType"] == "VLM_API"
     assert raw["gradingImplType"] == "VLM_API"
     assert raw["clinicalSummary"] == "Occlusal enamel and dentin lesion is visible on tooth 16."
     assert raw["treatmentPlan"][0]["priority"] == "HIGH"
+    assert raw["followUpRecommendation"] == "Recommend restorative consultation and 3-month follow-up after dentist confirmation."
+    assert raw["knowledgeAdvice"]["knowledgeVersion"] == "v1.0"
+    assert raw["citations"][0]["documentCode"] == "GUIDE-001"
     assert raw["lesionCount"] == 1
     assert raw["abnormalToothCount"] == 1
     assert raw["lesionResults"][0]["severityCode"] == "C2"
+    assert raw["lesionResults"][0]["bbox"] == [150, 80, 235, 150]
+    assert raw["lesionResults"][0]["polygon"][0] == [150, 80]
     assert raw["lesionResults"][0]["lesionAreaRatio"] == 0.023
     assert raw["qwenVisionRawResult"]["provider"] == "QWEN"
+    assert raw["qwenVisionRawResult"]["imageWidth"] == 512
     assert [item["assetTypeCode"] for item in result["visualAssets"]] == ["MASK", "OVERLAY", "HEATMAP"]
+
+
+def test_qwen_vision_rejects_missing_geometry_in_real_mode(tmp_path: Path):
+    service = QwenVisionService(
+        _settings(
+            tmp_path,
+            ai_runtime_mode="real",
+            llm_provider_code="OPENAI_COMPATIBLE",
+            llm_base_url="http://llm.local/v1",
+            llm_api_key="test-key",
+            rag_embedding_provider="OPENAI_COMPATIBLE",
+            rag_embedding_base_url="http://embedding.local/v1",
+            rag_embedding_api_key="embed-key",
+            rag_vector_store_type="LOCAL_JSON",
+            qwen_vision_base_url="http://qwen.local/v1",
+            qwen_vision_api_key="qwen-key",
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="missing a valid bbox or polygon"):
+        service._normalize_findings(
+            {
+                "findings": [
+                    {
+                        "toothCode": "16",
+                        "severityCode": "C2",
+                    }
+                ]
+            },
+            512,
+            256,
+        )

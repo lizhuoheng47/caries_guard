@@ -1,232 +1,352 @@
 <template>
-  <div class="flex flex-col h-full p-4 lg:p-6 pb-0 overflow-hidden page-bg" v-if="store.currentDetail">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-4 shrink-0">
-      <div class="flex items-center gap-3">
-        <NeuralButton variant="ghost" @click="router.back()">
-          <template #icon-left><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg></template>
-          返回
-        </NeuralButton>
-        <div class="h-4 w-[1px] bg-[var(--ln)]"></div>
-        <div class="flex flex-col">
-          <span class="font-mono text-[11px] text-[var(--td)] tracking-[0.1em] uppercase">神经核心 / 扫描 / {{ store.currentDetail.task.no }}</span>
-          <div class="flex items-center gap-2">
-            <h2 class="text-[20px] font-medium text-[var(--tp)] m-0">全景 X 光 · AI 诊断会话</h2>
-            <StatusChip status="RUNNING" label="实时" />
+  <div v-if="detail" class="flex flex-col h-full p-4 lg:p-6 pb-0 overflow-hidden page-bg">
+    <div class="flex items-center justify-between mb-4 shrink-0 gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <NeuralButton variant="ghost" @click="router.back()">返回</NeuralButton>
+        <div class="h-4 w-px bg-[var(--ln)]"></div>
+        <div class="min-w-0">
+          <div class="font-mono text-[11px] text-[var(--td)] tracking-[0.12em] uppercase">
+            Analysis / {{ detail.task.no }}
+          </div>
+          <div class="flex items-center gap-2 mt-1">
+            <h2 class="text-[20px] font-medium text-[var(--tp)] truncate">龋病影像分析详情</h2>
+            <StatusChip :status="taskStatus" />
           </div>
         </div>
       </div>
-      
-      <div class="flex gap-2">
-        <NeuralButton variant="ghost">导出</NeuralButton>
-        <NeuralButton variant="primary">
-          <template #icon-left><div class="w-1.5 h-1.5 rotate-45 bg-[var(--tp)]"></div></template>
-          提交复核
-        </NeuralButton>
+
+      <div class="font-mono text-[11px] text-[var(--td)] text-right">
+        <div>{{ detail.caseInfo.no || 'CASE-UNKNOWN' }}</div>
+        <div v-if="detail.task.inferenceMillis">耗时 {{ (detail.task.inferenceMillis / 1000).toFixed(2) }}s</div>
       </div>
     </div>
-    
-    <!-- KPI Row -->
-    <div class="grid grid-cols-4 gap-3 mb-4 shrink-0">
-      <KpiCard label="AI 分级" :value="store.currentDetail.summary.grade" color="cyan" />
-      <KpiCard label="不确定度" :value="(store.currentDetail.summary.uncertainty ?? 0).toFixed(2)" :color="(store.currentDetail.summary.uncertainty ?? 0) > 0.35 ? 'amber' : 'cyan'" />
-      <KpiCard label="置信度" :value="((store.currentDetail.summary.confidence ?? 0) * 100).toFixed(0) + '%'" color="emerald" />
-      <KpiCard label="风险等级" :value="store.currentDetail.summary.riskLevel || '无'" :color="store.currentDetail.summary.riskLevel === 'HIGH' ? 'magenta' : 'emerald'" />
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 shrink-0">
+      <KpiCard label="AI 分级" :value="detail.summary.grade" color="cyan" />
+      <KpiCard label="病灶数量" :value="String(detail.summary.lesionCount)" color="amber" />
+      <KpiCard label="置信度" :value="detail.summary.confidence != null ? `${Math.round(detail.summary.confidence * 100)}%` : '--'" color="emerald" />
+      <KpiCard label="风险等级" :value="detail.summary.riskLevel || '--'" :color="detail.summary.riskLevel?.toUpperCase().includes('HIGH') ? 'magenta' : 'violet'" />
     </div>
-    
-    <!-- Main Three Columns -->
-    <div class="flex-1 flex gap-3 min-h-0 mb-4 overflow-hidden">
-      
-      <!-- Left: Panoramic X-Ray Scanner (1.45fr) -->
-      <div class="flex-[1.45] min-w-0">
-        <Panel title="全景 X 光影像" color="cyan">
-          <template #meta>
-            <div class="flex gap-1 bg-[rgba(3,8,18,0.5)] p-0.5 rounded-[2px] border border-[var(--ln)]">
-              <button class="px-2 py-0.5 text-[10px] font-mono bg-[var(--cyan)]/20 text-[var(--cyan)] rounded-[2px] glow-cyan">全景</button>
-              <button class="px-2 py-0.5 text-[10px] font-mono text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">细节</button>
-              <button class="px-2 py-0.5 text-[10px] font-mono text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">蒙层</button>
-              <button class="px-2 py-0.5 text-[10px] font-mono text-[var(--td)] hover:text-[var(--tp)] rounded-[2px] transition-colors">热图</button>
+
+    <div class="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[1.35fr_0.95fr] gap-3 mb-4 overflow-hidden">
+      <Panel title="影像与标注" color="cyan">
+        <template #meta>
+          <div class="flex gap-1 bg-[rgba(3,8,18,0.55)] p-0.5 rounded-[3px] border border-[var(--ln)]">
+            <button
+              v-for="option in canvasOptions"
+              :key="option.code"
+              type="button"
+              class="px-2 py-0.5 text-[10px] font-mono rounded-[2px] transition-colors"
+              :class="activeCanvas === option.code ? 'bg-[var(--cyan)]/20 text-[var(--cyan)]' : 'text-[var(--td)] hover:text-[var(--tp)]'"
+              @click="activeCanvas = option.code"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </template>
+
+        <div class="h-full flex flex-col gap-3">
+          <div class="relative flex-1 min-h-[360px] rounded-[4px] border border-[var(--ln)] bg-[rgba(3,8,18,0.68)] overflow-hidden">
+            <div class="absolute inset-0 opacity-[0.05]" style="background-image: linear-gradient(var(--cyan) 1px, transparent 1px), linear-gradient(90deg, var(--cyan) 1px, transparent 1px); background-size: 18px 18px;"></div>
+
+            <div class="absolute inset-3 rounded-[4px] overflow-hidden border border-[var(--ln)] bg-black/30 flex items-center justify-center">
+              <img
+                v-if="currentCanvasUrl"
+                :src="currentCanvasUrl"
+                alt="analysis canvas"
+                class="max-w-full max-h-full object-contain"
+              />
+              <div v-else class="text-[12px] text-[var(--td)]">当前没有可显示的图像资源</div>
             </div>
-          </template>
-          
-          <div class="relative w-full h-full rounded-[4px] bg-[#0A1428] overflow-hidden border-[0.5px] border-[var(--ln)]" style="background: radial-gradient(ellipse at center, #0A1428, #030812)">
-            <div class="absolute inset-0 z-0 opacity-[0.03]" style="background-image: linear-gradient(var(--cyan) 1px, transparent 1px), linear-gradient(90deg, var(--cyan) 1px, transparent 1px); background-size: 16px 16px;"></div>
-            
-            <div class="absolute inset-4 z-10 bg-black/50 border border-[var(--ln)] rounded-[4px] flex items-center justify-center overflow-hidden">
-              <img v-if="!store.currentDetail.image.url.includes('mock')" :src="store.currentDetail.image.url" alt="X-Ray" class="max-w-full max-h-full object-contain opacity-80 mix-blend-screen" />
-              
-              <div v-else class="absolute inset-0 flex items-center justify-center gap-1">
-                <div v-for="i in 8" :key="i" class="w-12 h-32 bg-gradient-to-b from-white/20 to-transparent rounded-[40%_40%_10%_10%] relative">
-                  <div v-if="i === 4" class="absolute inset-0 bg-[var(--amber)]/40 blur-[8px] mix-blend-screen rounded-full scale-[0.6] top-4"></div>
-                  <div v-if="i === 5" class="absolute inset-0 bg-[var(--magenta)]/40 blur-[8px] mix-blend-screen rounded-full scale-[0.5] top-8"></div>
-                </div>
+
+            <div
+              v-if="shouldDrawBoxes"
+              v-for="lesion in drawableLesions"
+              :key="lesion.id"
+              class="absolute pointer-events-none"
+              :style="lesionBoxStyle(lesion)"
+            >
+              <div
+                class="absolute inset-0 border"
+                :class="lesionTone(lesion.severityCode).border"
+              ></div>
+              <div
+                class="absolute -top-5 left-0 px-1.5 py-0.5 rounded-[2px] font-mono text-[9px] text-[var(--void)] whitespace-nowrap"
+                :class="lesionTone(lesion.severityCode).badge"
+              >
+                {{ lesion.severityCode || 'LESION' }} {{ lesion.toothCode ? `T${lesion.toothCode}` : '' }}
               </div>
             </div>
-            
-            <DetectionReticle :x="42" :y="30" :width="10" :height="35" label="G3 · 0.72" color="amber" />
-            <DetectionReticle :x="55" :y="35" :width="10" :height="30" label="G4 · 0.58" color="magenta" />
-            
-            <div class="absolute left-0 right-0 h-[1px] bg-[var(--cyan)] shadow-[0_0_12px_var(--cyan)] z-30 animate-scanline"></div>
-            
-            <div class="absolute top-2 left-2 z-40 flex flex-col gap-2">
-              <HudChip label="神经元激活" color="cyan" />
-              <HudChip label="2 处病灶" color="amber" />
-            </div>
-            
-            <div class="absolute bottom-2 left-2 z-40">
-              <div class="font-mono text-[10px] text-[var(--cyan-soft)]">X: 0420 Y: 0312</div>
-            </div>
-            
-            <div class="absolute bottom-2 right-2 z-40 glass-panel p-2 rounded-[4px] border-[var(--ln)]">
-              <div class="flex items-center gap-2 mb-1">
-                <div class="w-2 h-2 bg-[var(--amber)] shadow-[0_0_4px_var(--amber)]"></div>
-                <span class="font-mono text-[10px] text-[var(--ts)] uppercase">G3 中度</span>
+
+            <div class="absolute top-3 left-3 z-10 flex flex-col gap-2">
+              <div class="px-2 py-1 rounded-[3px] border border-[var(--ln)] bg-[rgba(3,8,18,0.7)] font-mono text-[10px] text-[var(--cyan)]">
+                {{ activeCanvasLabel }}
               </div>
-              <div class="flex items-center gap-2">
-                <div class="w-2 h-2 bg-[var(--magenta)] shadow-[0_0_4px_var(--magenta)]"></div>
-                <span class="font-mono text-[10px] text-[var(--ts)] uppercase">G4 重度</span>
+              <div class="px-2 py-1 rounded-[3px] border border-[var(--ln)] bg-[rgba(3,8,18,0.7)] font-mono text-[10px] text-[var(--ts)]">
+                {{ detail.summary.lesionCount }} 处病灶 / {{ detail.summary.abnormalToothCount }} 颗异常牙
               </div>
             </div>
           </div>
-        </Panel>
-      </div>
-      
-      <!-- Middle: AI Diagnostic Report (0.9fr) -->
-      <div class="flex-[0.9] min-w-0">
-        <Panel title="AI 诊断报告" color="violet">
-          <div class="flex flex-col h-full gap-4">
-            <div class="flex items-center gap-4 p-4 border-[0.5px] border-[var(--ln)] rounded-[4px] corner-cut-tr" style="background: rgba(10,20,40,0.5)">
-              <div class="relative w-[80px] h-[80px] shrink-0">
-                <svg viewBox="0 0 100 100" class="w-full h-full transform -rotate-90 drop-shadow-[0_0_8px_var(--magenta)]">
-                  <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="6" />
-                  <circle cx="50" cy="50" r="45" fill="none" stroke="url(#grade-grad)" stroke-width="6" stroke-dasharray="283" :stroke-dashoffset="283 * 0.2" stroke-linecap="round" />
-                  <defs>
-                    <linearGradient id="grade-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stop-color="var(--cyan)" />
-                      <stop offset="50%" stop-color="var(--amber)" />
-                      <stop offset="100%" stop-color="var(--magenta)" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                  <span class="font-mono text-[24px] font-medium val-magenta">G3</span>
-                  <span class="font-mono text-[10px] text-[var(--td)] tracking-widest uppercase mt-0.5">等级</span>
-                </div>
-              </div>
-              
-              <div class="flex flex-col gap-2 flex-1 pl-2">
-                <div class="flex justify-between items-baseline border-b border-[var(--ln)] pb-1">
-                  <span class="font-mono text-[11px] text-[var(--td)] uppercase tracking-wider">病灶数</span>
-                  <span class="font-mono text-[14px] text-[var(--tp)]">02</span>
-                </div>
-                <div class="flex justify-between items-baseline border-b border-[var(--ln)] pb-1">
-                  <span class="font-mono text-[11px] text-[var(--td)] uppercase tracking-wider">最大等级</span>
-                  <span class="font-mono text-[14px] val-magenta">G4</span>
-                </div>
-                <div class="flex justify-between items-baseline pb-1">
-                  <span class="font-mono text-[11px] text-[var(--td)] uppercase tracking-wider">操作</span>
-                  <span class="font-mono text-[12px] text-[var(--amber)] val-amber">复核</span>
-                </div>
-              </div>
-            </div>
-            
-            <div class="p-4 border-[0.5px] border-[var(--amber)]/30 rounded-[4px] relative bg-[var(--amber)]/5">
-              <div class="absolute top-0 right-0 w-[8px] h-[8px] border-t border-r border-[var(--amber)]/50"></div>
-              <UncertaintyBar :value="0.72" />
-              <div class="mt-4 text-[12px] text-[var(--amber)] leading-relaxed flex flex-col gap-1">
-                <span class="font-mono tracking-widest opacity-80">触发器: G3/G4 边界分歧</span>
-                <span class="opacity-90">自动升级复核，建议确认病变深度是否到达内层牙本质。</span>
-              </div>
-            </div>
-          </div>
-        </Panel>
-      </div>
-      
-      <!-- Right: RAG Knowledge Response (0.85fr) -->
-      <div class="flex-[0.85] min-w-0">
-        <Panel title="知识库 RAG 检索" color="violet">
-          <div class="flex flex-col h-full relative">
-            <div class="absolute top-0 right-0 font-mono text-[10px] text-[var(--td)] uppercase text-right">caries-<br/>v1.0</div>
-            
-            <div class="mt-8 mb-4 p-4 rounded-[4px] border border-[var(--violet)]/20 bg-[var(--violet)]/5 border-l-2 border-l-[var(--violet)] relative">
-              <div class="absolute inset-0 bg-gradient-to-r from-[var(--violet)]/10 to-transparent opacity-50 pointer-events-none"></div>
-              <p class="text-[14px] text-[var(--tp)] leading-relaxed">
-                G3 级龋病表现为牙本质中层受累<CitationTag id="1" />，建议及时充填以阻止向牙髓扩展<CitationTag id="2" />。
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)] p-3">
+              <div class="font-mono text-[10px] text-[var(--td)] uppercase tracking-[0.12em] mb-2">临床摘要</div>
+              <p class="text-[13px] text-[var(--tp)] leading-relaxed">
+                {{ detail.summary.clinicalSummary || '暂无临床摘要。' }}
               </p>
             </div>
-            
-            <div class="flex flex-col gap-2 flex-1 overflow-auto">
-              <div class="flex items-center justify-between p-2 rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)]">
-                <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[10px] text-[var(--violet)]">1</div>
-                  <span class="text-[13px] text-[var(--ts)]">龋病分级诊断指南</span>
-                </div>
-                <span class="font-mono text-[10px] text-[var(--td)]">P.42</span>
+            <div class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)] p-3">
+              <div class="font-mono text-[10px] text-[var(--td)] uppercase tracking-[0.12em] mb-2">患者信息</div>
+              <div class="text-[12px] text-[var(--ts)] flex flex-col gap-1">
+                <span>患者标识：{{ detail.patient.idMasked || '--' }}</span>
+                <span>性别 / 年龄：{{ detail.patient.gender || '--' }} / {{ detail.patient.age ?? '--' }}</span>
+                <span>设备：{{ detail.image.sourceDevice || '--' }}</span>
               </div>
-              <div class="flex items-center justify-between p-2 rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)]">
-                <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[10px] text-[var(--violet)]">2</div>
-                  <span class="text-[13px] text-[var(--ts)]">临床路径手册</span>
-                </div>
-                <span class="font-mono text-[10px] text-[var(--td)]">P.18</span>
+            </div>
+            <div class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)] p-3">
+              <div class="font-mono text-[10px] text-[var(--td)] uppercase tracking-[0.12em] mb-2">知识库版本</div>
+              <div class="text-[13px] text-[var(--tp)]">{{ detail.summary.knowledgeVersion || '未返回' }}</div>
+              <div class="mt-2 text-[11px] text-[var(--td)]">
+                {{ detail.rag.enabled ? '已启用本地知识库增强' : '未启用知识库增强' }}
               </div>
-              <div class="flex items-center justify-between p-2 rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)]">
-                <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 bg-[var(--violet)]/20 border border-[var(--violet)]/40 rounded-xs flex items-center justify-center font-mono text-[10px] text-[var(--violet)]">3</div>
-                  <span class="text-[13px] text-[var(--ts)]">龋病流行病学研究</span>
+            </div>
+          </div>
+        </div>
+      </Panel>
+
+      <div class="min-h-0 flex flex-col gap-3 overflow-hidden">
+        <Panel title="病灶列表" color="amber">
+          <div class="flex flex-col gap-3">
+            <div
+              v-for="lesion in detail.summary.lesions"
+              :key="lesion.id"
+              class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)] p-3"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono text-[12px] text-[var(--tp)]">{{ lesion.severityCode || 'UNKNOWN' }}</span>
+                    <span class="font-mono text-[11px] text-[var(--td)]">{{ lesion.toothCode ? `牙位 ${lesion.toothCode}` : '未定位牙位' }}</span>
+                  </div>
+                  <div class="mt-2 text-[12px] text-[var(--ts)] leading-relaxed">{{ lesion.summary || '暂无病灶描述。' }}</div>
                 </div>
-                <span class="font-mono text-[10px] text-[var(--td)]">P.07</span>
+                <div class="text-right font-mono text-[11px] text-[var(--td)] shrink-0">
+                  <div>{{ lesion.areaRatio != null ? `${(lesion.areaRatio * 100).toFixed(2)}%` : '--' }}</div>
+                  <div>{{ lesion.areaPx != null ? `${lesion.areaPx}px` : '--' }}</div>
+                </div>
+              </div>
+              <div class="mt-3 text-[11px] text-[var(--td)]">
+                治疗建议：{{ lesion.treatmentSuggestion || '请结合医生复核。' }}
+              </div>
+            </div>
+
+            <div v-if="detail.summary.lesions.length === 0" class="text-[12px] text-[var(--td)]">
+              当前结果未返回结构化病灶列表。
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="治疗与建议" color="emerald">
+          <div class="flex flex-col gap-3">
+            <div class="rounded-[4px] border border-[var(--emerald)]/25 bg-[var(--emerald)]/5 p-3">
+              <div class="font-mono text-[10px] text-[var(--emerald)] uppercase tracking-[0.12em] mb-2">知识库增强建议</div>
+              <div class="text-[13px] text-[var(--tp)] leading-relaxed">
+                {{ detail.summary.followUpRecommendation || detail.rag.answer || '暂无建议。' }}
+              </div>
+            </div>
+
+            <div>
+              <div class="font-mono text-[10px] text-[var(--td)] uppercase tracking-[0.12em] mb-2">治疗计划</div>
+              <div class="flex flex-col gap-2">
+                <div
+                  v-for="(item, index) in detail.summary.treatmentPlan"
+                  :key="`${item.title}-${index}`"
+                  class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.45)] p-3"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="text-[13px] text-[var(--tp)]">{{ item.title }}</span>
+                    <span class="font-mono text-[10px] text-[var(--emerald)]">{{ item.priority }}</span>
+                  </div>
+                  <div class="mt-2 text-[12px] text-[var(--ts)] leading-relaxed">{{ item.details }}</div>
+                </div>
+                <div v-if="detail.summary.treatmentPlan.length === 0" class="text-[12px] text-[var(--td)]">
+                  当前结果未返回结构化治疗计划。
+                </div>
               </div>
             </div>
           </div>
         </Panel>
+
+        <Panel title="知识库引用" color="violet">
+          <div class="flex flex-col gap-2">
+            <div
+              v-for="citation in detail.summary.citations"
+              :key="citation.index"
+              class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.45)] p-3"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-[13px] text-[var(--tp)]">{{ citation.title }}</span>
+                <span class="font-mono text-[10px] text-[var(--violet)]">#{{ citation.index }}</span>
+              </div>
+              <div class="mt-2 text-[12px] text-[var(--ts)] leading-relaxed">{{ citation.excerpt || '无摘要片段。' }}</div>
+              <div v-if="citation.sourceUri" class="mt-2 font-mono text-[10px] text-[var(--td)]">{{ citation.sourceUri }}</div>
+            </div>
+            <div v-if="detail.summary.citations.length === 0" class="text-[12px] text-[var(--td)]">
+              当前结果未返回知识库引用。
+            </div>
+          </div>
+        </Panel>
       </div>
-      
     </div>
-    
-    <!-- Timeline Bottom Bar -->
-    <div class="shrink-0 mb-4 flex">
-      <div class="flex items-center">
-        <div class="w-[3px] h-[16px] bg-[var(--cyan)] shadow-[0_0_8px_var(--cyan)] mr-2"></div>
-        <span class="font-mono text-[12px] text-[var(--tp)] uppercase tracking-wider mr-6">AI 追踪</span>
-      </div>
-      <div class="flex-1">
-        <Timeline :nodes="store.currentDetail.timeline.map(t => ({
-          label: t.name,
-          status: t.status === 'COMPLETED' ? 'DONE' : t.status === 'CURRENT' ? 'ACTIVE' : 'FUTURE',
-          time: t.time ? new Date(t.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined
-        }))" />
-      </div>
+
+    <div class="shrink-0 mb-4">
+      <Panel title="处理时间线" color="violet">
+        <div class="flex flex-wrap gap-3">
+          <div
+            v-for="node in detail.timeline"
+            :key="node.code"
+            class="min-w-[180px] rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.45)] p-3"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-[13px] text-[var(--tp)]">{{ node.name }}</span>
+              <span class="font-mono text-[10px]" :class="timelineTone(node.status)">{{ node.status }}</span>
+            </div>
+            <div v-if="node.description" class="mt-2 text-[12px] text-[var(--ts)]">{{ node.description }}</div>
+            <div v-if="node.time" class="mt-2 font-mono text-[10px] text-[var(--td)]">{{ formatDateTime(node.time) }}</div>
+          </div>
+          <div v-if="detail.timeline.length === 0" class="text-[12px] text-[var(--td)]">当前没有可展示的时间线节点。</div>
+        </div>
+      </Panel>
     </div>
   </div>
-  
-  <!-- Loading State -->
+
   <div v-else-if="store.loading" class="flex-1 flex flex-col items-center justify-center">
     <div class="w-16 h-16 rounded-full border border-[var(--cyan)]/30 border-t-[var(--cyan)] animate-spin mb-4 shadow-[0_0_15px_rgba(0,229,255,0.2)]"></div>
-    <div class="font-mono text-[12px] text-[var(--cyan)] tracking-[0.2em] animate-pulse-opacity">神经引擎初始化中...</div>
+    <div class="font-mono text-[12px] text-[var(--cyan)] tracking-[0.2em] animate-pulse-opacity">LOADING ANALYSIS...</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import type { AnalysisLesion } from '../models/analysis';
 import { useAnalysisStore } from '../stores/analysis';
-import NeuralButton from '../components/shared/NeuralButton.vue';
 import KpiCard from '../components/shared/KpiCard.vue';
+import NeuralButton from '../components/shared/NeuralButton.vue';
 import Panel from '../components/shared/Panel.vue';
-import DetectionReticle from '../components/shared/DetectionReticle.vue';
-import HudChip from '../components/shared/HudChip.vue';
-import UncertaintyBar from '../components/shared/UncertaintyBar.vue';
-import CitationTag from '../components/shared/CitationTag.vue';
-import Timeline from '../components/shared/Timeline.vue';
 import StatusChip from '../components/shared/StatusChip.vue';
 
 const route = useRoute();
 const router = useRouter();
 const store = useAnalysisStore();
 
-onMounted(() => {
-  const taskId = (route.params.taskId as string) || '1';
-  store.fetchDetail(taskId);
+const activeCanvas = ref('source');
+
+const detail = computed(() => store.currentDetail);
+
+const taskStatus = computed<'DONE' | 'RUNNING' | 'REVIEW' | 'FAILED' | 'QUEUED'>(() => {
+  const status = (detail.value?.task.status || '').toUpperCase();
+  if (status === 'SUCCESS' || status === 'DONE') return 'DONE';
+  if (status === 'RUNNING') return 'RUNNING';
+  if (status === 'REVIEW') return 'REVIEW';
+  if (status === 'FAILED') return 'FAILED';
+  return 'QUEUED';
 });
+
+const canvasOptions = computed(() => {
+  const options = [
+    { code: 'source', label: '原图', url: detail.value?.image.url },
+  ];
+
+  for (const asset of detail.value?.task.visualAssets || []) {
+    if (!asset.url) continue;
+    options.push({
+      code: asset.type.toLowerCase(),
+      label: asset.label,
+      url: asset.url,
+    });
+  }
+  return options;
+});
+
+const activeCanvasLabel = computed(() => canvasOptions.value.find((item) => item.code === activeCanvas.value)?.label || '原图');
+
+const currentCanvasUrl = computed(() => canvasOptions.value.find((item) => item.code === activeCanvas.value)?.url);
+
+const drawableLesions = computed(() =>
+  (detail.value?.summary.lesions || []).filter((lesion) => Array.isArray(lesion.bbox) && lesion.bbox.length === 4),
+);
+
+const shouldDrawBoxes = computed(() =>
+  activeCanvas.value === 'source' &&
+  Boolean(detail.value?.summary.annotationImageWidth) &&
+  Boolean(detail.value?.summary.annotationImageHeight) &&
+  drawableLesions.value.length > 0,
+);
+
+const lesionTone = (severityCode?: string) => {
+  switch ((severityCode || '').toUpperCase()) {
+    case 'C3':
+      return {
+        border: 'border-[var(--magenta)] shadow-[0_0_12px_rgba(255,79,129,0.28)]',
+        badge: 'bg-[var(--magenta)]',
+      };
+    case 'C2':
+      return {
+        border: 'border-[var(--amber)] shadow-[0_0_12px_rgba(255,181,71,0.28)]',
+        badge: 'bg-[var(--amber)]',
+      };
+    default:
+      return {
+        border: 'border-[var(--cyan)] shadow-[0_0_12px_rgba(0,229,255,0.28)]',
+        badge: 'bg-[var(--cyan)]',
+      };
+  }
+};
+
+const lesionBoxStyle = (lesion: AnalysisLesion) => {
+  const bbox = lesion.bbox || [0, 0, 0, 0];
+  const imageWidth = detail.value?.summary.annotationImageWidth || 1;
+  const imageHeight = detail.value?.summary.annotationImageHeight || 1;
+  return {
+    left: `${(bbox[0] / imageWidth) * 100}%`,
+    top: `${(bbox[1] / imageHeight) * 100}%`,
+    width: `${((bbox[2] - bbox[0]) / imageWidth) * 100}%`,
+    height: `${((bbox[3] - bbox[1]) / imageHeight) * 100}%`,
+  };
+};
+
+const timelineTone = (status: string) => {
+  switch (status) {
+    case 'COMPLETED':
+      return 'text-[var(--emerald)]';
+    case 'CURRENT':
+      return 'text-[var(--cyan)]';
+    default:
+      return 'text-[var(--td)]';
+  }
+};
+
+const formatDateTime = (value: string) => new Date(value).toLocaleString();
+
+const fetchDetail = async () => {
+  const taskIdentifier = String(route.params.taskId || '');
+  if (!taskIdentifier) return;
+  await store.fetchDetail(taskIdentifier);
+};
+
+watch(detail, () => {
+  activeCanvas.value = 'source';
+});
+
+watch(
+  () => route.params.taskId,
+  async (taskId, previous) => {
+    if (taskId && taskId !== previous) {
+      await fetchDetail();
+    }
+  },
+);
+
+onMounted(fetchDetail);
 </script>

@@ -19,6 +19,8 @@ import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
 import com.cariesguard.framework.security.context.SecurityContextUtils;
 import com.cariesguard.framework.security.principal.AuthenticatedUser;
+import com.cariesguard.image.app.AttachmentAppService;
+import com.cariesguard.image.interfaces.vo.AttachmentAccessVO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
@@ -35,15 +37,18 @@ public class AnalysisQueryAppService {
     private final AnaResultSummaryRepository anaResultSummaryRepository;
     private final AnaVisualAssetRepository anaVisualAssetRepository;
     private final ObjectMapper objectMapper;
+    private final AttachmentAppService attachmentAppService;
 
     public AnalysisQueryAppService(AnaTaskRecordRepository anaTaskRecordRepository,
                                    AnaResultSummaryRepository anaResultSummaryRepository,
                                    AnaVisualAssetRepository anaVisualAssetRepository,
-                                   ObjectMapper objectMapper) {
+                                   ObjectMapper objectMapper,
+                                   AttachmentAppService attachmentAppService) {
         this.anaTaskRecordRepository = anaTaskRecordRepository;
         this.anaResultSummaryRepository = anaResultSummaryRepository;
         this.anaVisualAssetRepository = anaVisualAssetRepository;
         this.objectMapper = objectMapper;
+        this.attachmentAppService = attachmentAppService;
     }
 
     public AnalysisTaskDetailVO getTaskDetail(Long taskId) {
@@ -74,7 +79,8 @@ public class AnalysisQueryAppService {
                         item.relatedImageId(),
                         item.sourceAttachmentId(),
                         item.toothCode(),
-                        item.sortOrder()))
+                        item.sortOrder(),
+                        resolveAccessUrl(item.attachmentId())))
                 .toList();
         return new AnalysisTaskDetailVO(
                 task.taskId(),
@@ -330,5 +336,17 @@ public class AnalysisQueryAppService {
             }
         }
         return null;
+    }
+
+    private String resolveAccessUrl(Long attachmentId) {
+        if (attachmentId == null || attachmentAppService == null) {
+            return null;
+        }
+        try {
+            AttachmentAccessVO access = attachmentAppService.createInternalAccessUrl(attachmentId);
+            return access.accessUrl();
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 }

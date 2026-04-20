@@ -31,6 +31,7 @@ from app.schemas.callback import (
 )
 from app.schemas.request import AnalyzeRequest, ImageInput
 from app.services.image_fetch_service import FetchedImage, ImageFetchService, TaskWorkspace
+from app.services.analysis_knowledge_service import AnalysisKnowledgeService
 from app.services.qwen_vision_service import QwenVisionService, VisionAnalysisResult
 from app.services.risk_service import RiskService
 from app.services.visual_asset_service import VisualAssetService
@@ -53,6 +54,7 @@ class InferencePipeline:
         risk_pipeline: RiskPipeline | None = None,
         ai_runtime_repository: AiRuntimeRepository | None = None,
         qwen_vision_service: QwenVisionService | None = None,
+        analysis_knowledge_service: AnalysisKnowledgeService | None = None,
     ) -> None:
         self.settings = settings
         self.image_fetch_service = image_fetch_service
@@ -66,6 +68,7 @@ class InferencePipeline:
         self.risk_pipeline = risk_pipeline
         self.ai_runtime_repository = ai_runtime_repository
         self.qwen_vision_service = qwen_vision_service
+        self.analysis_knowledge_service = analysis_knowledge_service
 
     def run(self, raw_task: dict[str, Any]) -> dict[str, Any]:
         task = self._parse_task(raw_task)
@@ -115,13 +118,18 @@ class InferencePipeline:
                 tooth_detections,
             )
             risk_assessment = risk_result.assessment
+            knowledge_guidance = self._generate_knowledge_guidance(
+                task,
+                qwen_vision_result,
+                risk_assessment,
+            )
             review_reason = self._review_reason(
                 grading_result.uncertainty_score,
                 grading_result.needs_review,
                 quality_results,
                 risk_assessment.review_suggested,
             )
-            evidence_refs = self._evidence_refs(risk_assessment, visual_assets)
+            evidence_refs = self._evidence_refs(risk_assessment, visual_assets, knowledge_guidance)
 
         completed_at = local_naive_iso_now()
         inference_millis = int((time.perf_counter() - started) * 1000)
@@ -168,6 +176,8 @@ class InferencePipeline:
             "segmentationRawResult": segmentation_result.raw_result if segmentation_result is not None else {},
             "annotationProvider": "QWEN" if qwen_vision_result is not None else None,
             "annotationModel": self.settings.qwen_vision_model if qwen_vision_result is not None else None,
+            "annotationImageWidth": qwen_vision_result.image_width if qwen_vision_result is not None else None,
+            "annotationImageHeight": qwen_vision_result.image_height if qwen_vision_result is not None else None,
             "gradingMode": grading_result.grading_mode,
             "gradingImplType": grading_result.grading_impl_type,
             "gradingLabel": grading_result.grading_label,
@@ -199,6 +209,13 @@ class InferencePipeline:
             "abnormalToothCount": self._abnormal_tooth_count(tooth_detections, qwen_vision_result),
             "clinicalSummary": qwen_vision_result.clinical_summary if qwen_vision_result is not None else None,
             "treatmentPlan": qwen_vision_result.treatment_plan if qwen_vision_result is not None else [],
+            "followUpRecommendation": (
+                knowledge_guidance.get("answer")
+                if knowledge_guidance is not None and knowledge_guidance.get("answer")
+                else getattr(risk_assessment, "followup_suggestion", None)
+            ),
+            "citations": knowledge_guidance.get("citations") if knowledge_guidance is not None else [],
+            "knowledgeAdvice": knowledge_guidance,
             "qwenVisionRawResult": qwen_vision_result.raw_result if qwen_vision_result is not None else None,
             "riskAssessment": dump_camel(risk_assessment),
             "visualAssets": [dump_camel(item) for item in visual_assets],
@@ -533,6 +550,26 @@ class InferencePipeline:
             raw_result=assessment.assessment_report_json,
         )
 
+    def _generate_knowledge_guidance(
+        self,
+        task: AnalyzeRequest,
+        qwen_vision_result: VisionAnalysisResult | None,
+        risk_assessment: Any,
+    ) -> dict[str, Any] | None:
+        if self.analysis_knowledge_service is None or not self.analysis_knowledge_service.is_enabled():
+            return None
+        try:
+            return self.analysis_knowledge_service.generate_guidance(
+                task,
+                qwen_vision_result,
+                risk_assessment,
+            )
+        except Exception as exc:
+            if self.model_registry.get_runtime_mode() == "real":
+                raise BusinessException("M5011", f"analysis knowledge enhancement failed: {exc}") from exc
+            log.warning("analysis knowledge enhancement failed - continuing without KB advice error=%s", exc)
+            return None
+
     def _safe_create_runtime_job(
         self,
         task: AnalyzeRequest,
@@ -721,9 +758,14 @@ class InferencePipeline:
                             image_id=image_id,
                             tooth_code=finding.tooth_code or (tooth_detections[0].tooth_code if tooth_detections else "16"),
                             severity_code=finding.severity_code,
+                            confidence_score=finding.confidence_score,
                             uncertainty_score=finding.uncertainty_score,
                             lesion_area_px=finding.lesion_area_px,
                             lesion_area_ratio=finding.lesion_area_ratio,
+                            bbox=finding.bbox,
+                            polygon=finding.polygon,
+                            summary=finding.summary,
+                            treatment_suggestion=finding.treatment_suggestion,
                             mask_asset=self._asset_ref(visual_assets, "MASK"),
                             overlay_asset=self._asset_ref(visual_assets, "OVERLAY"),
                         )
@@ -737,9 +779,14 @@ class InferencePipeline:
                     image_id=image_id,
                     tooth_code=tooth_detections[0].tooth_code if tooth_detections else "16",
                     severity_code=grading_result.grading_label,
+                    confidence_score=grading_result.confidence_score,
                     uncertainty_score=grading_result.uncertainty_score,
                     lesion_area_px=512,
                     lesion_area_ratio=0.01,
+                    bbox=self._stable_box(512, 256),
+                    polygon=None,
+                    summary=None,
+                    treatment_suggestion=None,
                     mask_asset=self._asset_ref(visual_assets, "MASK"),
                     overlay_asset=self._asset_ref(visual_assets, "OVERLAY"),
                 )
@@ -792,6 +839,7 @@ class InferencePipeline:
     def _evidence_refs(
         risk_assessment: Any,
         visual_assets: list[VisualAsset],
+        knowledge_guidance: dict[str, Any] | None = None,
     ) -> list[EvidenceRef]:
         refs: list[EvidenceRef] = []
         for item in (risk_assessment.risk_factors or [])[:3]:
@@ -801,6 +849,17 @@ class InferencePipeline:
                     ref_code=item.code,
                     summary=item.evidence,
                     source=item.source,
+                )
+            )
+        for citation in (knowledge_guidance or {}).get("citations", [])[:3]:
+            if not isinstance(citation, dict):
+                continue
+            refs.append(
+                EvidenceRef(
+                    ref_type="KNOWLEDGE_CITATION",
+                    ref_code=str(citation.get("documentCode") or citation.get("docTitle") or "KB"),
+                    summary=str(citation.get("docTitle") or citation.get("chunkText") or "knowledge citation"),
+                    source=citation.get("sourceUri"),
                 )
             )
         for asset in visual_assets:

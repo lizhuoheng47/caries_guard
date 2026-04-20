@@ -4,11 +4,13 @@ import com.cariesguard.analysis.domain.model.AnalysisCaseModel;
 import com.cariesguard.analysis.domain.model.AnalysisImageModel;
 import com.cariesguard.analysis.domain.model.AnalysisPatientModel;
 import com.cariesguard.analysis.interfaces.vo.AnalysisDetailViewVO;
+import com.cariesguard.analysis.interfaces.vo.AnalysisCitationVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisSummaryVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskDetailVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskViewVO;
 import com.cariesguard.image.app.AttachmentAppService;
 import com.cariesguard.image.interfaces.vo.AttachmentAccessVO;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -33,8 +35,8 @@ public class AnalysisTaskViewAssembler {
         view.setImage(toImage(imageModel));
         view.setAnalysisSummary(task.summary());
         view.setRawResultJson(resolveRawResult(task.summary()));
-        view.setTimeline(List.of());
-        view.setRagHint(defaultRagHint());
+        view.setTimeline(buildTimeline(task));
+        view.setRagHint(buildRagHint(task.summary()));
         return view;
     }
 
@@ -81,10 +83,50 @@ public class AnalysisTaskViewAssembler {
         }
     }
 
-    private AnalysisDetailViewVO.RagHint defaultRagHint() {
+    private AnalysisDetailViewVO.RagHint buildRagHint(AnalysisSummaryVO summary) {
         AnalysisDetailViewVO.RagHint hint = new AnalysisDetailViewVO.RagHint();
         hint.setEnabled(Boolean.TRUE);
+        if (summary == null) {
+            return hint;
+        }
+        hint.setLatestAnswer(summary.followUpRecommendation());
+        if (summary.citations() != null && !summary.citations().isEmpty()) {
+            hint.setLatestCitations(summary.citations().stream().map(this::toCitation).toList());
+        }
         return hint;
+    }
+
+    private List<AnalysisDetailViewVO.TimelineNodeVO> buildTimeline(AnalysisTaskDetailVO task) {
+        List<AnalysisDetailViewVO.TimelineNodeVO> nodes = new ArrayList<>();
+        if (task.createdAt() != null) {
+            nodes.add(timelineNode(task.createdAt().toString(), "Created", "Analysis task created", "DONE"));
+        }
+        if (task.startedAt() != null) {
+            nodes.add(timelineNode(task.startedAt().toString(), "Inference", "Python pipeline running", task.completedAt() != null ? "DONE" : "ACTIVE"));
+        }
+        if (task.completedAt() != null) {
+            nodes.add(timelineNode(task.completedAt().toString(), "Completed", "Java callback stored final result", "DONE"));
+        } else if (task.startedAt() != null) {
+            nodes.add(timelineNode(null, "Callback", "Waiting for callback persistence", "PENDING"));
+        }
+        return nodes;
+    }
+
+    private AnalysisDetailViewVO.TimelineNodeVO timelineNode(String time, String title, String content, String status) {
+        AnalysisDetailViewVO.TimelineNodeVO node = new AnalysisDetailViewVO.TimelineNodeVO();
+        node.setTime(time);
+        node.setTitle(title);
+        node.setContent(content);
+        node.setStatus(status);
+        return node;
+    }
+
+    private AnalysisDetailViewVO.CitationVO toCitation(AnalysisCitationVO citation) {
+        AnalysisDetailViewVO.CitationVO vo = new AnalysisDetailViewVO.CitationVO();
+        vo.setDocNo(citation.rankNo() == null ? null : String.valueOf(citation.rankNo()));
+        vo.setTitle(citation.docTitle());
+        vo.setContent(citation.chunkText());
+        return vo;
     }
 
     private String maskPatientId(Long patientId) {
@@ -100,4 +142,3 @@ public class AnalysisTaskViewAssembler {
         return summary == null ? null : summary.rawResultJson();
     }
 }
-

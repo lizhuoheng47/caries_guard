@@ -1,56 +1,112 @@
 export interface AnalysisTaskListItemDTO {
-  taskId: number;
+  taskId: number | string;
   taskNo: string;
-  patientNameMasked?: string;
-  patientIdMasked?: string;
-  caseNo: string;
-  gradingLabel?: string;
-  uncertaintyScore?: number;
-  statusCode: 'DONE' | 'RUNNING' | 'REVIEW' | 'FAILED' | 'QUEUED';
+  taskStatusCode: 'SUCCESS' | 'RUNNING' | 'REVIEW' | 'FAILED' | 'PENDING' | string;
+  taskTypeCode?: string;
+  modelVersion?: string;
+  errorCode?: string;
+  errorMessage?: string;
   createdAt: string;
-  durationMs?: number;
-  needsReview: boolean;
+  startedAt?: string;
+  completedAt?: string;
+  traceId?: string;
+  inferenceMillis?: number;
+}
+
+export interface AnalysisTaskPageDTO {
+  pageNo?: number;
+  pageSize?: number;
+  total: number;
+  records?: AnalysisTaskListItemDTO[];
+  list?: AnalysisTaskListItemDTO[];
+  pageNum?: number;
+}
+
+export interface AnalysisVisualAssetDTO {
+  assetTypeCode: string;
+  attachmentId?: number;
+  relatedImageId?: number;
+  sourceAttachmentId?: number;
+  toothCode?: string;
+  sortOrder?: number;
+  accessUrl?: string;
+  assetTypeLabel?: string;
+}
+
+export interface AnalysisCitationDTO {
+  rankNo?: number;
+  docTitle?: string;
+  chunkText?: string;
+  score?: number;
+  sourceUri?: string;
+}
+
+export interface AnalysisSummaryDTO {
+  overallHighestSeverity?: string;
+  uncertaintyScore?: number;
+  reviewSuggestedFlag?: string;
+  lesionCount?: number;
+  abnormalToothCount?: number;
+  riskLevel?: string;
+  riskLevelLabel?: string;
+  gradingLabel?: string;
+  confidenceScore?: number;
+  needsReview?: boolean;
+  followUpRecommendation?: string;
+  knowledgeVersion?: string;
+  citations?: AnalysisCitationDTO[];
+  rawResultJson?: Record<string, any> | null;
 }
 
 export interface AnalysisDetailViewDTO {
   task: {
-    taskId: number;
+    taskId: number | string;
     taskNo: string;
-    statusCode: string;
-    createdAt: string;
-  };
-  patient: {
-    patientId: number;
-    nameMasked: string;
-    gender: string;
-    age: number;
-  };
-  caseInfo: {
     caseId: number;
-    caseNo: string;
-    visitTime: string;
+    taskStatusCode: string;
+    taskTypeCode?: string;
+    modelVersion?: string;
+    errorCode?: string;
+    errorMessage?: string;
+    createdAt: string;
+    startedAt?: string;
+    completedAt?: string;
+    traceId?: string;
+    inferenceMillis?: number;
+    visualAssets?: AnalysisVisualAssetDTO[];
   };
-  image: {
-    imageId: number;
-    imageUrl: string;
+  patient?: {
+    patientIdMasked?: string;
+    patientNameMasked?: string;
+    gender?: string;
+    age?: number;
   };
-  analysisSummary: {
-    gradingLabel: string;
-    confidenceScore?: number;
-    uncertaintyScore?: number;
-    needsReview: boolean;
-    riskLevel?: string;
-    riskFactors?: string[];
-    visualAssets?: any[];
+  caseInfo?: {
+    caseId: number;
+    caseNo?: string;
+    visitTime?: string;
   };
-  timeline: {
-    nodeCode: string;
-    nodeName: string;
-    status: 'COMPLETED' | 'CURRENT' | 'PENDING';
-    timestamp?: string;
+  image?: {
+    imageId?: number;
+    imageUrl?: string;
+    sourceDevice?: string;
+  };
+  analysisSummary?: AnalysisSummaryDTO;
+  rawResultJson?: Record<string, any> | null;
+  timeline?: {
+    time?: string;
+    title?: string;
+    content?: string;
+    status?: 'DONE' | 'ACTIVE' | 'PENDING' | string;
+    duration?: string;
   }[];
   ragHint?: {
-    enabled: boolean;
+    enabled?: boolean;
     latestAnswer?: string;
+    latestCitations?: {
+      docNo?: string;
+      title?: string;
+      content?: string;
+    }[];
   };
 }

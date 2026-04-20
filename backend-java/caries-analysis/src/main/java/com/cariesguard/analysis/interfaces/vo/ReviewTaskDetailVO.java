@@ -21,8 +21,19 @@ public class ReviewTaskDetailVO {
         private Boolean needsReview;
         private String riskLevelCode;
         private String riskLevelLabel;
-        private List<ReviewWorkbenchVO.DetectionBoxVO> detections;
+        private List<DetectionBoxVO> detections;
         private List<AnalysisVisualAssetVO> visualAssets;
+    }
+
+    @Data
+    public static class DetectionBoxVO {
+        private String id;
+        private Double x;
+        private Double y;
+        private Double width;
+        private Double height;
+        private String label;
+        private Double confidence;
     }
 
     @Data
@@ -50,4 +61,3 @@ public class ReviewTaskDetailVO {
         private List<String> reasonTags;
     }
 }
-

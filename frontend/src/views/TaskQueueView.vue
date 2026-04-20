@@ -77,7 +77,7 @@
             </td>
             <td class="py-3 px-4">
               <div class="flex flex-col">
-                <span class="text-[12px] text-[var(--tp)]">Case-{{ task.caseId }}</span>
+                <span class="text-[12px] text-[var(--tp)]">{{ task.taskTypeCode || 'Analysis Task' }}</span>
                 <span class="font-mono text-[8px] text-[var(--td)]">{{ task.modelVersion || 'Unknown' }}</span>
               </div>
             </td>
@@ -140,7 +140,7 @@ const fetchTasks = async () => {
   loading.value = true;
   try {
     const res = await analysisApi.getTasks({ pageNo: pageNo.value, pageSize: 10 });
-    tasks.value = res.data.list;
+    tasks.value = res.data.records || res.data.list || [];
     total.value = res.data.total;
     totalPages.value = Math.ceil(res.data.total / 10) || 1;
   } catch (e) {

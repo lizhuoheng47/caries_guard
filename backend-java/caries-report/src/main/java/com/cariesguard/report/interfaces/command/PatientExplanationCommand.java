@@ -11,5 +11,16 @@ public record PatientExplanationCommand(
         String relatedBizNo,
         String patientUuid,
         Map<String, Object> caseSummary,
-        String riskLevelCode) {
+        String riskLevelCode,
+        String taskNo) {
+
+    public PatientExplanationCommand(String question,
+                                     String kbCode,
+                                     Integer topK,
+                                     String relatedBizNo,
+                                     String patientUuid,
+                                     Map<String, Object> caseSummary,
+                                     String riskLevelCode) {
+        this(question, kbCode, topK, relatedBizNo, patientUuid, caseSummary, riskLevelCode, null);
+    }
 }

@@ -11,5 +11,15 @@ public record DoctorQaCommand(
         @Min(1) @Max(20) Integer topK,
         String relatedBizNo,
         String patientUuid,
-        Map<String, Object> clinicalContext) {
+        Map<String, Object> clinicalContext,
+        String taskNo) {
+
+    public DoctorQaCommand(String question,
+                           String kbCode,
+                           Integer topK,
+                           String relatedBizNo,
+                           String patientUuid,
+                           Map<String, Object> clinicalContext) {
+        this(question, kbCode, topK, relatedBizNo, patientUuid, clinicalContext, null);
+    }
 }

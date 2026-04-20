@@ -220,6 +220,8 @@ class Settings:
     qwen_vision_api_key: str = os.getenv("CG_QWEN_VISION_API_KEY", os.getenv("CG_LLM_API_KEY", ""))
     qwen_vision_timeout_seconds: int = int_env("CG_QWEN_VISION_TIMEOUT_SECONDS", int_env("CG_LLM_TIMEOUT_SECONDS", 60))
     qwen_vision_temperature: float = float_env("CG_QWEN_VISION_TEMPERATURE", 0.1)
+    analysis_kb_enhancement_enabled: bool = bool_env("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED", False)
+    analysis_kb_code: str = os.getenv("CG_ANALYSIS_KB_CODE", os.getenv("CG_RAG_DEFAULT_KB_CODE", "caries-default"))
 
     # ── Phase 5: Model Runtime ──────────────────────────────────────────
     ai_runtime_mode: str = _validate_runtime_mode(os.getenv("CG_AI_RUNTIME_MODE", "mock"))
@@ -280,6 +282,8 @@ class Settings:
         print(f"[*] LLM Provider: {self.llm_provider_code} (Model: {self.llm_model_name})")
         if self.qwen_vision_enabled:
             print(f"[*] Qwen Vision: ENABLED (Model: {self.qwen_vision_model})")
+        if self.analysis_kb_enhancement_enabled:
+            print(f"[*] Analysis KB Enhancement: ENABLED (KB: {self.analysis_kb_code})")
         print(f"[*] Embedding: {self.rag_embedding_provider} (Store: {self.rag_vector_store_type})")
         enabled_mods = [m for m, e, t in [
             ("Quality", self.model_quality_enabled, self.model_quality_impl_type),

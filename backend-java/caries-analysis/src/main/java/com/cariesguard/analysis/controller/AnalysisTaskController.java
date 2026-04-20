@@ -1,12 +1,13 @@
 package com.cariesguard.analysis.controller;
 
+import com.cariesguard.analysis.app.AnalysisBffAppService;
 import com.cariesguard.analysis.app.AnalysisQueryAppService;
 import com.cariesguard.analysis.app.AnalysisTaskAppService;
 import com.cariesguard.analysis.interfaces.command.CreateAnalysisTaskCommand;
 import com.cariesguard.analysis.interfaces.command.RetryAnalysisTaskCommand;
 import com.cariesguard.analysis.interfaces.query.AnalysisTaskPageQuery;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskDetailVO;
-import com.cariesguard.analysis.interfaces.vo.AnalysisDetailViewVO;
+import com.cariesguard.analysis.interfaces.vo.AnalysisTaskViewVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskPageVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskVO;
 import com.cariesguard.common.api.ApiResponse;
@@ -29,11 +30,11 @@ public class AnalysisTaskController {
 
     private final AnalysisTaskAppService analysisTaskAppService;
     private final AnalysisQueryAppService analysisQueryAppService;
-    private final com.cariesguard.analysis.app.AnalysisBffAppService analysisBffAppService;
+    private final AnalysisBffAppService analysisBffAppService;
 
     public AnalysisTaskController(AnalysisTaskAppService analysisTaskAppService,
                                   AnalysisQueryAppService analysisQueryAppService,
-                                  com.cariesguard.analysis.app.AnalysisBffAppService analysisBffAppService) {
+                                  AnalysisBffAppService analysisBffAppService) {
         this.analysisTaskAppService = analysisTaskAppService;
         this.analysisQueryAppService = analysisQueryAppService;
         this.analysisBffAppService = analysisBffAppService;
@@ -61,10 +62,10 @@ public class AnalysisTaskController {
     }
 
     @Operation(summary = "查询任务视图(BFF聚合)")
-    @GetMapping("/{taskId}/view")
+    @GetMapping("/{taskIdentifier}/view")
     @RequirePermission("analysis:view")
-    public ApiResponse<AnalysisDetailViewVO> getAnalysisTaskDetailView(@PathVariable Long taskId) {
-        return ApiResponse.success(analysisBffAppService.getTaskDetailView(taskId), TraceIdUtils.currentTraceId());
+    public ApiResponse<AnalysisTaskViewVO> getAnalysisTaskDetailView(@PathVariable String taskIdentifier) {
+        return ApiResponse.success(analysisBffAppService.getTaskDetailView(taskIdentifier), TraceIdUtils.currentTraceId());
     }
 
     @Operation(summary = "分页查询任务")

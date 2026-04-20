@@ -63,9 +63,14 @@ class LesionResult(CamelModel):
     image_id: int | None = None
     tooth_code: str = "16"
     severity_code: str = "C1"
+    confidence_score: float | None = None
     uncertainty_score: float = 0.1
     lesion_area_px: int | None = None
     lesion_area_ratio: float | None = None
+    bbox: list[int] | None = None
+    polygon: list[list[int]] | None = None
+    summary: str | None = None
+    treatment_suggestion: str | None = None
     mask_asset: AssetRef | None = None
     overlay_asset: AssetRef | None = None
 

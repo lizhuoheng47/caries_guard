@@ -23,6 +23,7 @@ from app.repositories.knowledge_repository import KnowledgeRepository
 from app.repositories.metadata_repository import MetadataRepository
 from app.repositories.rag_repository import RagRepository
 from app.services.answer_validator_service import AnswerValidatorService
+from app.services.analysis_knowledge_service import AnalysisKnowledgeService
 from app.services.callback_service import CallbackService
 from app.services.case_context_builder import CaseContextBuilder
 from app.services.citation_assembler import CitationAssembler
@@ -125,6 +126,7 @@ class AppContainer:
             rag_orchestrator=self.rag_orchestrator,
             case_context_builder=CaseContextBuilder(),
         )
+        self.analysis_knowledge_service = AnalysisKnowledgeService(settings, self.rag_service)
         self.rag_log_service = RagLogService(self.rag_repository)
         self.eval_service = EvalService(self.eval_repository, self.rag_service)
         self.eval_bootstrap_service = EvalBootstrapService(self.eval_repository)
@@ -160,6 +162,7 @@ class AppContainer:
             risk_pipeline=self.risk_pipeline,
             ai_runtime_repository=self.ai_runtime_repository,
             qwen_vision_service=self.qwen_vision_service,
+            analysis_knowledge_service=self.analysis_knowledge_service,
         )
 
 
