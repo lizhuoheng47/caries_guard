@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 import time
 from typing import Any
 
@@ -135,6 +137,50 @@ class CallbackService:
                 payload.get("taskNo"),
                 payload.get("traceId"),
                 exc,
+            )
+            self._fallback_record_callback(
+                payload=payload,
+                callback_url=callback_url,
+                callback_status_code=callback_status_code,
+                retry_count=retry_count,
+                error_code=error_code,
+                error_message=error_message or str(exc),
+                response_code=response_code,
+            )
+
+    def _fallback_record_callback(
+        self,
+        *,
+        payload: dict[str, Any],
+        callback_url: str,
+        callback_status_code: str,
+        retry_count: int,
+        error_code: str,
+        error_message: str,
+        response_code: int | None,
+    ) -> None:
+        try:
+            path = Path(self.settings.temp_dir) / "callback-log-compensation.jsonl"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            record = {
+                "errorCode": error_code,
+                "traceId": payload.get("traceId"),
+                "taskNo": payload.get("taskNo"),
+                "callbackStatusCode": callback_status_code,
+                "retryCount": retry_count,
+                "callbackUrl": callback_url,
+                "responseCode": response_code,
+                "errorMessage": error_message[:1000] if error_message else None,
+                "rawResultJson": payload.get("rawResultJson"),
+            }
+            with path.open("a", encoding="utf-8") as fp:
+                fp.write(json.dumps(record, ensure_ascii=True) + "\n")
+        except Exception as fallback_exc:
+            log.error(
+                "callback log compensation failed errorCode=CBK_LOG_COMPENSATION_FAILED taskNo=%s traceId=%s error=%s",
+                payload.get("taskNo"),
+                payload.get("traceId"),
+                fallback_exc,
             )
 
     @staticmethod

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import time
 import uuid
 from pathlib import Path
@@ -117,6 +118,42 @@ class InferencePipeline:
                 quality_results,
                 qwen_vision_result,
             )
+            lesion_results = self._build_lesion_results(
+                first_image_id=task.images[0].image_id if task.images else None,
+                tooth_detections=tooth_detections,
+                grading_result=grading_result,
+                visual_assets=visual_assets,
+                qwen_vision_result=qwen_vision_result,
+                segmentation_result=segmentation_result,
+            )
+            uncertainty_result = self._compose_uncertainty(
+                grading_result=grading_result,
+                quality_results=quality_results,
+                tooth_detections=tooth_detections,
+                segmentation_result=segmentation_result,
+                lesion_results=lesion_results,
+            )
+            grading_raw = dict(grading_result.raw_result or {})
+            grading_raw.update(
+                {
+                    "uncertaintyMode": uncertainty_result.uncertainty_mode,
+                    "uncertaintyImplType": uncertainty_result.uncertainty_impl_type,
+                    "uncertaintyScore": uncertainty_result.uncertainty_score,
+                    "uncertaintyReasons": uncertainty_result.uncertainty_reasons,
+                    "uncertaintyComponents": uncertainty_result.component_penalties,
+                    "needsReview": uncertainty_result.needs_review,
+                    "reviewThreshold": self.settings.uncertainty_review_threshold,
+                }
+            )
+            grading_result = replace(
+                grading_result,
+                uncertainty_score=uncertainty_result.uncertainty_score,
+                needs_review=uncertainty_result.needs_review,
+                raw_result=grading_raw,
+            )
+            abnormal_tooth_count = self._abnormal_tooth_count(tooth_detections, qwen_vision_result, lesion_results)
+            tooth_results = self._tooth_results(lesion_results, tooth_detections)
+            image_results = self._image_results(task.images, lesion_results, tooth_results, quality_results, grading_result)
             risk_result = self._create_risk_result(
                 task,
                 grading_result,
@@ -136,15 +173,6 @@ class InferencePipeline:
                 risk_assessment.review_suggested,
             )
             evidence_refs = self._evidence_refs(risk_assessment, visual_assets, knowledge_guidance)
-            lesion_results = self._build_lesion_results(
-                first_image_id=task.images[0].image_id if task.images else None,
-                tooth_detections=tooth_detections,
-                grading_result=grading_result,
-                visual_assets=visual_assets,
-                qwen_vision_result=qwen_vision_result,
-                segmentation_result=segmentation_result,
-            )
-            abnormal_tooth_count = self._abnormal_tooth_count(tooth_detections, qwen_vision_result, lesion_results)
 
         completed_at = local_naive_iso_now()
         inference_millis = int((time.perf_counter() - started) * 1000)
@@ -177,9 +205,6 @@ class InferencePipeline:
         quality_payload = self._quality_payload(quality_results)
         teeth_payload = self._teeth_payload(tooth_detections, abnormal_tooth_count)
 
-        tooth_results = self._tooth_results(lesion_results)
-        image_results = self._image_results(task.images, lesion_results, grading_result)
-
         raw_result_json: dict[str, Any] = {
             "pipelineVersion": "phase5d-1",
             "mode": runtime_mode,
@@ -209,6 +234,7 @@ class InferencePipeline:
             "uncertaintyImplType": grading_result.raw_result.get("uncertaintyImplType") or grading_result.grading_impl_type,
             "uncertaintyScore": grading_result.uncertainty_score,
             "uncertaintyReasons": grading_result.raw_result.get("uncertaintyReasons") or [],
+            "uncertaintyComponents": grading_result.raw_result.get("uncertaintyComponents") or {},
             "needsReview": grading_result.needs_review,
             "gradingRawResult": grading_result.raw_result,
             "riskMode": risk_result.risk_mode,
@@ -262,7 +288,10 @@ class InferencePipeline:
             error_message=None,
             trace_id=trace_id,
             inference_millis=inference_millis,
+            grading_label=grading_result.grading_label,
+            confidence_score=grading_result.confidence_score,
             uncertainty_score=grading_result.uncertainty_score,
+            needs_review=grading_result.needs_review,
             risk_level=risk_assessment.risk_level_code or risk_assessment.overall_risk_level_code,
             risk_factors=risk_assessment.risk_factors or [],
             review_reason=review_reason,
@@ -274,11 +303,7 @@ class InferencePipeline:
             "pipeline completed taskNo=%s traceId=%s millis=%s qualityMode=%s toothMode=%s segmentationMode=%s gradingMode=%s riskMode=%s",
             task.task_no, trace_id, inference_millis, quality_mode, tooth_detection_mode, segmentation_mode, grading_result.grading_mode, risk_result.risk_mode,
         )
-        payload_dict = dump_camel(payload)
-        payload_dict["gradingLabel"] = grading_result.grading_label
-        payload_dict["confidenceScore"] = grading_result.confidence_score
-        payload_dict["needsReview"] = grading_result.needs_review
-        return payload_dict
+        return dump_camel(payload)
 
     def build_failure_payload(self, raw_task: dict[str, Any], exc: Exception) -> dict[str, Any]:
         now = local_naive_iso_now()
@@ -477,22 +502,13 @@ class InferencePipeline:
     ) -> GradingResult:
         if qwen_vision_result is not None:
             raw_result = dict(qwen_vision_result.raw_result)
-            uncertainty = self.uncertainty_pipeline.evaluate(
-                quality_results=quality_results,
-                tooth_detections=tooth_detections,
-                lesion_regions=qwen_vision_result.to_regions(),
-                grading_confidence=qwen_vision_result.overall_confidence_score,
-                grading_raw=raw_result,
-                base_uncertainty=qwen_vision_result.overall_uncertainty_score,
-            )
             raw_result.update(
                 {
                     "reviewThreshold": self.settings.uncertainty_review_threshold,
-                    "needsReview": uncertainty.needs_review,
+                    "needsReview": qwen_vision_result.overall_uncertainty_score >= self.settings.uncertainty_review_threshold,
                     "uncertaintyMode": "real",
-                    "uncertaintyImplType": "COMPOSITE_HEURISTIC",
-                    "uncertaintyReasons": uncertainty.uncertainty_reasons,
-                    "uncertaintyComponents": uncertainty.components,
+                    "uncertaintyImplType": "VLM_API",
+                    "uncertaintyReasons": [],
                     "clinicalSummary": qwen_vision_result.clinical_summary,
                     "treatmentPlan": qwen_vision_result.treatment_plan,
                 }
@@ -502,8 +518,8 @@ class InferencePipeline:
                 grading_impl_type="VLM_API",
                 grading_label=qwen_vision_result.overall_severity_code,
                 confidence_score=qwen_vision_result.overall_confidence_score,
-                uncertainty_score=uncertainty.uncertainty_score,
-                needs_review=uncertainty.needs_review,
+                uncertainty_score=qwen_vision_result.overall_uncertainty_score,
+                needs_review=qwen_vision_result.overall_uncertainty_score >= self.settings.uncertainty_review_threshold,
                 raw_result=raw_result,
             )
 
@@ -533,6 +549,24 @@ class InferencePipeline:
             regions,
             tooth_detections,
             quality_results,  # type: ignore[call-arg]
+        )
+
+    def _compose_uncertainty(
+        self,
+        *,
+        grading_result: GradingResult,
+        quality_results: list[Any],
+        tooth_detections: list[ToothDetection],
+        segmentation_result: SegmentationResult | None,
+        lesion_results: list[dict[str, Any]],
+    ):
+        segmentation_regions = segmentation_result.regions if segmentation_result is not None else []
+        return self.uncertainty_pipeline.assess(
+            grading_result=grading_result,
+            quality_results=quality_results,
+            tooth_detections=tooth_detections,
+            segmentation_regions=segmentation_regions,
+            lesion_results=lesion_results,
         )
 
     def _analyze_with_qwen(
@@ -667,11 +701,33 @@ class InferencePipeline:
         try:
             quality_by_image = {item.image_id: item for item in quality_results}
             fetched_by_image = {item.image_id: item for item in fetched_images}
+            lesion_results = raw_result_json.get("lesionResults") or []
+            tooth_results = raw_result_json.get("toothResults") or []
+            image_results = raw_result_json.get("imageResults") or []
             for image in task.images:
                 quality = quality_by_image.get(image.image_id)
                 fetched = fetched_by_image.get(image.image_id)
                 quality_payload = dump_camel(quality) if hasattr(quality, "model_dump") else quality
+                image_lesions = [
+                    item
+                    for item in lesion_results
+                    if isinstance(item, dict) and item.get("imageId") in {None, image.image_id}
+                ]
+                image_tooth_results = [
+                    item
+                    for item in tooth_results
+                    if isinstance(item, dict) and item.get("imageId") in {None, image.image_id}
+                ]
+                image_summary = next(
+                    (
+                        item
+                        for item in image_results
+                        if isinstance(item, dict) and item.get("imageId") in {None, image.image_id}
+                    ),
+                    None,
+                )
                 image_result = {
+                    "imageId": image.image_id,
                     "qualityCheckResult": quality_payload if quality is not None else None,
                     "gradingMode": grading_result.grading_mode,
                     "gradingImplType": grading_result.grading_impl_type,
@@ -682,11 +738,10 @@ class InferencePipeline:
                     "uncertaintyScore": grading_result.uncertainty_score,
                     "uncertaintyReasons": raw_result_json.get("uncertaintyReasons") or [],
                     "needsReview": grading_result.needs_review,
-                    "lesionResults": raw_result_json.get("lesionResults") or [],
-                    "toothResults": raw_result_json.get("toothResults") or [],
-                    "imageResults": raw_result_json.get("imageResults") or [],
+                    "lesionResults": image_lesions,
+                    "toothResults": image_tooth_results,
+                    "imageResult": image_summary,
                     "rawResultJson": raw_result_json,
-                    "rawResult": raw_result_json,
                 }
                 self.ai_runtime_repository.add_job_image(
                     job_id,
@@ -987,49 +1042,94 @@ class InferencePipeline:
     def _severity_rank(value: str | None) -> int:
         return {"C0": 0, "C1": 1, "C2": 2, "C3": 3}.get(str(value or "C0").upper(), 0)
 
-    def _tooth_results(self, lesion_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        grouped: dict[str, dict[str, Any]] = {}
+    def _tooth_results(
+        self,
+        lesion_results: list[dict[str, Any]],
+        tooth_detections: list[ToothDetection],
+    ) -> list[dict[str, Any]]:
+        grouped: dict[tuple[int | None, str], dict[str, Any]] = {}
         for lesion in lesion_results:
+            if not isinstance(lesion, dict):
+                continue
+            image_id = lesion.get("imageId")
             tooth_code = str(lesion.get("toothCode") or "UNKNOWN")
+            key = (image_id, tooth_code)
             severity = str(lesion.get("severityCode") or "C0")
-            entry = grouped.get(tooth_code)
+            confidence = float(lesion.get("confidenceScore") or 0.0)
+            uncertainty = float(lesion.get("uncertaintyScore") or 0.0)
+            entry = grouped.get(key)
             if entry is None:
-                grouped[tooth_code] = {
+                grouped[key] = {
+                    "imageId": image_id,
                     "toothCode": tooth_code,
+                    "highestSeverityCode": severity,
                     "highestSeverity": severity,
                     "lesionCount": 1,
-                    "maxConfidenceScore": float(lesion.get("confidenceScore") or 0.0),
-                    "maxUncertaintyScore": float(lesion.get("uncertaintyScore") or 0.0),
+                    "detectionCount": 0,
+                    "maxConfidenceScore": confidence,
+                    "avgUncertaintyScore": uncertainty,
+                    "reviewSuggested": uncertainty >= self.settings.uncertainty_review_threshold,
                 }
                 continue
             entry["lesionCount"] = int(entry["lesionCount"]) + 1
-            if self._severity_rank(severity) > self._severity_rank(str(entry.get("highestSeverity"))):
+            if self._severity_rank(severity) > self._severity_rank(str(entry.get("highestSeverityCode"))):
+                entry["highestSeverityCode"] = severity
                 entry["highestSeverity"] = severity
-            entry["maxConfidenceScore"] = max(float(entry["maxConfidenceScore"]), float(lesion.get("confidenceScore") or 0.0))
-            entry["maxUncertaintyScore"] = max(float(entry["maxUncertaintyScore"]), float(lesion.get("uncertaintyScore") or 0.0))
+            entry["maxConfidenceScore"] = max(float(entry["maxConfidenceScore"]), confidence)
+            total_unc = float(entry["avgUncertaintyScore"]) * (int(entry["lesionCount"]) - 1) + uncertainty
+            entry["avgUncertaintyScore"] = round(total_unc / int(entry["lesionCount"]), 4)
+            entry["reviewSuggested"] = bool(entry["reviewSuggested"]) or uncertainty >= self.settings.uncertainty_review_threshold
+
+        for detection in tooth_detections:
+            key = (detection.image_id, str(detection.tooth_code or "UNKNOWN"))
+            entry = grouped.get(key)
+            if entry is None:
+                grouped[key] = {
+                    "imageId": detection.image_id,
+                    "toothCode": str(detection.tooth_code or "UNKNOWN"),
+                    "highestSeverityCode": "C0",
+                    "highestSeverity": "C0",
+                    "lesionCount": 0,
+                    "detectionCount": 1,
+                    "maxConfidenceScore": max(0.0, min(1.0, float(detection.detection_score or 0.0))),
+                    "avgUncertaintyScore": 0.0,
+                    "reviewSuggested": False,
+                }
+            else:
+                entry["detectionCount"] = int(entry.get("detectionCount", 0)) + 1
+
         return list(grouped.values())
 
     def _image_results(
         self,
         images: list[ImageInput],
         lesion_results: list[dict[str, Any]],
+        tooth_results: list[dict[str, Any]],
+        quality_results: list[Any],
         grading_result: GradingResult,
     ) -> list[dict[str, Any]]:
+        quality_by_image = {item.image_id: item for item in quality_results}
         grouped: dict[int | None, dict[str, Any]] = {}
         for image in images:
+            quality_item = quality_by_image.get(image.image_id)
             grouped[image.image_id] = {
                 "imageId": image.image_id,
                 "gradingLabel": grading_result.grading_label,
                 "confidenceScore": grading_result.confidence_score,
                 "uncertaintyScore": grading_result.uncertainty_score,
                 "needsReview": grading_result.needs_review,
+                "qualityStatusCode": getattr(quality_item, "check_result_code", None),
+                "qualityScore": getattr(quality_item, "quality_score", None),
                 "lesionCount": 0,
                 "abnormalToothCount": 0,
+                "highestSeverityCode": "C0",
                 "highestSeverity": "C0",
             }
 
         tooth_codes_by_image: dict[int | None, set[str]] = {}
         for lesion in lesion_results:
+            if not isinstance(lesion, dict):
+                continue
             image_id = lesion.get("imageId")
             if image_id not in grouped:
                 grouped[image_id] = {
@@ -1038,23 +1138,36 @@ class InferencePipeline:
                     "confidenceScore": grading_result.confidence_score,
                     "uncertaintyScore": grading_result.uncertainty_score,
                     "needsReview": grading_result.needs_review,
+                    "qualityStatusCode": None,
+                    "qualityScore": None,
                     "lesionCount": 0,
                     "abnormalToothCount": 0,
+                    "highestSeverityCode": "C0",
                     "highestSeverity": "C0",
                 }
             entry = grouped[image_id]
             entry["lesionCount"] = int(entry["lesionCount"]) + 1
             severity = str(lesion.get("severityCode") or "C0")
-            if self._severity_rank(severity) > self._severity_rank(str(entry.get("highestSeverity"))):
+            if self._severity_rank(severity) > self._severity_rank(str(entry.get("highestSeverityCode"))):
+                entry["highestSeverityCode"] = severity
                 entry["highestSeverity"] = severity
             tooth_code = lesion.get("toothCode")
             if tooth_code:
                 tooth_codes_by_image.setdefault(image_id, set()).add(str(tooth_code))
 
+        tooth_results_by_image: dict[int | None, list[dict[str, Any]]] = {}
+        for tooth_result in tooth_results:
+            if not isinstance(tooth_result, dict):
+                continue
+            tooth_results_by_image.setdefault(tooth_result.get("imageId"), []).append(tooth_result)
+
         for image_id, entry in grouped.items():
             entry["abnormalToothCount"] = len(tooth_codes_by_image.get(image_id, set()))
             if entry["lesionCount"] == 0:
+                entry["highestSeverityCode"] = grading_result.grading_label
                 entry["highestSeverity"] = grading_result.grading_label
+            entry["toothResults"] = tooth_results_by_image.get(image_id, [])
+            entry["reviewSuggested"] = bool(entry["needsReview"])
         return list(grouped.values())
 
     @staticmethod

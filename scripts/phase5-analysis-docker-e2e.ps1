@@ -448,7 +448,7 @@ $scenarios = @(
         expectedToothMode = "real"; expectedToothImpl = "HEURISTIC"
         expectedSegMode = "real"; expectedSegImpl = "HEURISTIC"
         expectedGradingMode = "real"; expectedGradingImpl = "HEURISTIC"
-        expectedUncertaintyMode = "real"; expectedUncertaintyImpl = "HEURISTIC"
+        expectedUncertaintyMode = "real"; expectedUncertaintyImpl = "COMPOSITE_HEURISTIC"
         expectedNeedsReview = "false"; uncertaintyLessThan = "0.35"
     },
     @{
@@ -459,7 +459,7 @@ $scenarios = @(
         expectedToothMode = "real"; expectedToothImpl = "HEURISTIC"
         expectedSegMode = "real"; expectedSegImpl = "HEURISTIC"
         expectedGradingMode = "real"; expectedGradingImpl = "HEURISTIC"
-        expectedUncertaintyMode = "real"; expectedUncertaintyImpl = "HEURISTIC"
+        expectedUncertaintyMode = "real"; expectedUncertaintyImpl = "COMPOSITE_HEURISTIC"
         expectedNeedsReview = "true"; uncertaintyAtLeast = "0.35"
     },
     @{

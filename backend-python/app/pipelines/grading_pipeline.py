@@ -17,7 +17,6 @@ from app.core.exceptions import BusinessException
 from app.core.logging import get_logger
 from app.infra.model.base_model import ImplType
 from app.infra.model.model_registry import ModelRegistry
-from app.pipelines.uncertainty_pipeline import UncertaintyPipeline
 from app.schemas.callback import ToothDetection
 from app.schemas.request import ImageInput
 
@@ -41,7 +40,6 @@ class GradingPipeline:
     def __init__(self, registry: ModelRegistry, settings: Settings) -> None:
         self._registry = registry
         self._settings = settings
-        self._uncertainty_pipeline = UncertaintyPipeline(settings)
 
     def grade(
         self,
@@ -101,24 +99,30 @@ class GradingPipeline:
         confidence_score = self._score(result.get("confidenceScore"), 1.0 - base_uncertainty)
         raw = dict(result.get("rawResult") or {})
         lesion_grades = self._build_lesion_grades(segmentation_regions, raw.get("candidates"))
-        uncertainty_result = self._uncertainty_pipeline.evaluate(
+        class_margin = self._score(
+            raw.get("classMargin")
+            if "classMargin" in raw
+            else raw.get("boundaryDistance"),
+            0.0,
+        )
+        uncertainty_reasons = self._uncertainty_reasons(
+            uncertainty_score=base_uncertainty,
+            confidence_score=confidence_score,
+            class_margin=class_margin,
             quality_results=quality_results,
             tooth_detections=tooth_detections,
-            lesion_regions=lesion_grades or segmentation_regions,
-            grading_confidence=confidence_score,
-            grading_raw=raw,
-            base_uncertainty=base_uncertainty,
+            lesion_grades=lesion_grades,
         )
-        uncertainty_score = uncertainty_result.uncertainty_score
-        needs_review = uncertainty_result.needs_review
+        uncertainty_score = base_uncertainty
+        needs_review = self._needs_review(uncertainty_score)
         raw.update(
             {
                 "reviewThreshold": self._settings.uncertainty_review_threshold,
                 "needsReview": needs_review,
                 "uncertaintyMode": "real",
-                "uncertaintyImplType": "COMPOSITE_HEURISTIC",
-                "uncertaintyReasons": uncertainty_result.uncertainty_reasons,
-                "uncertaintyComponents": uncertainty_result.components,
+                "uncertaintyImplType": str(result.get("implType") or ImplType.HEURISTIC.value),
+                "uncertaintyReasons": uncertainty_reasons,
+                "classMargin": class_margin,
                 "lesionGrades": lesion_grades,
                 "toothAggregation": self._tooth_aggregation(lesion_grades),
                 "imageAggregation": {
@@ -162,7 +166,7 @@ class GradingPipeline:
             "needsReview": needs_review,
             "uncertaintyMode": "mock",
             "uncertaintyImplType": "MOCK",
-            "uncertaintyReasons": ["MOCK_BASELINE"],
+            "uncertaintyReasons": [],
         }
         if fallback_reason:
             raw_result["fallbackReason"] = fallback_reason
@@ -251,3 +255,29 @@ class GradingPipeline:
             current["maxSeverityScore"] = max(float(current["maxSeverityScore"]), float(lesion.get("severityScore") or 0.0))
         return list(grouped.values())
 
+    def _uncertainty_reasons(
+        self,
+        *,
+        uncertainty_score: float,
+        confidence_score: float,
+        class_margin: float,
+        quality_results: list[Any],
+        tooth_detections: list[ToothDetection],
+        lesion_grades: list[dict[str, Any]],
+    ) -> list[str]:
+        reasons: list[str] = []
+        if uncertainty_score >= self._settings.uncertainty_review_threshold:
+            reasons.append("HIGH_UNCERTAINTY")
+        if confidence_score < 0.6:
+            reasons.append("LOW_CONFIDENCE")
+        if class_margin < 0.06:
+            reasons.append("BOUNDARY_CASE")
+        if lesion_grades and len(lesion_grades) > 1:
+            reasons.append("MULTI_LESION")
+        if tooth_detections and min((item.detection_score for item in tooth_detections), default=1.0) < 0.5:
+            reasons.append("LOW_DETECTION_CONFIDENCE")
+        if any(getattr(item, "check_result_code", "PASS") != "PASS" for item in quality_results):
+            reasons.append("QUALITY_ISSUE")
+        if not reasons and uncertainty_score > 0.3:
+            reasons.append("UNCERTAINTY_PRESENT")
+        return list(dict.fromkeys(reasons))

@@ -135,6 +135,10 @@ class TestMockModePipeline:
         assert "riskAssessment" in result
         assert "traceId" in result
         assert "inferenceMillis" in result
+        assert "gradingLabel" in result
+        assert "confidenceScore" in result
+        assert "uncertaintyScore" in result
+        assert "needsReview" in result
 
     def test_raw_result_has_mode_stamps(self):
         pipeline = _build_pipeline(_settings(CG_AI_RUNTIME_MODE="mock"))

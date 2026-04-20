@@ -148,11 +148,11 @@ class AppContainer:
             self.dense_retriever = None
             self.graph_retriever = None
             self.llm_client = None
-            self.knowledge_service = None
+            self.knowledge_service = _DisabledFeatureService("Knowledge")
             self.rag_orchestrator = None
             self.rag_service = _DisabledRagService()
-            self.rag_log_service = None
-            self.eval_service = None
+            self.rag_log_service = _DisabledFeatureService("RAG log")
+            self.eval_service = _DisabledFeatureService("Eval")
             self.eval_bootstrap_service = None
 
         self.analysis_knowledge_service = AnalysisKnowledgeService(settings, self.rag_service)
@@ -206,3 +206,16 @@ class _DisabledRagService:
     def patient_explanation(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
         return self.ask(*_args, **_kwargs)
 
+
+class _DisabledFeatureService:
+    def __init__(self, feature_name: str) -> None:
+        self._feature_name = feature_name
+
+    def __getattr__(self, _name: str):
+        def _disabled(*_args: Any, **_kwargs: Any):
+            raise RuntimeError(
+                f"{self._feature_name} runtime is disabled. "
+                "Set CG_RAG_RUNTIME_ENABLED=true to enable related APIs."
+            )
+
+        return _disabled

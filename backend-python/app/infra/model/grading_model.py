@@ -79,6 +79,7 @@ class GradingHeuristicAdapter(BaseModelAdapter):
                 "selectedRegionIndex": best["regionIndex"],
                 "selectedToothCode": best["toothCode"],
                 "severityScore": best["severityScore"],
+                "classMargin": best["boundaryDistance"],
                 "contrastScore": best["contrastScore"],
                 "areaRatio": best["areaRatio"],
                 "segmentationScore": best["segmentationScore"],

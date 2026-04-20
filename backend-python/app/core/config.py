@@ -264,19 +264,27 @@ class Settings:
         object.__setattr__(self, "model_risk_impl_type", _validate_model_impl_type("CG_MODEL_RISK_IMPL_TYPE", self.model_risk_impl_type))
 
         # ── Fail-fast Validation ──
+        # RAG strict dependency validation is only required when analysis-to-KB
+        # enhancement is enabled. This keeps the pure imaging chain independent
+        # from LLM/embedding configuration.
+        rag_dependencies_required = self.analysis_kb_enhancement_enabled
+        if self.analysis_kb_enhancement_enabled and not self.rag_runtime_enabled:
+            raise ValueError("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED=true requires CG_RAG_RUNTIME_ENABLED=true")
+
         if mode == "real":
-            if self.llm_provider_code == "MOCK":
-                raise ValueError("CG_AI_RUNTIME_MODE='real' forbids CG_LLM_PROVIDER_CODE='MOCK'")
-            if self.rag_embedding_provider == "HASHING":
-                raise ValueError("CG_AI_RUNTIME_MODE='real' forbids CG_RAG_EMBEDDING_PROVIDER='HASHING'")
             if self.qwen_vision_enabled:
                 _require_non_empty("CG_QWEN_VISION_BASE_URL", self.qwen_vision_base_url)
                 _require_non_empty("CG_QWEN_VISION_API_KEY", self.qwen_vision_api_key)
                 _require_non_empty("CG_QWEN_VISION_MODEL", self.qwen_vision_model)
-
-        rag_dependencies_required = self.rag_runtime_enabled or self.analysis_kb_enhancement_enabled
-        if self.analysis_kb_enhancement_enabled and not self.rag_runtime_enabled:
-            raise ValueError("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED=true requires CG_RAG_RUNTIME_ENABLED=true")
+            if rag_dependencies_required:
+                if self.llm_provider_code == "MOCK":
+                    raise ValueError(
+                        "CG_AI_RUNTIME_MODE='real' with RAG enabled forbids CG_LLM_PROVIDER_CODE='MOCK'"
+                    )
+                if self.rag_embedding_provider == "HASHING":
+                    raise ValueError(
+                        "CG_AI_RUNTIME_MODE='real' with RAG enabled forbids CG_RAG_EMBEDDING_PROVIDER='HASHING'"
+                    )
 
         if rag_dependencies_required and self.llm_provider_code != "MOCK":
             _require_non_empty("CG_LLM_BASE_URL", self.llm_base_url)
