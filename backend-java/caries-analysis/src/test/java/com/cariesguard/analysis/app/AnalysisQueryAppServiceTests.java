@@ -42,7 +42,8 @@ class AnalysisQueryAppServiceTests {
                 anaTaskRecordRepository,
                 anaResultSummaryRepository,
                 anaVisualAssetRepository,
-                new ObjectMapper());
+                new ObjectMapper(),
+                null);
     }
 
     @AfterEach

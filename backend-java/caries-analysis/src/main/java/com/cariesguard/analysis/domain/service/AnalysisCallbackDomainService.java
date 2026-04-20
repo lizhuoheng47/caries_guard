@@ -59,6 +59,8 @@ public class AnalysisCallbackDomainService {
 
     public SummaryAggregates extractSummaryAggregates(AiAnalysisResultCallbackCommand.Summary summary,
                                                       JsonNode rawResultJson,
+                                                      String topLevelGradingLabel,
+                                                      Boolean topLevelNeedsReview,
                                                       Double topLevelUncertaintyScore) {
         String severity = null;
         BigDecimal uncertainty = null;
@@ -70,10 +72,25 @@ public class AnalysisCallbackDomainService {
             reviewFlag = summary.reviewSuggestedFlag() != null ? summary.reviewSuggestedFlag() : "0";
         } else if (rawResultJson != null && !rawResultJson.isNull()) {
             severity = textValueFromJson(rawResultJson, "overallHighestSeverity", "overall_highest_severity");
+            if (!StringUtils.hasText(severity)) {
+                severity = textValueFromJson(rawResultJson, "gradingLabel", "grading_label");
+            }
             Double uncertaintyDouble = doubleValueFromJson(rawResultJson, "uncertaintyScore", "uncertainty_score");
             uncertainty = uncertaintyDouble != null ? BigDecimal.valueOf(uncertaintyDouble) : null;
             String flag = textValueFromJson(rawResultJson, "reviewSuggestedFlag", "review_suggested_flag");
+            if (!StringUtils.hasText(flag)) {
+                Boolean needsReview = booleanValueFromJson(rawResultJson, "needsReview", "needs_review");
+                if (needsReview != null) {
+                    flag = needsReview ? "1" : "0";
+                }
+            }
             reviewFlag = flag != null ? flag : "0";
+        }
+        if (!StringUtils.hasText(severity) && StringUtils.hasText(topLevelGradingLabel)) {
+            severity = topLevelGradingLabel.trim();
+        }
+        if (topLevelNeedsReview != null) {
+            reviewFlag = topLevelNeedsReview ? "1" : "0";
         }
         if (uncertainty == null && topLevelUncertaintyScore != null) {
             uncertainty = BigDecimal.valueOf(topLevelUncertaintyScore);
@@ -103,6 +120,16 @@ public class AnalysisCallbackDomainService {
             JsonNode node = root.get(field);
             if (node != null && node.isNumber()) {
                 return node.asDouble();
+            }
+        }
+        return null;
+    }
+
+    private Boolean booleanValueFromJson(JsonNode root, String... fields) {
+        for (String field : fields) {
+            JsonNode node = root.get(field);
+            if (node != null && node.isBoolean()) {
+                return node.booleanValue();
             }
         }
         return null;

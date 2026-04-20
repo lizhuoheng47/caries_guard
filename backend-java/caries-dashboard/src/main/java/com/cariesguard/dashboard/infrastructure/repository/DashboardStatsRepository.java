@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -28,9 +29,13 @@ public class DashboardStatsRepository {
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
 
     private final JdbcTemplate jdbcTemplate;
+    private final String aiDatabase;
 
-    public DashboardStatsRepository(JdbcTemplate jdbcTemplate) {
+    public DashboardStatsRepository(
+            JdbcTemplate jdbcTemplate,
+            @Value("${caries.ai.database:${CARIES_MYSQL_DATABASE_AI:caries_ai}}") String aiDatabase) {
         this.jdbcTemplate = jdbcTemplate;
+        this.aiDatabase = normalizeSchemaName(aiDatabase);
     }
 
     public DashboardOverviewVO queryOverview(Long orgId) {
@@ -52,10 +57,11 @@ public class DashboardStatsRepository {
                      WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ? AND inference_millis IS NOT NULL) AS average_inference_millis,
                     (
                         SELECT COUNT(1)
-                        FROM rag_request_log
+                        FROM %s
                         WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ?
                     ) AS today_rag_request_count
-                """, orgId, orgId, orgId, orgId, orgId, orgId, orgId, todayStart, orgId, recentThreshold, orgId, todayStart);
+                """.formatted(aiTable("rag_request_log")),
+                orgId, orgId, orgId, orgId, orgId, orgId, orgId, todayStart, orgId, recentThreshold, orgId, todayStart);
         Map<String, Object> aiRow = jdbcTemplate.queryForMap("""
                 SELECT
                     COUNT(s.id) AS summary_count,
@@ -89,12 +95,13 @@ public class DashboardStatsRepository {
                 SELECT
                     COUNT(1) AS rag_request_count,
                     COUNT(DISTINCT rl.request_id) AS hit_request_count
-                FROM rag_request_log r
-                LEFT JOIN rag_retrieval_log rl ON rl.request_id = r.id
+                FROM %s r
+                LEFT JOIN %s rl ON rl.request_id = r.id
                 WHERE r.org_id = ?
                   AND r.deleted_flag = 0
                   AND r.created_at >= ?
-                """, orgId, recentThreshold);
+                """.formatted(aiTable("rag_request_log"), aiTable("rag_retrieval_log")),
+                orgId, recentThreshold);
         Map<String, Object> feedbackRow = jdbcTemplate.queryForMap("""
                 SELECT
                     SUM(CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(corrected_truth_json, '$.feedbackGovernance.acceptedAiConclusion')) = 'true' THEN 1 ELSE 0 END) AS ai_accepted_count,
@@ -292,9 +299,10 @@ public class DashboardStatsRepository {
         // Evidence/Citation Metrics
         Map<String, Object> ragRow = jdbcTemplate.queryForMap("""
                 SELECT
-                    (SELECT COUNT(1) FROM rag_request_log WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ?) AS request_count,
-                    (SELECT COUNT(DISTINCT request_id) FROM rag_retrieval_log WHERE org_id = ? AND cited_flag = '1') AS cited_count
-                """, orgId, recentThreshold, orgId);
+                    (SELECT COUNT(1) FROM %s WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ?) AS request_count,
+                    (SELECT COUNT(DISTINCT request_id) FROM %s WHERE org_id = ? AND cited_flag = '1') AS cited_count
+                """.formatted(aiTable("rag_request_log"), aiTable("rag_retrieval_log")),
+                orgId, recentThreshold, orgId);
 
         // Doctor Agreement Metrics
         Map<String, Object> feedbackRow = jdbcTemplate.queryForMap("""
@@ -313,9 +321,10 @@ public class DashboardStatsRepository {
                     SELECT
                         COUNT(1) AS total_count,
                         SUM(CASE WHEN callback_status_code = 'SUCCESS' THEN 1 ELSE 0 END) AS success_count
-                    FROM caries_ai.ai_callback_log
+                    FROM %s
                     WHERE created_at >= ?
-                    """, recentThreshold);
+                    """.formatted(aiTable("ai_callback_log")),
+                    recentThreshold);
             callbackTotalCount = longValue(callbackRow.get("total_count"));
             callbackSuccessCount = longValue(callbackRow.get("success_count"));
         } catch (Exception e) {
@@ -521,6 +530,17 @@ public class DashboardStatsRepository {
             countMap.put(date, longValue(row.get("total_count")));
         }
         return countMap;
+    }
+
+    private static String normalizeSchemaName(String schemaName) {
+        if (schemaName != null && schemaName.matches("[A-Za-z0-9_]+")) {
+            return schemaName;
+        }
+        return "caries_ai";
+    }
+
+    private String aiTable(String table) {
+        return "`" + aiDatabase + "`." + table;
     }
 }
 

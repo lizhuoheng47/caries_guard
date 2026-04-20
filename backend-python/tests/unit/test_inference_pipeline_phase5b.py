@@ -1,6 +1,7 @@
 """Integration-level tests for Phase 5B segmentation visual assets."""
 
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -34,6 +35,8 @@ class FakeStorage:
 def _settings(tmp_path: Path, **overrides) -> Settings:
     values = {
         "ai_runtime_mode": "hybrid",
+        "rag_runtime_enabled": False,
+        "analysis_kb_enhancement_enabled": False,
         "model_quality_enabled": False,
         "model_tooth_detect_enabled": True,
         "model_segmentation_enabled": True,
@@ -89,7 +92,7 @@ def _task_payload() -> dict:
 def _sample_image(tmp_path: Path) -> Path:
     arr = np.random.randint(70, 210, (256, 512), dtype=np.uint8)
     arr[96:132, 170:215] = 30
-    img = Image.fromarray(arr, mode="L")
+    img = Image.fromarray(cast(Any, arr), mode="L")
     path = tmp_path / "image.png"
     img.save(path)
     return path
@@ -117,7 +120,7 @@ def test_phase5b_pipeline_uploads_segmentation_visual_assets(tmp_path: Path):
     pipeline = InferencePipeline(
         settings=settings,
         image_fetch_service=mock_fetch,
-        visual_asset_service=VisualAssetService(settings, FakeStorage()),
+        visual_asset_service=VisualAssetService(settings, cast(Any, FakeStorage())),
         risk_service=RiskService(settings),
         model_registry=registry,
         quality_pipeline=quality_pipeline,
@@ -136,9 +139,10 @@ def test_phase5b_pipeline_uploads_segmentation_visual_assets(tmp_path: Path):
     assert raw["gradingMode"] == "real"
     assert raw["gradingImplType"] == "HEURISTIC"
     assert raw["uncertaintyMode"] == "real"
-    assert raw["uncertaintyImplType"] == "HEURISTIC"
+    assert raw["uncertaintyImplType"] == "COMPOSITE_HEURISTIC"
     assert raw["gradingLabel"] in {"C0", "C1", "C2", "C3"}
     assert raw["uncertaintyScore"] == result["uncertaintyScore"]
+    assert isinstance(raw["uncertaintyReasons"], list)
     assert raw["needsReview"] == (raw["uncertaintyScore"] >= settings.uncertainty_review_threshold)
     assert raw["riskMode"] == "mock"
     assert raw["riskImplType"] == "MOCK"
@@ -147,6 +151,9 @@ def test_phase5b_pipeline_uploads_segmentation_visual_assets(tmp_path: Path):
     assert raw["knowledgeVersion"] == settings.rag_knowledge_version
     assert isinstance(raw["evidenceRefs"], list)
     assert len(raw["segmentationRegions"]) >= 1
+    assert len(raw["lesionResults"]) >= 1
+    assert len(raw["toothResults"]) >= 1
+    assert len(raw["imageResults"]) >= 1
     assert [item["assetTypeCode"] for item in visual_assets] == ["MASK", "OVERLAY", "HEATMAP"]
     for item in visual_assets:
         assert item["bucketName"] == "caries-visual"

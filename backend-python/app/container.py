@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Any
 
 from app.core.config import Settings
 from app.infra.graph.neo4j_client import create_neo4j_driver
@@ -51,7 +52,6 @@ from app.services.qwen_vision_service import QwenVisionService
 from app.services.rag_orchestrator import RagOrchestrator
 from app.services.rag_log_service import RagLogService
 from app.services.refusal_policy_service import RefusalPolicyService
-from app.services.rag_safety_guard_service import RagSafetyGuardService
 from app.services.rag_service import RagService
 from app.services.rerank_service import RerankService
 from app.services.risk_service import RiskService
@@ -61,6 +61,7 @@ from app.services.visual_asset_service import VisualAssetService
 class AppContainer:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
+        self.rag_service: Any = None
         self.storage = MinioStorageClient(settings)
         self.image_fetch_service = ImageFetchService(settings, self.storage)
         self.visual_asset_service = VisualAssetService(settings, self.storage)
@@ -76,61 +77,85 @@ class AppContainer:
         self.qwen_vision_service = QwenVisionService(settings)
         self.vector_store = SimpleVectorStore()
         self.concept_normalization_service = ConceptNormalizationService()
-        self.embedding_provider = create_embedding_provider(settings)
-        self.rerank_provider = create_rerank_provider(settings, self.embedding_provider)
-        self.opensearch_client = create_opensearch_client(settings)
-        self.neo4j_driver = create_neo4j_driver(settings)
-        self.document_parse_service = DocumentParseService()
-        self.chunk_build_service = ChunkBuildService()
-        self.entity_extraction_service = EntityExtractionService(self.concept_normalization_service)
-        self.open_search_index_service = OpenSearchIndexService(settings, self.opensearch_client, self.embedding_provider)
-        self.cypher_template_registry = CypherTemplateRegistry()
-        self.graph_upsert_service = GraphUpsertService(settings, self.neo4j_driver, self.graph_repository)
-        self.lexical_retriever = LexicalRetriever(self.open_search_index_service)
-        self.dense_retriever = DenseRetriever(self.open_search_index_service)
-        self.graph_retriever = GraphRetriever(settings, self.neo4j_driver, self.cypher_template_registry)
-        self.llm_client = create_llm_client(settings)
-        self.knowledge_service = KnowledgeService(
-            settings=settings,
-            repository=self.knowledge_repository,
-            storage=self.storage,
-            parser_service=self.document_parse_service,
-            chunk_build_service=self.chunk_build_service,
-            entity_extraction_service=self.entity_extraction_service,
-            open_search_index_service=self.open_search_index_service,
-            graph_upsert_service=self.graph_upsert_service,
-            graph_repository=self.graph_repository,
-        )
-        self.rag_orchestrator = RagOrchestrator(
-            settings=settings,
-            rag_repository=self.rag_repository,
-            knowledge_repository=self.knowledge_repository,
-            llm_client=self.llm_client,
-            query_rewrite_service=QueryRewriteService(),
-            intent_classifier_service=IntentClassifierService(),
-            entity_linking_service=EntityLinkingService(
-                self.graph_repository,
-                self.concept_normalization_service,
-                self.entity_extraction_service,
-            ),
-            lexical_retriever=self.lexical_retriever,
-            dense_retriever=self.dense_retriever,
-            graph_retriever=self.graph_retriever,
-            fusion_service=FusionService(settings),
-            rerank_service=RerankService(self.rerank_provider),
-            citation_assembler=CitationAssembler(),
-            refusal_policy_service=RefusalPolicyService(),
-            answer_validator_service=AnswerValidatorService(),
-        )
-        self.rag_service = RagService(
-            rag_orchestrator=self.rag_orchestrator,
-            case_context_builder=CaseContextBuilder(),
-        )
+
+        if settings.rag_runtime_enabled:
+            self.embedding_provider = create_embedding_provider(settings)
+            self.rerank_provider = create_rerank_provider(settings, self.embedding_provider)
+            self.opensearch_client = create_opensearch_client(settings)
+            self.neo4j_driver = create_neo4j_driver(settings)
+            self.document_parse_service = DocumentParseService()
+            self.chunk_build_service = ChunkBuildService()
+            self.entity_extraction_service = EntityExtractionService(self.concept_normalization_service)
+            self.open_search_index_service = OpenSearchIndexService(settings, self.opensearch_client, self.embedding_provider)
+            self.cypher_template_registry = CypherTemplateRegistry()
+            self.graph_upsert_service = GraphUpsertService(settings, self.neo4j_driver, self.graph_repository)
+            self.lexical_retriever = LexicalRetriever(self.open_search_index_service)
+            self.dense_retriever = DenseRetriever(self.open_search_index_service)
+            self.graph_retriever = GraphRetriever(settings, self.neo4j_driver, self.cypher_template_registry)
+            self.llm_client = create_llm_client(settings)
+            self.knowledge_service = KnowledgeService(
+                settings=settings,
+                repository=self.knowledge_repository,
+                storage=self.storage,
+                parser_service=self.document_parse_service,
+                chunk_build_service=self.chunk_build_service,
+                entity_extraction_service=self.entity_extraction_service,
+                open_search_index_service=self.open_search_index_service,
+                graph_upsert_service=self.graph_upsert_service,
+                graph_repository=self.graph_repository,
+            )
+            self.rag_orchestrator = RagOrchestrator(
+                settings=settings,
+                rag_repository=self.rag_repository,
+                knowledge_repository=self.knowledge_repository,
+                llm_client=self.llm_client,
+                query_rewrite_service=QueryRewriteService(),
+                intent_classifier_service=IntentClassifierService(),
+                entity_linking_service=EntityLinkingService(
+                    self.graph_repository,
+                    self.concept_normalization_service,
+                    self.entity_extraction_service,
+                ),
+                lexical_retriever=self.lexical_retriever,
+                dense_retriever=self.dense_retriever,
+                graph_retriever=self.graph_retriever,
+                fusion_service=FusionService(settings),
+                rerank_service=RerankService(self.rerank_provider),
+                citation_assembler=CitationAssembler(),
+                refusal_policy_service=RefusalPolicyService(),
+                answer_validator_service=AnswerValidatorService(),
+            )
+            self.rag_service = RagService(
+                rag_orchestrator=self.rag_orchestrator,
+                case_context_builder=CaseContextBuilder(),
+            )
+            self.rag_log_service = RagLogService(self.rag_repository)
+            self.eval_service = EvalService(self.eval_repository, self.rag_service)
+            self.eval_bootstrap_service = EvalBootstrapService(self.eval_repository)
+            self.eval_bootstrap_service.bootstrap()
+        else:
+            self.embedding_provider = None
+            self.rerank_provider = None
+            self.opensearch_client = None
+            self.neo4j_driver = None
+            self.document_parse_service = None
+            self.chunk_build_service = None
+            self.entity_extraction_service = None
+            self.open_search_index_service = None
+            self.cypher_template_registry = None
+            self.graph_upsert_service = None
+            self.lexical_retriever = None
+            self.dense_retriever = None
+            self.graph_retriever = None
+            self.llm_client = None
+            self.knowledge_service = None
+            self.rag_orchestrator = None
+            self.rag_service = _DisabledRagService()
+            self.rag_log_service = None
+            self.eval_service = None
+            self.eval_bootstrap_service = None
+
         self.analysis_knowledge_service = AnalysisKnowledgeService(settings, self.rag_service)
-        self.rag_log_service = RagLogService(self.rag_repository)
-        self.eval_service = EvalService(self.eval_repository, self.rag_service)
-        self.eval_bootstrap_service = EvalBootstrapService(self.eval_repository)
-        self.eval_bootstrap_service.bootstrap()
 
         # ── Phase 5A: model runtime ─────────────────────────────────────
         self.model_registry = ModelRegistry(settings)
@@ -169,3 +194,15 @@ class AppContainer:
 @lru_cache(maxsize=1)
 def get_container() -> AppContainer:
     return AppContainer(Settings())
+
+
+class _DisabledRagService:
+    def ask(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        raise RuntimeError("RAG runtime is disabled. Set CG_RAG_RUNTIME_ENABLED=true to use RAG APIs.")
+
+    def doctor_qa(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        return self.ask(*_args, **_kwargs)
+
+    def patient_explanation(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        return self.ask(*_args, **_kwargs)
+

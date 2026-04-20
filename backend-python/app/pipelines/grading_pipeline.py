@@ -17,6 +17,7 @@ from app.core.exceptions import BusinessException
 from app.core.logging import get_logger
 from app.infra.model.base_model import ImplType
 from app.infra.model.model_registry import ModelRegistry
+from app.pipelines.uncertainty_pipeline import UncertaintyPipeline
 from app.schemas.callback import ToothDetection
 from app.schemas.request import ImageInput
 
@@ -40,6 +41,7 @@ class GradingPipeline:
     def __init__(self, registry: ModelRegistry, settings: Settings) -> None:
         self._registry = registry
         self._settings = settings
+        self._uncertainty_pipeline = UncertaintyPipeline(settings)
 
     def grade(
         self,
@@ -47,6 +49,7 @@ class GradingPipeline:
         image_path: Path | None,
         segmentation_regions: list[dict[str, Any]] | None = None,
         tooth_detections: list[ToothDetection] | None = None,
+        quality_results: list[Any] | None = None,
     ) -> GradingResult:
         """Run grading and apply the uncertainty review business rule."""
         mode = self._registry.get_runtime_mode()
@@ -67,8 +70,14 @@ class GradingPipeline:
         try:
             if self._settings.grading_force_fail:
                 raise RuntimeError("forced grading failure")
-            result = adapter.infer(image_path, segmentation_regions or [], tooth_detections or [])
-            return self._real_result(result)
+            model_adapter: Any = adapter
+            result = model_adapter.infer(image_path, segmentation_regions or [], tooth_detections or [])
+            return self._real_result(
+                result,
+                segmentation_regions or [],
+                tooth_detections or [],
+                quality_results or [],
+            )
         except Exception as exc:
             if mode == "real":
                 raise BusinessException("M5008", f"grading failed: {exc}") from exc
@@ -81,15 +90,46 @@ class GradingPipeline:
             return adapter.impl_type.value
         return ImplType.MOCK.value
 
-    def _real_result(self, result: dict[str, Any]) -> GradingResult:
-        uncertainty_score = self._score(result.get("uncertaintyScore"), 0.5)
-        confidence_score = self._score(result.get("confidenceScore"), 1.0 - uncertainty_score)
-        needs_review = self._needs_review(uncertainty_score)
+    def _real_result(
+        self,
+        result: dict[str, Any],
+        segmentation_regions: list[dict[str, Any]],
+        tooth_detections: list[ToothDetection],
+        quality_results: list[Any],
+    ) -> GradingResult:
+        base_uncertainty = self._score(result.get("uncertaintyScore"), 0.5)
+        confidence_score = self._score(result.get("confidenceScore"), 1.0 - base_uncertainty)
         raw = dict(result.get("rawResult") or {})
-        raw.update({
-            "reviewThreshold": self._settings.uncertainty_review_threshold,
-            "needsReview": needs_review,
-        })
+        lesion_grades = self._build_lesion_grades(segmentation_regions, raw.get("candidates"))
+        uncertainty_result = self._uncertainty_pipeline.evaluate(
+            quality_results=quality_results,
+            tooth_detections=tooth_detections,
+            lesion_regions=lesion_grades or segmentation_regions,
+            grading_confidence=confidence_score,
+            grading_raw=raw,
+            base_uncertainty=base_uncertainty,
+        )
+        uncertainty_score = uncertainty_result.uncertainty_score
+        needs_review = uncertainty_result.needs_review
+        raw.update(
+            {
+                "reviewThreshold": self._settings.uncertainty_review_threshold,
+                "needsReview": needs_review,
+                "uncertaintyMode": "real",
+                "uncertaintyImplType": "COMPOSITE_HEURISTIC",
+                "uncertaintyReasons": uncertainty_result.uncertainty_reasons,
+                "uncertaintyComponents": uncertainty_result.components,
+                "lesionGrades": lesion_grades,
+                "toothAggregation": self._tooth_aggregation(lesion_grades),
+                "imageAggregation": {
+                    "highestSeverity": str(result.get("gradingLabel") or "C1"),
+                    "lesionCount": len(lesion_grades),
+                    "confidenceScore": confidence_score,
+                    "uncertaintyScore": uncertainty_score,
+                    "needsReview": needs_review,
+                },
+            }
+        )
         log.info(
             "grading completed mode=real implType=%s label=%s uncertainty=%s threshold=%s needsReview=%s",
             result.get("implType") or ImplType.HEURISTIC.value,
@@ -120,6 +160,9 @@ class GradingPipeline:
             "imageId": image.image_id if image else None,
             "reviewThreshold": self._settings.uncertainty_review_threshold,
             "needsReview": needs_review,
+            "uncertaintyMode": "mock",
+            "uncertaintyImplType": "MOCK",
+            "uncertaintyReasons": ["MOCK_BASELINE"],
         }
         if fallback_reason:
             raw_result["fallbackReason"] = fallback_reason
@@ -149,3 +192,62 @@ class GradingPipeline:
         except (TypeError, ValueError):
             score = default
         return round(max(0.0, min(1.0, score)), 4)
+
+    @staticmethod
+    def _build_lesion_grades(
+        segmentation_regions: list[dict[str, Any]],
+        candidates: Any,
+    ) -> list[dict[str, Any]]:
+        if not isinstance(candidates, list) or not candidates:
+            return []
+        by_region: dict[int, dict[str, Any]] = {}
+        for item in candidates:
+            if not isinstance(item, dict):
+                continue
+            try:
+                index = int(item.get("regionIndex") or item.get("region_index") or 0)
+            except (TypeError, ValueError):
+                index = 0
+            by_region[index] = item
+
+        lesion_grades: list[dict[str, Any]] = []
+        for index, region in enumerate(segmentation_regions):
+            candidate = by_region.get(index)
+            if candidate is None:
+                continue
+            lesion_grades.append(
+                {
+                    "regionIndex": index,
+                    "toothCode": str(region.get("toothCode") or region.get("tooth_code") or candidate.get("toothCode") or "16"),
+                    "severityCode": str(candidate.get("severityLabel") or "C1"),
+                    "severityScore": float(candidate.get("severityScore") or 0.0),
+                    "confidenceScore": round(max(0.0, min(1.0, 1.0 - float(candidate.get("boundaryDistance") or 0.5))), 4),
+                    "boundaryDistance": float(candidate.get("boundaryDistance") or 0.0),
+                    "bbox": region.get("bbox") if isinstance(region.get("bbox"), list) else candidate.get("bbox"),
+                    "score": candidate.get("segmentationScore") or region.get("score"),
+                }
+            )
+        return lesion_grades
+
+    @staticmethod
+    def _tooth_aggregation(lesion_grades: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        order = {"C0": 0, "C1": 1, "C2": 2, "C3": 3}
+        grouped: dict[str, dict[str, Any]] = {}
+        for lesion in lesion_grades:
+            tooth = str(lesion.get("toothCode") or "UNKNOWN")
+            severity = str(lesion.get("severityCode") or "C0")
+            current = grouped.get(tooth)
+            if current is None:
+                grouped[tooth] = {
+                    "toothCode": tooth,
+                    "highestSeverity": severity,
+                    "lesionCount": 1,
+                    "maxSeverityScore": float(lesion.get("severityScore") or 0.0),
+                }
+                continue
+            current["lesionCount"] += 1
+            if order.get(severity, 0) > order.get(str(current["highestSeverity"]), 0):
+                current["highestSeverity"] = severity
+            current["maxSeverityScore"] = max(float(current["maxSeverityScore"]), float(lesion.get("severityScore") or 0.0))
+        return list(grouped.values())
+

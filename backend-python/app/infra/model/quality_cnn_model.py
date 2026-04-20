@@ -9,7 +9,12 @@ from app.infra.model.base_model import BaseModelAdapter, ImplType
 log = get_logger("cariesguard-ai.model.quality-cnn")
 
 class QualityCnnAdapter(BaseModelAdapter):
-    """Real CNN-based quality check model adapter."""
+    """ML-model quality adapter placeholder.
+
+    Current repository does not ship executable CNN runtime code/weights loader.
+    In real mode this adapter MUST fail explicitly instead of returning fake
+    values, so callers can detect unsupported ML deployments immediately.
+    """
 
     model_code = "quality-check-cnn-v1"
     model_type_code = "QUALITY"
@@ -31,30 +36,7 @@ class QualityCnnAdapter(BaseModelAdapter):
         self._loaded = False
 
     def infer(self, image_path: Path) -> dict[str, Any]:
-        """Real CNN inference.
-        
-        Outputs the same contract as the heuristic version for Java compatibility.
-        """
-        # Simulated model output
-        # In reality, this would run the image through the CNN
-        log.info("CNN quality inference for %s", image_path.name)
-        
-        # Mocking a 'HIGH' quality result from a real model
-        quality_score = 0.92
-        status = "PASS"
-        issues = []
-        
-        return {
-            "qualityStatusCode": status,
-            "qualityScore": quality_score,
-            "blurScore": 0.95,
-            "exposureScore": 0.89,
-            "edgeDensityScore": 0.91,
-            "issues": issues,
-            "implType": ImplType.ML_MODEL.value,
-            "rawResult": {
-                "modelCode": self.model_code,
-                "softmaxOutput": [0.08, 0.92], # [FAIL, PASS]
-                "latencyMs": 45.2,
-            },
-        }
+        raise RuntimeError(
+            "QualityCnnAdapter ML inference is not implemented in this runtime. "
+            "Use CG_MODEL_QUALITY_IMPL_TYPE=HEURISTIC or integrate a real ML backend."
+        )

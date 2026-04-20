@@ -33,6 +33,8 @@ management:
       enabled: false
 
 caries:
+  ai:
+    database: ${CARIES_E2E_AI_DB:caries_ai_e2e}
   security:
     jwt:
       secret: change-me-to-a-strong-secret-key-with-at-least-32-bytes

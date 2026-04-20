@@ -28,6 +28,9 @@ public record AiAnalysisResultCallbackCommand(
         String errorMessage,
         String traceId,
         Long inferenceMillis,
+        String gradingLabel,
+        Double confidenceScore,
+        Boolean needsReview,
         Double uncertaintyScore) {
 
     public record Summary(

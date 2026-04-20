@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.cariesguard.analysis.domain.model.AnalysisCaseModel;
 import com.cariesguard.analysis.domain.model.AnalysisImageModel;
+import com.cariesguard.analysis.domain.model.AnalysisResultSummaryModel;
 import com.cariesguard.analysis.domain.model.AnalysisTaskViewModel;
 import com.cariesguard.analysis.domain.model.AnalysisVisualAssetCreateModel;
 import com.cariesguard.analysis.domain.repository.AnalysisCommandRepository;
@@ -126,6 +127,41 @@ class AnalysisCallbackAppServiceTests {
         verify(medRiskAssessmentRecordRepository).save(any());
         verify(caseCommandAppService).transitionStatusAsSystem(eq(3001L), eq(100001L), any());
         verify(analysisTaskEventPublisher).publishCompleted(any());
+    }
+
+    @Test
+    void handleSuccessCallbackShouldDeriveAggregatesFromGradingAndNeedsReviewWhenSummaryMissing() {
+        AnalysisCallbackAppService appService = createService();
+        when(anaTaskRecordRepository.findByTaskNo("TASK1")).thenReturn(Optional.of(
+                new AnalysisTaskViewModel(6001L, "TASK1", 3001L, 2001L, "caries-v1", "INFERENCE", "QUEUEING", null,
+                        LocalDateTime.now(), null, null, 100001L, null)));
+        when(anaTaskRecordRepository.existsByRetryFromTaskId(6001L)).thenReturn(false);
+
+        String body = """
+                {
+                  "taskNo":"TASK1",
+                  "taskStatusCode":"SUCCESS",
+                  "gradingLabel":"C3",
+                  "needsReview":true,
+                  "uncertaintyScore":0.67,
+                  "rawResultJson":{
+                    "gradingLabel":"C3",
+                    "confidenceScore":0.58,
+                    "uncertaintyScore":0.67,
+                    "needsReview":true,
+                    "visualAssets":[]
+                  }
+                }
+                """;
+
+        appService.handleResultCallback(body, "1710000000", "sig");
+
+        ArgumentCaptor<AnalysisResultSummaryModel> summaryCaptor = ArgumentCaptor.forClass(AnalysisResultSummaryModel.class);
+        verify(anaResultSummaryRepository).save(summaryCaptor.capture());
+        AnalysisResultSummaryModel saved = summaryCaptor.getValue();
+        assertThat(saved.overallHighestSeverity()).isEqualTo("C3");
+        assertThat(saved.reviewSuggestedFlag()).isEqualTo("1");
+        assertThat(saved.uncertaintyScore()).isNotNull();
     }
 
     @Test

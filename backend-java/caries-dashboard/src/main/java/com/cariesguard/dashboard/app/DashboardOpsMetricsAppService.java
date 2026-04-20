@@ -15,13 +15,18 @@ public class DashboardOpsMetricsAppService {
 
     private final DashboardStatsRepository dashboardStatsRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final String aiDatabase;
 
     @Value("${caries.system.runtime-mode:COMPETITION}")
     private String runtimeMode;
 
-    public DashboardOpsMetricsAppService(DashboardStatsRepository dashboardStatsRepository, JdbcTemplate jdbcTemplate) {
+    public DashboardOpsMetricsAppService(
+            DashboardStatsRepository dashboardStatsRepository,
+            JdbcTemplate jdbcTemplate,
+            @Value("${caries.ai.database:${CARIES_MYSQL_DATABASE_AI:caries_ai}}") String aiDatabase) {
         this.dashboardStatsRepository = dashboardStatsRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.aiDatabase = normalizeSchemaName(aiDatabase);
     }
 
     public ModelRuntimeVO getModelRuntime() {
@@ -32,13 +37,17 @@ public class DashboardOpsMetricsAppService {
         String knowledgeVersion = "UNKNOWN";
 
         try {
-            List<Map<String, Object>> llmModels = jdbcTemplate.queryForList("SELECT model_code, model_name FROM caries_ai.mdl_model_version WHERE model_type_code = 'LLM' AND active_flag = '1' ORDER BY id DESC LIMIT 1");
+            List<Map<String, Object>> llmModels = jdbcTemplate.queryForList(
+                    "SELECT model_code, model_name FROM " + aiTable("mdl_model_version")
+                            + " WHERE model_type_code = 'LLM' AND active_flag = '1' ORDER BY id DESC LIMIT 1");
             if (!llmModels.isEmpty()) {
                 llmProviderCode = String.valueOf(llmModels.get(0).get("model_code"));
                 llmModelName = String.valueOf(llmModels.get(0).get("model_name"));
             }
 
-            List<Map<String, Object>> kbs = jdbcTemplate.queryForList("SELECT version_no FROM caries_ai.mdl_model_version WHERE model_type_code = 'KNOWLEDGE_BASE' AND active_flag = '1' ORDER BY id DESC LIMIT 1");
+            List<Map<String, Object>> kbs = jdbcTemplate.queryForList(
+                    "SELECT version_no FROM " + aiTable("mdl_model_version")
+                            + " WHERE model_type_code = 'KNOWLEDGE_BASE' AND active_flag = '1' ORDER BY id DESC LIMIT 1");
             if (!kbs.isEmpty()) {
                 knowledgeVersion = String.valueOf(kbs.get(0).get("version_no"));
             }
@@ -87,5 +96,16 @@ public class DashboardOpsMetricsAppService {
                 llmModelName,
                 vo.modelVersions()
         );
+    }
+
+    private static String normalizeSchemaName(String schemaName) {
+        if (schemaName != null && schemaName.matches("[A-Za-z0-9_]+")) {
+            return schemaName;
+        }
+        return "caries_ai";
+    }
+
+    private String aiTable(String table) {
+        return "`" + aiDatabase + "`." + table;
     }
 }

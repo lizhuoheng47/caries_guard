@@ -17,6 +17,7 @@ from app.pipelines.grading_pipeline import GradingPipeline, GradingResult
 from app.pipelines.quality_pipeline import QualityPipeline
 from app.pipelines.risk_pipeline import RiskPipeline, RiskPipelineResult
 from app.pipelines.segmentation_pipeline import SegmentationPipeline, SegmentationResult
+from app.pipelines.uncertainty_pipeline import UncertaintyPipeline
 from app.repositories.ai_runtime_repository import AiRuntimeRepository
 from app.schemas.base import dump_camel
 from app.schemas.callback import (
@@ -69,6 +70,7 @@ class InferencePipeline:
         self.ai_runtime_repository = ai_runtime_repository
         self.qwen_vision_service = qwen_vision_service
         self.analysis_knowledge_service = analysis_knowledge_service
+        self.uncertainty_pipeline = UncertaintyPipeline(settings)
 
     def run(self, raw_task: dict[str, Any]) -> dict[str, Any]:
         task = self._parse_task(raw_task)
@@ -77,6 +79,7 @@ class InferencePipeline:
         trace_id = task.trace_id or raw_task.get("traceId") or f"py-{uuid.uuid4().hex[:12]}"
         model_version = task.model_version or self.settings.model_version
         runtime_mode = self.model_registry.get_runtime_mode()
+        image_type, image_type_route = self._resolve_image_type(task.images)
         log.info(
             "pipeline started taskNo=%s traceId=%s images=%s runtimeMode=%s",
             task.task_no, trace_id, len(task.images), runtime_mode,
@@ -104,11 +107,14 @@ class InferencePipeline:
                 tooth_detections,
                 qwen_vision_result,
             )
+            if runtime_mode == "real" and not visual_assets:
+                raise BusinessException("M5012", "visual assets are required in real mode")
             grading_result = self._create_grading_result(
                 task,
                 fetched_images,
                 segmentation_result,
                 tooth_detections,
+                quality_results,
                 qwen_vision_result,
             )
             risk_result = self._create_risk_result(
@@ -130,10 +136,18 @@ class InferencePipeline:
                 risk_assessment.review_suggested,
             )
             evidence_refs = self._evidence_refs(risk_assessment, visual_assets, knowledge_guidance)
+            lesion_results = self._build_lesion_results(
+                first_image_id=task.images[0].image_id if task.images else None,
+                tooth_detections=tooth_detections,
+                grading_result=grading_result,
+                visual_assets=visual_assets,
+                qwen_vision_result=qwen_vision_result,
+                segmentation_result=segmentation_result,
+            )
+            abnormal_tooth_count = self._abnormal_tooth_count(tooth_detections, qwen_vision_result, lesion_results)
 
         completed_at = local_naive_iso_now()
         inference_millis = int((time.perf_counter() - started) * 1000)
-        first_image_id = task.images[0].image_id if task.images else None
         summary = Summary(
             overall_highest_severity=grading_result.grading_label,
             uncertainty_score=grading_result.uncertainty_score,
@@ -160,16 +174,25 @@ class InferencePipeline:
                 else "MOCK"
             )
         )
+        quality_payload = self._quality_payload(quality_results)
+        teeth_payload = self._teeth_payload(tooth_detections, abnormal_tooth_count)
+
+        tooth_results = self._tooth_results(lesion_results)
+        image_results = self._image_results(task.images, lesion_results, grading_result)
 
         raw_result_json: dict[str, Any] = {
             "pipelineVersion": "phase5d-1",
             "mode": runtime_mode,
+            "imageType": image_type,
+            "imageTypeRoute": image_type_route,
             "aiRuntimeJobId": runtime_job.get("id") if runtime_job else None,
             "aiRuntimeJobNo": runtime_job.get("job_no") if runtime_job else None,
             "qualityMode": quality_mode,
             "qualityImplType": quality_impl_type,
+            "quality": quality_payload,
             "toothDetectionMode": tooth_detection_mode,
             "toothDetectionImplType": tooth_detection_impl_type,
+            "teeth": teeth_payload,
             "segmentationMode": segmentation_mode,
             "segmentationImplType": segmentation_impl_type,
             "segmentationRegions": segmentation_result.regions if segmentation_result is not None else [],
@@ -182,9 +205,10 @@ class InferencePipeline:
             "gradingImplType": grading_result.grading_impl_type,
             "gradingLabel": grading_result.grading_label,
             "confidenceScore": grading_result.confidence_score,
-            "uncertaintyMode": grading_result.grading_mode,
-            "uncertaintyImplType": grading_result.grading_impl_type,
+            "uncertaintyMode": grading_result.raw_result.get("uncertaintyMode") or grading_result.grading_mode,
+            "uncertaintyImplType": grading_result.raw_result.get("uncertaintyImplType") or grading_result.grading_impl_type,
             "uncertaintyScore": grading_result.uncertainty_score,
+            "uncertaintyReasons": grading_result.raw_result.get("uncertaintyReasons") or [],
             "needsReview": grading_result.needs_review,
             "gradingRawResult": grading_result.raw_result,
             "riskMode": risk_result.risk_mode,
@@ -198,15 +222,11 @@ class InferencePipeline:
             "doctorReviewRequiredReason": review_reason if grading_result.needs_review else None,
             "qualityCheckResults": [dump_camel(item) for item in quality_results],
             "toothDetections": [dump_camel(td) for td in tooth_detections],
-            "lesionResults": self._build_lesion_results(
-                first_image_id,
-                tooth_detections,
-                grading_result,
-                visual_assets,
-                qwen_vision_result,
-            ),
-            "lesionCount": len(qwen_vision_result.findings) if qwen_vision_result is not None else 1,
-            "abnormalToothCount": self._abnormal_tooth_count(tooth_detections, qwen_vision_result),
+            "lesionResults": lesion_results,
+            "toothResults": tooth_results,
+            "imageResults": image_results,
+            "lesionCount": len(lesion_results),
+            "abnormalToothCount": abnormal_tooth_count,
             "clinicalSummary": qwen_vision_result.clinical_summary if qwen_vision_result is not None else None,
             "treatmentPlan": qwen_vision_result.treatment_plan if qwen_vision_result is not None else [],
             "followUpRecommendation": (
@@ -254,15 +274,20 @@ class InferencePipeline:
             "pipeline completed taskNo=%s traceId=%s millis=%s qualityMode=%s toothMode=%s segmentationMode=%s gradingMode=%s riskMode=%s",
             task.task_no, trace_id, inference_millis, quality_mode, tooth_detection_mode, segmentation_mode, grading_result.grading_mode, risk_result.risk_mode,
         )
-        return dump_camel(payload)
+        payload_dict = dump_camel(payload)
+        payload_dict["gradingLabel"] = grading_result.grading_label
+        payload_dict["confidenceScore"] = grading_result.confidence_score
+        payload_dict["needsReview"] = grading_result.needs_review
+        return payload_dict
 
     def build_failure_payload(self, raw_task: dict[str, Any], exc: Exception) -> dict[str, Any]:
         now = local_naive_iso_now()
-        task_no = str(raw_task.get("taskNo") or raw_task.get("task_no") or "UNKNOWN")
-        trace_id = str(raw_task.get("traceId") or raw_task.get("trace_id") or f"py-{uuid.uuid4().hex[:12]}")
+        payload = raw_task.get("payload") if isinstance(raw_task.get("payload"), dict) else raw_task
+        task_no = str(payload.get("taskNo") or payload.get("task_no") or raw_task.get("taskNo") or raw_task.get("task_no") or "UNKNOWN")
+        trace_id = str(payload.get("traceId") or payload.get("trace_id") or raw_task.get("traceId") or raw_task.get("trace_id") or f"py-{uuid.uuid4().hex[:12]}")
         code = exc.code if isinstance(exc, BusinessException) else "C9999"
-        model_version = str(raw_task.get("modelVersion") or self.settings.model_version)
-        raw_result_json = {"errorCode": code, "errorType": exc.__class__.__name__}
+        model_version = str(payload.get("modelVersion") or raw_task.get("modelVersion") or self.settings.model_version)
+        raw_result_json: dict[str, Any] = {"errorCode": code, "errorType": exc.__class__.__name__}
         runtime_job = self._safe_persist_runtime_failure(
             raw_task,
             task_no,
@@ -270,9 +295,13 @@ class InferencePipeline:
             raw_result_json,
             exc,
         )
-        if runtime_job:
-            raw_result_json["aiRuntimeJobId"] = runtime_job.get("id")
-            raw_result_json["aiRuntimeJobNo"] = runtime_job.get("job_no")
+        if runtime_job and isinstance(runtime_job, dict):
+            runtime_job_id = runtime_job.get("id")
+            runtime_job_no = runtime_job.get("job_no")
+            if runtime_job_id is not None:
+                raw_result_json["aiRuntimeJobId"] = runtime_job_id
+            if runtime_job_no is not None:
+                raw_result_json["aiRuntimeJobNo"] = runtime_job_no  # type: ignore[assignment]
         payload = FailureCallbackPayload(
             task_no=task_no,
             task_status_code="FAILED",
@@ -297,10 +326,14 @@ class InferencePipeline:
 
     def _fetch_images(self, task: AnalyzeRequest, workspace: Path) -> list[FetchedImage]:
         if not self.settings.download_images:
+            if self.model_registry.get_runtime_mode() == "real":
+                raise BusinessException("M5013", "CG_AI_DOWNLOAD_IMAGES must be true in real mode")
             return []
         fetched: list[FetchedImage] = []
         for image in task.images:
             fetched.append(self.image_fetch_service.download(image, workspace))
+        if self.model_registry.get_runtime_mode() == "real" and not fetched:
+            raise BusinessException("M5014", "no images were downloaded in real mode")
         return fetched
 
     @staticmethod
@@ -320,7 +353,10 @@ class InferencePipeline:
         tooth_detections: list[ToothDetection],
         qwen_vision_result: VisionAnalysisResult | None = None,
     ) -> tuple[list[VisualAsset], SegmentationResult | None]:
+        runtime_mode = self.model_registry.get_runtime_mode()
         if not fetched_images or self.visual_asset_service is None:
+            if runtime_mode == "real":
+                raise BusinessException("M5015", "image fetch or visual asset service unavailable in real mode")
             return [], None
         first_image = fetched_images[0]
         image_input = task.images[0] if task.images else ImageInput(image_id=first_image.image_id)
@@ -418,6 +454,8 @@ class InferencePipeline:
             ]
             return assets, segmentation_result
 
+        if runtime_mode == "real":
+            raise BusinessException("M5016", "segmentation pipeline is required in real mode")
         mask_path = generated_dir / f"mask_{image_id or 'unknown'}_16.png"
         overlay_path = generated_dir / f"overlay_{image_id or 'unknown'}_16.png"
         heatmap_path = generated_dir / f"heatmap_{image_id or 'unknown'}.png"
@@ -434,16 +472,27 @@ class InferencePipeline:
         fetched_images: list[FetchedImage],
         segmentation_result: SegmentationResult | None,
         tooth_detections: list[ToothDetection],
+        quality_results: list[Any],
         qwen_vision_result: VisionAnalysisResult | None = None,
     ) -> GradingResult:
         if qwen_vision_result is not None:
-            uncertainty_score = qwen_vision_result.overall_uncertainty_score
-            needs_review = uncertainty_score >= self.settings.uncertainty_review_threshold
             raw_result = dict(qwen_vision_result.raw_result)
+            uncertainty = self.uncertainty_pipeline.evaluate(
+                quality_results=quality_results,
+                tooth_detections=tooth_detections,
+                lesion_regions=qwen_vision_result.to_regions(),
+                grading_confidence=qwen_vision_result.overall_confidence_score,
+                grading_raw=raw_result,
+                base_uncertainty=qwen_vision_result.overall_uncertainty_score,
+            )
             raw_result.update(
                 {
                     "reviewThreshold": self.settings.uncertainty_review_threshold,
-                    "needsReview": needs_review,
+                    "needsReview": uncertainty.needs_review,
+                    "uncertaintyMode": "real",
+                    "uncertaintyImplType": "COMPOSITE_HEURISTIC",
+                    "uncertaintyReasons": uncertainty.uncertainty_reasons,
+                    "uncertaintyComponents": uncertainty.components,
                     "clinicalSummary": qwen_vision_result.clinical_summary,
                     "treatmentPlan": qwen_vision_result.treatment_plan,
                 }
@@ -453,12 +502,14 @@ class InferencePipeline:
                 grading_impl_type="VLM_API",
                 grading_label=qwen_vision_result.overall_severity_code,
                 confidence_score=qwen_vision_result.overall_confidence_score,
-                uncertainty_score=uncertainty_score,
-                needs_review=needs_review,
+                uncertainty_score=uncertainty.uncertainty_score,
+                needs_review=uncertainty.needs_review,
                 raw_result=raw_result,
             )
 
         if self.grading_pipeline is None:
+            if self.model_registry.get_runtime_mode() == "real":
+                raise BusinessException("M5017", "grading pipeline is required in real mode")
             uncertainty_score = 0.1
             return GradingResult(
                 grading_mode="mock",
@@ -481,6 +532,7 @@ class InferencePipeline:
             image_path,
             regions,
             tooth_detections,
+            quality_results,  # type: ignore[call-arg]
         )
 
     def _analyze_with_qwen(
@@ -536,6 +588,8 @@ class InferencePipeline:
                 len(tooth_detections),
             )
 
+        if self.model_registry.get_runtime_mode() == "real":
+            raise BusinessException("M5018", "risk pipeline is required in real mode")
         assessment = self.risk_service.assess(
             task.patient_profile,
             grading_label=grading_result.grading_label,
@@ -577,6 +631,8 @@ class InferencePipeline:
         model_version: str,
     ) -> dict[str, Any]:
         if self.ai_runtime_repository is None:
+            if self.model_registry.get_runtime_mode() == "real":
+                raise BusinessException("M5019", "ai runtime repository is required in real mode")
             return {}
         try:
             return self.ai_runtime_repository.create_infer_job(
@@ -588,6 +644,8 @@ class InferencePipeline:
                 org_id=task.org_id,
             )
         except Exception as exc:
+            if self.model_registry.get_runtime_mode() == "real":
+                raise BusinessException("M5020", f"failed to create ai runtime job: {exc}") from exc
             log.warning("failed to create ai runtime job taskNo=%s error=%s", task.task_no, exc)
             return {}
 
@@ -602,6 +660,8 @@ class InferencePipeline:
         grading_result: GradingResult,
     ) -> None:
         if self.ai_runtime_repository is None or not runtime_job.get("id"):
+            if self.model_registry.get_runtime_mode() == "real":
+                raise BusinessException("M5021", "ai runtime job persistence is required in real mode")
             return
         job_id = int(runtime_job["id"])
         try:
@@ -610,14 +670,22 @@ class InferencePipeline:
             for image in task.images:
                 quality = quality_by_image.get(image.image_id)
                 fetched = fetched_by_image.get(image.image_id)
+                quality_payload = dump_camel(quality) if hasattr(quality, "model_dump") else quality
                 image_result = {
-                    "qualityCheckResult": dump_camel(quality) if quality is not None else None,
+                    "qualityCheckResult": quality_payload if quality is not None else None,
                     "gradingMode": grading_result.grading_mode,
                     "gradingImplType": grading_result.grading_impl_type,
                     "gradingLabel": grading_result.grading_label,
                     "confidenceScore": grading_result.confidence_score,
+                    "uncertaintyMode": raw_result_json.get("uncertaintyMode"),
+                    "uncertaintyImplType": raw_result_json.get("uncertaintyImplType"),
                     "uncertaintyScore": grading_result.uncertainty_score,
+                    "uncertaintyReasons": raw_result_json.get("uncertaintyReasons") or [],
                     "needsReview": grading_result.needs_review,
+                    "lesionResults": raw_result_json.get("lesionResults") or [],
+                    "toothResults": raw_result_json.get("toothResults") or [],
+                    "imageResults": raw_result_json.get("imageResults") or [],
+                    "rawResultJson": raw_result_json,
                     "rawResult": raw_result_json,
                 }
                 self.ai_runtime_repository.add_job_image(
@@ -657,6 +725,8 @@ class InferencePipeline:
                 result_json=raw_result_json,
             )
         except Exception as exc:
+            if self.model_registry.get_runtime_mode() == "real":
+                raise BusinessException("M5022", f"failed to persist ai runtime success: {exc}") from exc
             log.warning("failed to persist ai runtime success taskNo=%s error=%s", task.task_no, exc)
 
     def _safe_persist_runtime_failure(
@@ -686,6 +756,51 @@ class InferencePipeline:
         except Exception as persist_exc:
             log.warning("failed to persist ai runtime failure taskNo=%s error=%s", task_no, persist_exc)
             return {}
+
+    @staticmethod
+    def _resolve_image_type(images: list[ImageInput]) -> tuple[str, str]:
+        image_type = str(images[0].image_type_code).strip().upper() if images and images[0].image_type_code else "UNKNOWN"
+        route_map = {
+            "BITEWING": "INTRAORAL_XRAY",
+            "PERIAPICAL": "INTRAORAL_XRAY",
+            "OCCLUSAL": "INTRAORAL_XRAY",
+            "PANORAMIC": "PANORAMIC_XRAY",
+            "CBCT": "CBCT",
+        }
+        return image_type, route_map.get(image_type, "GENERIC_DENTAL")
+
+    @staticmethod
+    def _quality_payload(quality_results: list[Any]) -> dict[str, Any]:
+        items = [dump_camel(item) for item in quality_results]
+        fail_count = sum(1 for item in quality_results if getattr(item, "check_result_code", "PASS") != "PASS")
+        return {
+            "overallStatusCode": "FAIL" if fail_count > 0 else "PASS",
+            "reviewSuggested": fail_count > 0,
+            "passCount": len(quality_results) - fail_count,
+            "failCount": fail_count,
+            "items": items,
+        }
+
+    @staticmethod
+    def _teeth_payload(tooth_detections: list[ToothDetection], abnormal_tooth_count: int) -> dict[str, Any]:
+        return {
+            "count": len(tooth_detections),
+            "abnormalToothCount": abnormal_tooth_count,
+            "items": [dump_camel(item) for item in tooth_detections],
+        }
+
+    @staticmethod
+    def _lesion_area_metrics(
+        bbox: list[int],
+        image_width: int | None,
+        image_height: int | None,
+    ) -> tuple[int, float | None]:
+        x1, y1, x2, y2 = bbox
+        area_px = max(0, x2 - x1) * max(0, y2 - y1)
+        if image_width is None or image_height is None or image_width <= 0 or image_height <= 0:
+            return area_px, None
+        ratio = round(area_px / float(image_width * image_height), 6)
+        return area_px, ratio
 
     def _callback_visual_assets(self, visual_assets: list[VisualAsset], task_no: str, trace_id: str) -> list[VisualAsset]:
         mode = (self.settings.callback_visual_asset_mode or "metadata").strip().lower()
@@ -743,11 +858,12 @@ class InferencePipeline:
 
     def _build_lesion_results(
         self,
-        image_id: int | None,
+        first_image_id: int | None,
         tooth_detections: list[ToothDetection],
         grading_result: GradingResult,
         visual_assets: list[VisualAsset],
         qwen_vision_result: VisionAnalysisResult | None,
+        segmentation_result: SegmentationResult | None,
     ) -> list[dict[str, Any]]:
         if qwen_vision_result is not None:
             results: list[dict[str, Any]] = []
@@ -755,7 +871,7 @@ class InferencePipeline:
                 results.append(
                     dump_camel(
                         LesionResult(
-                            image_id=image_id,
+                            image_id=first_image_id,
                             tooth_code=finding.tooth_code or (tooth_detections[0].tooth_code if tooth_detections else "16"),
                             severity_code=finding.severity_code,
                             confidence_score=finding.confidence_score,
@@ -773,10 +889,71 @@ class InferencePipeline:
                 )
             return results
 
+        if segmentation_result is not None and segmentation_result.regions:
+            image_width = None
+            image_height = None
+            if isinstance(segmentation_result.raw_result, dict):
+                size = segmentation_result.raw_result.get("imageSize")
+                if isinstance(size, list) and len(size) == 2:
+                    try:
+                        image_width = int(size[0])
+                        image_height = int(size[1])
+                    except (TypeError, ValueError):
+                        image_width = None
+                        image_height = None
+
+            results: list[dict[str, Any]] = []
+            default_tooth = tooth_detections[0].tooth_code if tooth_detections else "16"
+            lesion_grades = grading_result.raw_result.get("lesionGrades") if isinstance(grading_result.raw_result, dict) else []
+            grade_by_index: dict[int, dict[str, Any]] = {}
+            if isinstance(lesion_grades, list):
+                for item in lesion_grades:
+                    if not isinstance(item, dict):
+                        continue
+                    try:
+                        idx = int(item.get("regionIndex") or item.get("region_index") or 0)
+                    except (TypeError, ValueError):
+                        idx = 0
+                    grade_by_index[idx] = item
+            for region in segmentation_result.regions:
+                bbox = region.get("bbox")
+                if not isinstance(bbox, list) or len(bbox) != 4:
+                    continue
+                bbox = [int(value) for value in bbox]
+                try:
+                    region_index = int(region.get("regionIndex") or region.get("region_index") or len(results))
+                except (TypeError, ValueError):
+                    region_index = len(results)
+                grade = grade_by_index.get(region_index, {})
+                area_px, area_ratio = self._lesion_area_metrics(bbox, image_width, image_height)
+                results.append(
+                    dump_camel(
+                        LesionResult(
+                            image_id=first_image_id,
+                            tooth_code=str(grade.get("toothCode") or region.get("toothCode") or region.get("tooth_code") or default_tooth),
+                            severity_code=str(grade.get("severityCode") or region.get("severityCode") or grading_result.grading_label),
+                            confidence_score=float(grade.get("confidenceScore") or region.get("score") or grading_result.confidence_score),
+                            uncertainty_score=grading_result.uncertainty_score,
+                            lesion_area_px=area_px,
+                            lesion_area_ratio=area_ratio,
+                            bbox=bbox,
+                            polygon=region.get("polygon"),
+                            summary=region.get("summary"),
+                            treatment_suggestion=region.get("treatmentSuggestion") or region.get("treatment_suggestion"),
+                            mask_asset=self._asset_ref(visual_assets, "MASK"),
+                            overlay_asset=self._asset_ref(visual_assets, "OVERLAY"),
+                        )
+                    )
+                )
+            if results:
+                return results
+
+        if self.model_registry.get_runtime_mode() == "real":
+            raise BusinessException("M5023", "missing lesion geometry in real mode")
         return [
             dump_camel(
                 LesionResult(
-                    image_id=image_id,
+                    image_id=first_image_id,
                     tooth_code=tooth_detections[0].tooth_code if tooth_detections else "16",
                     severity_code=grading_result.grading_label,
                     confidence_score=grading_result.confidence_score,
@@ -797,10 +974,88 @@ class InferencePipeline:
     def _abnormal_tooth_count(
         tooth_detections: list[ToothDetection],
         qwen_vision_result: VisionAnalysisResult | None,
+        lesion_results: list[dict[str, Any]],
     ) -> int:
         if qwen_vision_result is None:
-            return 1 if tooth_detections else 0
+            codes = {str(item.get("toothCode")) for item in lesion_results if item.get("toothCode")}
+            if codes:
+                return len(codes)
+            return len({item.tooth_code for item in tooth_detections if item.tooth_code})
         return len({item.tooth_code for item in qwen_vision_result.findings if item.tooth_code})
+
+    @staticmethod
+    def _severity_rank(value: str | None) -> int:
+        return {"C0": 0, "C1": 1, "C2": 2, "C3": 3}.get(str(value or "C0").upper(), 0)
+
+    def _tooth_results(self, lesion_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        grouped: dict[str, dict[str, Any]] = {}
+        for lesion in lesion_results:
+            tooth_code = str(lesion.get("toothCode") or "UNKNOWN")
+            severity = str(lesion.get("severityCode") or "C0")
+            entry = grouped.get(tooth_code)
+            if entry is None:
+                grouped[tooth_code] = {
+                    "toothCode": tooth_code,
+                    "highestSeverity": severity,
+                    "lesionCount": 1,
+                    "maxConfidenceScore": float(lesion.get("confidenceScore") or 0.0),
+                    "maxUncertaintyScore": float(lesion.get("uncertaintyScore") or 0.0),
+                }
+                continue
+            entry["lesionCount"] = int(entry["lesionCount"]) + 1
+            if self._severity_rank(severity) > self._severity_rank(str(entry.get("highestSeverity"))):
+                entry["highestSeverity"] = severity
+            entry["maxConfidenceScore"] = max(float(entry["maxConfidenceScore"]), float(lesion.get("confidenceScore") or 0.0))
+            entry["maxUncertaintyScore"] = max(float(entry["maxUncertaintyScore"]), float(lesion.get("uncertaintyScore") or 0.0))
+        return list(grouped.values())
+
+    def _image_results(
+        self,
+        images: list[ImageInput],
+        lesion_results: list[dict[str, Any]],
+        grading_result: GradingResult,
+    ) -> list[dict[str, Any]]:
+        grouped: dict[int | None, dict[str, Any]] = {}
+        for image in images:
+            grouped[image.image_id] = {
+                "imageId": image.image_id,
+                "gradingLabel": grading_result.grading_label,
+                "confidenceScore": grading_result.confidence_score,
+                "uncertaintyScore": grading_result.uncertainty_score,
+                "needsReview": grading_result.needs_review,
+                "lesionCount": 0,
+                "abnormalToothCount": 0,
+                "highestSeverity": "C0",
+            }
+
+        tooth_codes_by_image: dict[int | None, set[str]] = {}
+        for lesion in lesion_results:
+            image_id = lesion.get("imageId")
+            if image_id not in grouped:
+                grouped[image_id] = {
+                    "imageId": image_id,
+                    "gradingLabel": grading_result.grading_label,
+                    "confidenceScore": grading_result.confidence_score,
+                    "uncertaintyScore": grading_result.uncertainty_score,
+                    "needsReview": grading_result.needs_review,
+                    "lesionCount": 0,
+                    "abnormalToothCount": 0,
+                    "highestSeverity": "C0",
+                }
+            entry = grouped[image_id]
+            entry["lesionCount"] = int(entry["lesionCount"]) + 1
+            severity = str(lesion.get("severityCode") or "C0")
+            if self._severity_rank(severity) > self._severity_rank(str(entry.get("highestSeverity"))):
+                entry["highestSeverity"] = severity
+            tooth_code = lesion.get("toothCode")
+            if tooth_code:
+                tooth_codes_by_image.setdefault(image_id, set()).add(str(tooth_code))
+
+        for image_id, entry in grouped.items():
+            entry["abnormalToothCount"] = len(tooth_codes_by_image.get(image_id, set()))
+            if entry["lesionCount"] == 0:
+                entry["highestSeverity"] = grading_result.grading_label
+        return list(grouped.values())
 
     @staticmethod
     def _segmentation_tooth_code(segmentation_result: SegmentationResult) -> str:

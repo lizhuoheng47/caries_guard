@@ -117,6 +117,9 @@ class AnalysisCallbackPayload(CamelModel):
     error_message: str | None = None
     trace_id: str | None = None
     inference_millis: int | None = None
+    grading_label: str | None = None
+    confidence_score: float | None = None
+    needs_review: bool | None = None
     uncertainty_score: float | None = None
     risk_level: str | None = None
     risk_factors: list[RiskFactor] = []

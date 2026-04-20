@@ -174,6 +174,12 @@ public class AnalysisQueryAppService {
             }
             if (!StringUtils.hasText(reviewFlag)) {
                 reviewFlag = textValue(root, "reviewSuggestedFlag", "review_suggested_flag");
+                if (!StringUtils.hasText(reviewFlag)) {
+                    Boolean rawNeedsReview = booleanValue(root, "needsReview", "needs_review");
+                    if (rawNeedsReview != null) {
+                        reviewFlag = rawNeedsReview ? "1" : "0";
+                    }
+                }
             }
             if (lesionCount == null) {
                 lesionCount = intValue(root, "lesionCount", "lesion_count");

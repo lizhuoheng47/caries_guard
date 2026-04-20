@@ -1,6 +1,7 @@
 """Tests for GradingPipeline routing, fallback, and review threshold rules."""
 
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -17,6 +18,8 @@ from app.schemas.request import ImageInput
 def _settings(**overrides) -> Settings:
     values = {
         "ai_runtime_mode": "mock",
+        "rag_runtime_enabled": False,
+        "analysis_kb_enhancement_enabled": False,
         "model_grading_enabled": False,
         "model_confidence_threshold": 0.3,
         "grading_force_fail": False,
@@ -44,7 +47,7 @@ def _settings(**overrides) -> Settings:
 def sample_image(tmp_path: Path) -> Path:
     arr = np.random.randint(85, 190, (256, 512), dtype=np.uint8)
     arr[96:132, 170:215] = 35
-    img = Image.fromarray(arr, mode="L")
+    img = Image.fromarray(cast(Any, arr), mode="L")
     path = tmp_path / "image.png"
     img.save(path)
     return path
@@ -94,6 +97,8 @@ class TestHybridMode:
         assert result.grading_impl_type == "HEURISTIC"
         assert result.grading_label in {"C0", "C1", "C2", "C3"}
         assert "reviewThreshold" in result.raw_result
+        assert isinstance(result.raw_result.get("lesionGrades"), list)
+        assert isinstance(result.raw_result.get("uncertaintyReasons"), list)
 
     def test_fallback_to_mock_on_error(self, sample_image: Path, monkeypatch):
         settings = _settings(
@@ -143,6 +148,7 @@ class TestHybridMode:
         assert result.needs_review is True
         assert result.raw_result["needsReview"] is True
         assert result.raw_result["reviewThreshold"] == 0.35
+        assert "HIGH_UNCERTAINTY" in result.raw_result["uncertaintyReasons"]
 
 
 class TestRealMode:

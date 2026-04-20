@@ -139,7 +139,12 @@ public class AnalysisCallbackAppService {
                                                 String rawBody) {
         analysisCallbackDomainService.validateSuccessCallbackCompleteness(callback);
         AnalysisCallbackDomainService.SummaryAggregates aggregates =
-                analysisCallbackDomainService.extractSummaryAggregates(callback.summary(), callback.rawResultJson(), callback.uncertaintyScore());
+                analysisCallbackDomainService.extractSummaryAggregates(
+                        callback.summary(),
+                        callback.rawResultJson(),
+                        callback.gradingLabel(),
+                        callback.needsReview(),
+                        callback.uncertaintyScore());
 
         String rawResultJson = resolveRawResultJson(callback);
         String resolvedModelVersion = StringUtils.hasText(callback.modelVersion()) ? callback.modelVersion().trim() : task.modelVersion();

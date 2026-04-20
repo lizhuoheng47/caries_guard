@@ -9,13 +9,9 @@ def test_quality_cnn_adapter_inference():
     
     assert adapter.is_loaded()
     assert adapter.impl_type == ImplType.ML_MODEL
-    
-    result = adapter.infer(Path("test.png"))
-    
-    assert "qualityStatusCode" in result
-    assert "qualityScore" in result
-    assert result["implType"] == "ML_MODEL"
-    assert "softmaxOutput" in result["rawResult"]
+    with pytest.raises(RuntimeError) as exc_info:
+        adapter.infer(Path("test.png"))
+    assert "not implemented" in str(exc_info.value)
 
 def test_quality_cnn_adapter_unload():
     adapter = QualityCnnAdapter()

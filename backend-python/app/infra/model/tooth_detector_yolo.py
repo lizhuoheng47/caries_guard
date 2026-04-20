@@ -11,7 +11,11 @@ from app.infra.model.base_model import BaseModelAdapter, ImplType
 log = get_logger("cariesguard-ai.model.tooth-detector-yolo")
 
 class ToothDetectorYoloAdapter(BaseModelAdapter):
-    """Real YOLO-based tooth and lesion detector."""
+    """ML-model tooth detector placeholder.
+
+    The repository currently does not include runnable YOLO inference code.
+    This adapter fails explicitly instead of returning fabricated boxes.
+    """
 
     model_code = "tooth-detect-yolo-v8"
     model_type_code = "DETECTION"
@@ -32,36 +36,7 @@ class ToothDetectorYoloAdapter(BaseModelAdapter):
         self._loaded = False
 
     def infer(self, image_path: Path) -> dict[str, Any]:
-        """Real YOLO inference."""
-        log.info("YOLO inference for %s", image_path.name)
-        
-        # Simulated YOLO detections
-        # In reality, this would return bboxes from the model
-        detections = [
-            {
-                "arch": "upper",
-                "side": "left",
-                "orderIndex": 0,
-                "toothCode": "21",
-                "bbox": [100, 150, 150, 250],
-                "score": 0.95,
-            },
-            {
-                "arch": "upper",
-                "side": "left",
-                "orderIndex": 1,
-                "toothCode": "22",
-                "bbox": [160, 150, 210, 250],
-                "score": 0.88,
-            }
-        ]
-        
-        return {
-            "detections": detections,
-            "implType": ImplType.ML_MODEL.value,
-            "rawResult": {
-                "modelCode": self.model_code,
-                "boxCount": len(detections),
-                "inferenceTimeMs": 68.5,
-            },
-        }
+        raise RuntimeError(
+            "ToothDetectorYoloAdapter ML inference is not implemented in this runtime. "
+            "Use CG_MODEL_TOOTH_DETECT_IMPL_TYPE=HEURISTIC or integrate a real ML backend."
+        )

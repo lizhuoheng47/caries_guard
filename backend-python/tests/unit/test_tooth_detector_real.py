@@ -9,16 +9,9 @@ def test_tooth_detector_yolo_inference():
     
     assert adapter.is_loaded()
     assert adapter.impl_type == ImplType.ML_MODEL
-    
-    result = adapter.infer(Path("test.png"))
-    
-    assert "detections" in result
-    assert len(result["detections"]) > 0
-    assert result["implType"] == "ML_MODEL"
-    
-    det = result["detections"][0]
-    assert "toothCode" in det
-    assert len(det["bbox"]) == 4
+    with pytest.raises(RuntimeError) as exc_info:
+        adapter.infer(Path("test.png"))
+    assert "not implemented" in str(exc_info.value)
 
 def test_tooth_detector_yolo_unload():
     adapter = ToothDetectorYoloAdapter()

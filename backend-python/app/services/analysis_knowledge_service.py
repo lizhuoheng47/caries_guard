@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any, cast
 
 from app.core.config import Settings
 from app.schemas.rag import RagAskRequest
 from app.schemas.request import AnalyzeRequest
 from app.services.qwen_vision_service import VisionAnalysisResult
 
-if TYPE_CHECKING:
-    from app.services.rag_service import RagService
-
 
 class AnalysisKnowledgeService:
-    def __init__(self, settings: Settings, rag_service: "RagService") -> None:
+    def __init__(self, settings: Settings, rag_service: Any) -> None:
         self._settings = settings
         self._rag_service = rag_service
 
@@ -38,7 +35,7 @@ class AnalysisKnowledgeService:
             question=question,
             scene="DOCTOR_QA",
             include_debug=False,
-            case_context=self._build_case_context(task, vision_result, risk_assessment),
+            case_context=cast(Any, self._build_case_context(task, vision_result, risk_assessment)),
         )
         result = self._rag_service.ask(request)
         return {

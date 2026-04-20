@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 
 _VALID_RUNTIME_MODES = {"mock", "hybrid", "real"}
 _VALID_VECTOR_STORE_TYPES = {"LOCAL_JSON", "OPENSEARCH"}
+_VALID_MODEL_IMPL_TYPES = {"MOCK", "HEURISTIC", "ML_MODEL"}
 
 
 def bool_env(name: str, default: bool) -> bool:
@@ -76,6 +77,15 @@ def _require_model_weights_if_enabled(weights_dir: str, model_name: str, enabled
         raise ValueError(f"Model {model_name} is enabled with ML_MODEL type, but weights are missing at {path}")
 
 
+def _validate_model_impl_type(name: str, raw: str) -> str:
+    value = (raw or "").strip().upper()
+    if value not in _VALID_MODEL_IMPL_TYPES:
+        raise ValueError(
+            f"{name}={raw!r} is invalid; allowed values: {sorted(_VALID_MODEL_IMPL_TYPES)}"
+        )
+    return value
+
+
 @dataclass(frozen=True)
 class Settings:
     app_env: str = os.getenv("CG_APP_ENV", "dev")
@@ -140,6 +150,7 @@ class Settings:
     rag_index_dir: str = os.getenv("CG_RAG_INDEX_DIR", "/tmp/cariesguard/vector-index")
     rag_default_kb_code: str = os.getenv("CG_RAG_DEFAULT_KB_CODE", "caries-default")
     rag_default_kb_name: str = os.getenv("CG_RAG_DEFAULT_KB_NAME", "CariesGuard Default Knowledge Base")
+    rag_runtime_enabled: bool = bool_env("CG_RAG_RUNTIME_ENABLED", True)
     rag_knowledge_version: str = os.getenv("CG_RAG_KNOWLEDGE_VERSION", "v1.0")
     rag_embedding_model: str = os.getenv("CG_RAG_EMBEDDING_MODEL", "text-embedding-3-small")
     rag_embedding_provider: str = os.getenv("CG_RAG_EMBEDDING_PROVIDER", "OPENAI_COMPATIBLE").strip().upper()
@@ -226,15 +237,15 @@ class Settings:
     # ── Phase 5: Model Runtime ──────────────────────────────────────────
     ai_runtime_mode: str = _validate_runtime_mode(os.getenv("CG_AI_RUNTIME_MODE", "mock"))
     model_quality_enabled: bool = bool_env("CG_MODEL_QUALITY_ENABLED", False)
-    model_quality_impl_type: str = os.getenv("CG_MODEL_QUALITY_IMPL_TYPE", "ML_MODEL").upper()
+    model_quality_impl_type: str = os.getenv("CG_MODEL_QUALITY_IMPL_TYPE", "HEURISTIC").upper()
     model_tooth_detect_enabled: bool = bool_env("CG_MODEL_TOOTH_DETECT_ENABLED", False)
-    model_tooth_detect_impl_type: str = os.getenv("CG_MODEL_TOOTH_DETECT_IMPL_TYPE", "ML_MODEL").upper()
+    model_tooth_detect_impl_type: str = os.getenv("CG_MODEL_TOOTH_DETECT_IMPL_TYPE", "HEURISTIC").upper()
     model_segmentation_enabled: bool = bool_env("CG_MODEL_SEGMENTATION_ENABLED", False)
-    model_segmentation_impl_type: str = os.getenv("CG_MODEL_SEGMENTATION_IMPL_TYPE", "ML_MODEL").upper()
+    model_segmentation_impl_type: str = os.getenv("CG_MODEL_SEGMENTATION_IMPL_TYPE", "HEURISTIC").upper()
     model_grading_enabled: bool = bool_env("CG_MODEL_GRADING_ENABLED", False)
-    model_grading_impl_type: str = os.getenv("CG_MODEL_GRADING_IMPL_TYPE", "ML_MODEL").upper()
+    model_grading_impl_type: str = os.getenv("CG_MODEL_GRADING_IMPL_TYPE", "HEURISTIC").upper()
     model_risk_enabled: bool = bool_env("CG_MODEL_RISK_ENABLED", False)
-    model_risk_impl_type: str = os.getenv("CG_MODEL_RISK_IMPL_TYPE", "ML_MODEL").upper()
+    model_risk_impl_type: str = os.getenv("CG_MODEL_RISK_IMPL_TYPE", "HEURISTIC").upper()
     model_device: str = os.getenv("CG_MODEL_DEVICE", "cpu")
     model_weights_dir: str = os.getenv("CG_MODEL_WEIGHTS_DIR", "/app/model-weights")
     model_confidence_threshold: float = float_env("CG_MODEL_CONFIDENCE_THRESHOLD", 0.5)
@@ -246,6 +257,11 @@ class Settings:
         mode = _validate_runtime_mode(self.ai_runtime_mode)
         object.__setattr__(self, "ai_runtime_mode", mode)
         object.__setattr__(self, "rag_vector_store_type", _validate_vector_store_type(self.rag_vector_store_type))
+        object.__setattr__(self, "model_quality_impl_type", _validate_model_impl_type("CG_MODEL_QUALITY_IMPL_TYPE", self.model_quality_impl_type))
+        object.__setattr__(self, "model_tooth_detect_impl_type", _validate_model_impl_type("CG_MODEL_TOOTH_DETECT_IMPL_TYPE", self.model_tooth_detect_impl_type))
+        object.__setattr__(self, "model_segmentation_impl_type", _validate_model_impl_type("CG_MODEL_SEGMENTATION_IMPL_TYPE", self.model_segmentation_impl_type))
+        object.__setattr__(self, "model_grading_impl_type", _validate_model_impl_type("CG_MODEL_GRADING_IMPL_TYPE", self.model_grading_impl_type))
+        object.__setattr__(self, "model_risk_impl_type", _validate_model_impl_type("CG_MODEL_RISK_IMPL_TYPE", self.model_risk_impl_type))
 
         # ── Fail-fast Validation ──
         if mode == "real":
@@ -258,24 +274,38 @@ class Settings:
                 _require_non_empty("CG_QWEN_VISION_API_KEY", self.qwen_vision_api_key)
                 _require_non_empty("CG_QWEN_VISION_MODEL", self.qwen_vision_model)
 
-        if self.llm_provider_code != "MOCK":
+        rag_dependencies_required = self.rag_runtime_enabled or self.analysis_kb_enhancement_enabled
+        if self.analysis_kb_enhancement_enabled and not self.rag_runtime_enabled:
+            raise ValueError("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED=true requires CG_RAG_RUNTIME_ENABLED=true")
+
+        if rag_dependencies_required and self.llm_provider_code != "MOCK":
             _require_non_empty("CG_LLM_BASE_URL", self.llm_base_url)
             _require_non_empty("CG_LLM_API_KEY", self.llm_api_key)
 
-        if self.rag_embedding_provider != "HASHING":
+        if rag_dependencies_required and self.rag_embedding_provider != "HASHING":
             _require_non_empty("CG_RAG_EMBEDDING_BASE_URL", self.rag_embedding_base_url)
             _require_non_empty("CG_RAG_EMBEDDING_API_KEY", self.rag_embedding_api_key)
 
-        if self.rag_vector_store_type == "OPENSEARCH":
+        if rag_dependencies_required and self.rag_vector_store_type == "OPENSEARCH":
             if not self.opensearch_hosts:
                 raise ValueError("CG_RAG_VECTOR_STORE_TYPE='OPENSEARCH' requires CG_OPENSEARCH_HOSTS")
 
-        # Weights check: Only check if enabled AND impl_type is ML_MODEL
-        _require_model_weights_if_enabled(self.model_weights_dir, "quality", self.model_quality_enabled, self.model_quality_impl_type)
-        _require_model_weights_if_enabled(self.model_weights_dir, "tooth_detect", self.model_tooth_detect_enabled, self.model_tooth_detect_impl_type)
-        _require_model_weights_if_enabled(self.model_weights_dir, "segmentation", self.model_segmentation_enabled, self.model_segmentation_impl_type)
-        _require_model_weights_if_enabled(self.model_weights_dir, "grading", self.model_grading_enabled, self.model_grading_impl_type)
-        _require_model_weights_if_enabled(self.model_weights_dir, "risk", self.model_risk_enabled, self.model_risk_impl_type)
+        modules = [
+            ("quality", self.model_quality_enabled, self.model_quality_impl_type, "CG_MODEL_QUALITY_IMPL_TYPE"),
+            ("tooth_detect", self.model_tooth_detect_enabled, self.model_tooth_detect_impl_type, "CG_MODEL_TOOTH_DETECT_IMPL_TYPE"),
+            ("segmentation", self.model_segmentation_enabled, self.model_segmentation_impl_type, "CG_MODEL_SEGMENTATION_IMPL_TYPE"),
+            ("grading", self.model_grading_enabled, self.model_grading_impl_type, "CG_MODEL_GRADING_IMPL_TYPE"),
+            ("risk", self.model_risk_enabled, self.model_risk_impl_type, "CG_MODEL_RISK_IMPL_TYPE"),
+        ]
+        for module_name, enabled, impl_type, env_name in modules:
+            if mode == "real" and impl_type == "MOCK":
+                raise ValueError(f"{env_name}='MOCK' is forbidden when CG_AI_RUNTIME_MODE='real'")
+            _require_model_weights_if_enabled(
+                self.model_weights_dir,
+                module_name,
+                mode == "real" or enabled,
+                impl_type,
+            )
 
         # Logging summary
         print(f"[*] CariesGuard Runtime Mode: {mode.upper()}")
@@ -284,7 +314,10 @@ class Settings:
             print(f"[*] Qwen Vision: ENABLED (Model: {self.qwen_vision_model})")
         if self.analysis_kb_enhancement_enabled:
             print(f"[*] Analysis KB Enhancement: ENABLED (KB: {self.analysis_kb_code})")
-        print(f"[*] Embedding: {self.rag_embedding_provider} (Store: {self.rag_vector_store_type})")
+        if self.rag_runtime_enabled:
+            print(f"[*] Embedding: {self.rag_embedding_provider} (Store: {self.rag_vector_store_type})")
+        else:
+            print("[*] RAG Runtime: DISABLED")
         enabled_mods = [m for m, e, t in [
             ("Quality", self.model_quality_enabled, self.model_quality_impl_type),
             ("Detect", self.model_tooth_detect_enabled, self.model_tooth_detect_impl_type),

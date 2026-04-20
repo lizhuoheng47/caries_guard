@@ -21,7 +21,9 @@ class CallbackService:
         self.ai_runtime_repository = ai_runtime_repository
 
     def post_callback(self, payload: dict[str, Any], callback_url: str | None = None) -> None:
-        target_url = callback_url or self.settings.callback_url
+        target_url = (callback_url or self.settings.callback_url or "").strip()
+        if not target_url:
+            raise DownstreamException("callback url is required")
         raw_body = compact_json(payload)
         timestamp = str(int(time.time()))
         signature = sign_callback(raw_body, timestamp, self.settings.callback_secret)
@@ -126,8 +128,10 @@ class CallbackService:
             )
             self.ai_runtime_repository.update_callback_status(job_id, callback_status_code)
         except Exception as exc:
+            error_code = "CBK_LOG_PERSIST_FAILED"
             log.warning(
-                "failed to persist callback log taskNo=%s traceId=%s error=%s",
+                "failed to persist callback log errorCode=%s taskNo=%s traceId=%s error=%s",
+                error_code,
                 payload.get("taskNo"),
                 payload.get("traceId"),
                 exc,
@@ -142,7 +146,7 @@ class CallbackService:
         if raw_job_id is None:
             return None
         try:
-            return int(raw_job_id)
+            return int(str(raw_job_id).strip())
         except (TypeError, ValueError):
             return None
 

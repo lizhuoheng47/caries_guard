@@ -31,6 +31,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -64,6 +65,9 @@ abstract class AnalysisReportE2EBaseTest {
     @Autowired
     protected AnalysisProperties analysisProperties;
 
+    @Value("${caries.ai.database:${CARIES_E2E_AI_DB:caries_ai_e2e}}")
+    private String aiDatabase;
+
     @MockBean
     private ObjectStorageService objectStorageService;
 
@@ -72,6 +76,7 @@ abstract class AnalysisReportE2EBaseTest {
 
     @BeforeEach
     void setUpStorageMock() throws Exception {
+        ensureAiSchemaBaseline();
         Map<String, byte[]> objects = new java.util.concurrent.ConcurrentHashMap<>();
         org.mockito.BDDMockito.given(objectStorageService.store(any(ObjectStoreCommand.class)))
                 .willAnswer(invocation -> {
@@ -112,6 +117,84 @@ abstract class AnalysisReportE2EBaseTest {
         org.mockito.BDDMockito.given(objectStorageService.defaultPresignExpireSeconds()).willReturn(900L);
         org.mockito.BDDMockito.given(objectStorageService.proxyAccessSecret()).willReturn("e2e-image-access-secret");
         org.mockito.BDDMockito.willDoNothing().given(objectStorageService).delete(any(String.class), any(String.class));
+    }
+
+    private void ensureAiSchemaBaseline() {
+        String schema = normalizeSchemaName(aiDatabase);
+        jdbcTemplate.execute("CREATE DATABASE IF NOT EXISTS `" + schema + "` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_0900_ai_ci");
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS `%s`.rag_request_log (
+                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                    session_id BIGINT NULL,
+                    request_no VARCHAR(64) NULL,
+                    request_type_code VARCHAR(32) NULL,
+                    user_query TEXT NULL,
+                    answer_text LONGTEXT NULL,
+                    org_id BIGINT NULL,
+                    deleted_flag CHAR(1) NOT NULL DEFAULT '0',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """.formatted(schema));
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS `%s`.rag_retrieval_log (
+                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                    request_id BIGINT NOT NULL,
+                    rank_no INT NOT NULL DEFAULT 1,
+                    cited_flag CHAR(1) NOT NULL DEFAULT '0',
+                    org_id BIGINT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """.formatted(schema));
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS `%s`.llm_call_log (
+                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                    request_id BIGINT NOT NULL,
+                    model_name VARCHAR(128) NOT NULL,
+                    call_status_code VARCHAR(32) NOT NULL DEFAULT 'SUCCESS',
+                    org_id BIGINT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """.formatted(schema));
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS `%s`.ai_infer_job (
+                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                    job_no VARCHAR(64) NOT NULL,
+                    java_task_no VARCHAR(64) NOT NULL,
+                    status_code VARCHAR(32) NOT NULL DEFAULT 'QUEUEING',
+                    org_id BIGINT NULL,
+                    deleted_flag CHAR(1) NOT NULL DEFAULT '0',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """.formatted(schema));
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS `%s`.ai_infer_job_image (
+                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                    job_id BIGINT NOT NULL,
+                    image_id BIGINT NULL,
+                    org_id BIGINT NULL,
+                    deleted_flag CHAR(1) NOT NULL DEFAULT '0',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """.formatted(schema));
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS `%s`.ai_callback_log (
+                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                    job_id BIGINT NOT NULL,
+                    callback_status_code VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+                    org_id BIGINT NULL,
+                    deleted_flag CHAR(1) NOT NULL DEFAULT '0',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """.formatted(schema));
+    }
+
+    private String normalizeSchemaName(String schemaName) {
+        if (schemaName != null && schemaName.matches("[A-Za-z0-9_]+")) {
+            return schemaName;
+        }
+        return "caries_ai_e2e";
     }
 
     @AfterEach
