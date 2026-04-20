@@ -156,3 +156,7 @@ class ToothDetectorHeuristicAdapter(BaseModelAdapter):
         brightness_penalty = 1.0 - abs(mean - 130.0) / 130.0
         brightness_penalty = max(0.0, min(1.0, brightness_penalty))
         return (contrast_score * 0.7 + brightness_penalty * 0.3)
+
+
+class ToothDetectorAdapter(ToothDetectorHeuristicAdapter):
+    """Backward-compatible alias used by legacy tests/imports."""

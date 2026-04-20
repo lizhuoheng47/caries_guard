@@ -151,9 +151,23 @@ class InferencePipeline:
                 needs_review=uncertainty_result.needs_review,
                 raw_result=grading_raw,
             )
+            uncertainty_mode = str(grading_result.raw_result.get("uncertaintyMode") or grading_result.grading_mode)
+            uncertainty_impl_type = str(
+                grading_result.raw_result.get("uncertaintyImplType") or grading_result.grading_impl_type
+            )
+            uncertainty_reasons = list(grading_result.raw_result.get("uncertaintyReasons") or [])
             abnormal_tooth_count = self._abnormal_tooth_count(tooth_detections, qwen_vision_result, lesion_results)
             tooth_results = self._tooth_results(lesion_results, tooth_detections)
-            image_results = self._image_results(task.images, lesion_results, tooth_results, quality_results, grading_result)
+            image_results = self._image_results(
+                task.images,
+                lesion_results,
+                tooth_results,
+                quality_results,
+                grading_result,
+                uncertainty_mode=uncertainty_mode,
+                uncertainty_impl_type=uncertainty_impl_type,
+                uncertainty_reasons=uncertainty_reasons,
+            )
             risk_result = self._create_risk_result(
                 task,
                 grading_result,
@@ -230,12 +244,13 @@ class InferencePipeline:
             "gradingImplType": grading_result.grading_impl_type,
             "gradingLabel": grading_result.grading_label,
             "confidenceScore": grading_result.confidence_score,
-            "uncertaintyMode": grading_result.raw_result.get("uncertaintyMode") or grading_result.grading_mode,
-            "uncertaintyImplType": grading_result.raw_result.get("uncertaintyImplType") or grading_result.grading_impl_type,
+            "uncertaintyMode": uncertainty_mode,
+            "uncertaintyImplType": uncertainty_impl_type,
             "uncertaintyScore": grading_result.uncertainty_score,
-            "uncertaintyReasons": grading_result.raw_result.get("uncertaintyReasons") or [],
+            "uncertaintyReasons": uncertainty_reasons,
             "uncertaintyComponents": grading_result.raw_result.get("uncertaintyComponents") or {},
             "needsReview": grading_result.needs_review,
+            "reviewThreshold": self.settings.uncertainty_review_threshold,
             "gradingRawResult": grading_result.raw_result,
             "riskMode": risk_result.risk_mode,
             "riskImplType": risk_result.risk_impl_type,
@@ -726,21 +741,54 @@ class InferencePipeline:
                     ),
                     None,
                 )
+                image_visual_assets = [
+                    dump_camel(asset)
+                    for asset in visual_assets
+                    if asset.related_image_id in {None, image.image_id}
+                ]
+                grading_raw = raw_result_json.get("gradingRawResult")
+                review_threshold = None
+                if isinstance(grading_raw, dict):
+                    review_threshold = grading_raw.get("reviewThreshold")
+                if review_threshold is None:
+                    review_threshold = raw_result_json.get("reviewThreshold")
+                quality_status = (
+                    getattr(quality, "quality_status", None)
+                    or getattr(quality, "check_result_code", None)
+                )
+                quality_score = self._quality_score_float(quality) if quality is not None else None
+                quality_issues = list(
+                    getattr(quality, "quality_issues", None)
+                    or getattr(quality, "issue_codes", None)
+                    or []
+                )
+                retake_suggested = bool(getattr(quality, "retake_suggested", False))
                 image_result = {
+                    "pipelineVersion": raw_result_json.get("pipelineVersion"),
+                    "mode": raw_result_json.get("mode"),
+                    "imageType": raw_result_json.get("imageType"),
+                    "imageTypeRoute": raw_result_json.get("imageTypeRoute"),
                     "imageId": image.image_id,
                     "qualityCheckResult": quality_payload if quality is not None else None,
-                    "gradingMode": grading_result.grading_mode,
-                    "gradingImplType": grading_result.grading_impl_type,
-                    "gradingLabel": grading_result.grading_label,
-                    "confidenceScore": grading_result.confidence_score,
+                    "qualityStatus": quality_status,
+                    "qualityStatusCode": quality_status,
+                    "qualityScore": quality_score,
+                    "qualityIssues": quality_issues,
+                    "retakeSuggested": retake_suggested,
+                    "gradingMode": raw_result_json.get("gradingMode"),
+                    "gradingImplType": raw_result_json.get("gradingImplType"),
+                    "gradingLabel": raw_result_json.get("gradingLabel"),
+                    "confidenceScore": raw_result_json.get("confidenceScore"),
                     "uncertaintyMode": raw_result_json.get("uncertaintyMode"),
                     "uncertaintyImplType": raw_result_json.get("uncertaintyImplType"),
-                    "uncertaintyScore": grading_result.uncertainty_score,
+                    "uncertaintyScore": raw_result_json.get("uncertaintyScore"),
                     "uncertaintyReasons": raw_result_json.get("uncertaintyReasons") or [],
-                    "needsReview": grading_result.needs_review,
+                    "needsReview": raw_result_json.get("needsReview"),
+                    "reviewThreshold": review_threshold,
                     "lesionResults": image_lesions,
                     "toothResults": image_tooth_results,
-                    "imageResult": image_summary,
+                    "imageSummary": image_summary,
+                    "visualAssets": image_visual_assets,
                     "rawResultJson": raw_result_json,
                 }
                 self.ai_runtime_repository.add_job_image(
@@ -753,7 +801,7 @@ class InferencePipeline:
                     access_url=image.access_url,
                     download_status_code="SUCCESS" if fetched is not None else "SKIPPED",
                     local_cache_path=str(fetched.path) if fetched is not None else None,
-                    quality_status_code=quality.check_result_code if quality is not None else None,
+                    quality_status_code=quality_status,
                     grading_label=grading_result.grading_label,
                     uncertainty_score=grading_result.uncertainty_score,
                     result_json=image_result,
@@ -827,14 +875,91 @@ class InferencePipeline:
     @staticmethod
     def _quality_payload(quality_results: list[Any]) -> dict[str, Any]:
         items = [dump_camel(item) for item in quality_results]
-        fail_count = sum(1 for item in quality_results if getattr(item, "check_result_code", "PASS") != "PASS")
+        status_rank = {"PASS": 0, "WARN": 1, "FAIL": 2}
+        overall_status = "PASS"
+        issue_set: list[str] = []
+        score_values: list[float] = []
+        inference_millis_total = 0
+        pass_count = 0
+        warn_count = 0
+        fail_count = 0
+        impl_types: set[str] = set()
+        model_versions: set[str] = set()
+
+        for item in quality_results:
+            status = str(
+                getattr(item, "quality_status", None)
+                or getattr(item, "check_result_code", "FAIL")
+            ).upper()
+            if status_rank.get(status, 2) > status_rank.get(overall_status, 0):
+                overall_status = status
+            if status == "PASS":
+                pass_count += 1
+            elif status == "WARN":
+                warn_count += 1
+            else:
+                fail_count += 1
+
+            score_values.append(InferencePipeline._quality_score_float(item))
+            for issue in (
+                getattr(item, "quality_issues", None)
+                or getattr(item, "issue_codes", None)
+                or []
+            ):
+                issue_text = str(issue or "").strip().lower()
+                if issue_text and issue_text not in issue_set:
+                    issue_set.append(issue_text)
+
+            millis = getattr(item, "inference_millis", None)
+            try:
+                inference_millis_total += max(0, int(millis))
+            except (TypeError, ValueError):
+                pass
+
+            impl_type = str(getattr(item, "impl_type", "") or "").strip()
+            if impl_type:
+                impl_types.add(impl_type)
+            model_version = str(getattr(item, "model_version", "") or "").strip()
+            if model_version:
+                model_versions.add(model_version)
+
+        quality_score = round(sum(score_values) / len(score_values), 4) if score_values else 0.0
+        retake_suggested = overall_status == "FAIL" or any(
+            bool(getattr(item, "retake_suggested", False)) for item in quality_results
+        )
         return {
-            "overallStatusCode": "FAIL" if fail_count > 0 else "PASS",
-            "reviewSuggested": fail_count > 0,
-            "passCount": len(quality_results) - fail_count,
+            "qualityStatus": overall_status,
+            "qualityScore": quality_score,
+            "qualityIssues": issue_set,
+            "retakeSuggested": retake_suggested,
+            "implType": next(iter(impl_types)) if len(impl_types) == 1 else ("MIXED" if impl_types else None),
+            "modelVersion": next(iter(model_versions)) if len(model_versions) == 1 else None,
+            "inferenceMillis": inference_millis_total if inference_millis_total > 0 else None,
+            "qualityFailureBranch": "RETAKE_REQUIRED" if overall_status == "FAIL" else None,
+            "overallStatusCode": overall_status,
+            "reviewSuggested": overall_status in {"WARN", "FAIL"},
+            "passCount": pass_count,
+            "warnCount": warn_count,
             "failCount": fail_count,
             "items": items,
         }
+
+    @staticmethod
+    def _quality_score_float(item: Any) -> float:
+        if item is None:
+            return 0.0
+        value = getattr(item, "quality_score_float", None)
+        if value is None:
+            raw_score = getattr(item, "quality_score", None)
+            try:
+                value = float(raw_score) / 100.0
+            except (TypeError, ValueError):
+                value = 0.0
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            number = 0.0
+        return max(0.0, min(1.0, round(number, 4)))
 
     @staticmethod
     def _teeth_payload(tooth_detections: list[ToothDetection], abnormal_tooth_count: int) -> dict[str, Any]:
@@ -1107,6 +1232,10 @@ class InferencePipeline:
         tooth_results: list[dict[str, Any]],
         quality_results: list[Any],
         grading_result: GradingResult,
+        *,
+        uncertainty_mode: str,
+        uncertainty_impl_type: str,
+        uncertainty_reasons: list[str],
     ) -> list[dict[str, Any]]:
         quality_by_image = {item.image_id: item for item in quality_results}
         grouped: dict[int | None, dict[str, Any]] = {}
@@ -1114,12 +1243,31 @@ class InferencePipeline:
             quality_item = quality_by_image.get(image.image_id)
             grouped[image.image_id] = {
                 "imageId": image.image_id,
+                "gradingMode": grading_result.grading_mode,
+                "gradingImplType": grading_result.grading_impl_type,
                 "gradingLabel": grading_result.grading_label,
                 "confidenceScore": grading_result.confidence_score,
+                "uncertaintyMode": uncertainty_mode,
+                "uncertaintyImplType": uncertainty_impl_type,
                 "uncertaintyScore": grading_result.uncertainty_score,
+                "uncertaintyReasons": uncertainty_reasons,
                 "needsReview": grading_result.needs_review,
-                "qualityStatusCode": getattr(quality_item, "check_result_code", None),
-                "qualityScore": getattr(quality_item, "quality_score", None),
+                "reviewThreshold": self.settings.uncertainty_review_threshold,
+                "qualityStatus": (
+                    getattr(quality_item, "quality_status", None)
+                    or getattr(quality_item, "check_result_code", None)
+                ),
+                "qualityStatusCode": (
+                    getattr(quality_item, "quality_status", None)
+                    or getattr(quality_item, "check_result_code", None)
+                ),
+                "qualityScore": self._quality_score_float(quality_item) if quality_item is not None else None,
+                "qualityIssues": list(
+                    getattr(quality_item, "quality_issues", None)
+                    or getattr(quality_item, "issue_codes", None)
+                    or []
+                ),
+                "retakeSuggested": bool(getattr(quality_item, "retake_suggested", False)),
                 "lesionCount": 0,
                 "abnormalToothCount": 0,
                 "highestSeverityCode": "C0",
@@ -1134,12 +1282,21 @@ class InferencePipeline:
             if image_id not in grouped:
                 grouped[image_id] = {
                     "imageId": image_id,
+                    "gradingMode": grading_result.grading_mode,
+                    "gradingImplType": grading_result.grading_impl_type,
                     "gradingLabel": grading_result.grading_label,
                     "confidenceScore": grading_result.confidence_score,
+                    "uncertaintyMode": uncertainty_mode,
+                    "uncertaintyImplType": uncertainty_impl_type,
                     "uncertaintyScore": grading_result.uncertainty_score,
+                    "uncertaintyReasons": uncertainty_reasons,
                     "needsReview": grading_result.needs_review,
+                    "reviewThreshold": self.settings.uncertainty_review_threshold,
+                    "qualityStatus": None,
                     "qualityStatusCode": None,
                     "qualityScore": None,
+                    "qualityIssues": [],
+                    "retakeSuggested": False,
                     "lesionCount": 0,
                     "abnormalToothCount": 0,
                     "highestSeverityCode": "C0",

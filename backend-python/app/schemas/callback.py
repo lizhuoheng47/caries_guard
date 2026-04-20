@@ -24,11 +24,19 @@ class QualityCheckResult(CamelModel):
     image_id: int | None = None
     check_result_code: str = "PASS"
     quality_score: int = 90
+    quality_score_float: float | None = None
+    quality_status: str | None = None
     blur_score: int | None = None
     exposure_score: int | None = None
     integrity_score: int | None = None
     occlusion_score: int | None = None
     issue_codes: list[str] = []
+    quality_issues: list[str] = []
+    retake_suggested: bool | None = None
+    impl_type: str | None = None
+    model_version: str | None = None
+    inference_millis: int | None = None
+    raw_result: dict[str, Any] | None = None
     suggestion_text: str = "quality passed"
 
 

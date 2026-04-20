@@ -28,7 +28,7 @@ public class ReviewQueueAssembler {
                 task.caseId(),
                 medicalCase == null ? null : medicalCase.caseNo(),
                 task.taskStatusCode(),
-                needsReview ? "PENDING" : "NOT_REQUIRED",
+                needsReview ? "REVIEW_PENDING" : "NOT_REQUIRED",
                 null,
                 summary == null ? null : summary.gradingLabel(),
                 summary == null ? null : summary.uncertaintyScore(),
@@ -75,4 +75,3 @@ public class ReviewQueueAssembler {
         return toothCode == null || toothCode.isNull() ? null : toothCode.asText(null);
     }
 }
-

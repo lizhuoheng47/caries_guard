@@ -6,6 +6,7 @@ import lombok.Data;
 @Data
 public class ReviewTaskDetailVO {
     private AnalysisTaskDetailVO task;
+    private String reviewStatusCode;
     private AnalysisDetailViewVO.CaseBriefVO caseInfo;
     private AnalysisDetailViewVO.ImageDetailVO image;
     private AiResultVO aiResult;

@@ -88,6 +88,48 @@ class AnalysisQueryAppServiceTests {
                 .isInstanceOf(BusinessException.class);
     }
 
+    @Test
+    void getTaskDetailShouldExposeGradingAndUncertaintyFieldsFromRawResultJson() {
+        AnalysisQueryAppService appService = createService();
+        setCurrentUser(new AuthenticatedUser(1001L, 2001L, "doctor", "hash", "Doctor", true, List.of("DOCTOR")));
+        when(anaTaskRecordRepository.findById(6001L)).thenReturn(Optional.of(
+                new AnalysisTaskViewModel(6001L, "TASK1", 3001L, 2001L, "caries-v1", "INFERENCE", "SUCCESS", null,
+                        LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), 2001L, null)));
+        when(anaResultSummaryRepository.findByTaskId(6001L)).thenReturn(Optional.of(
+                new AnalysisResultSummaryModel(
+                        7001L,
+                        6001L,
+                        3001L,
+                        """
+                                {
+                                  "gradingLabel":"C3",
+                                  "confidenceScore":0.61,
+                                  "uncertaintyScore":0.72,
+                                  "needsReview":true,
+                                  "reviewSuggestedFlag":"1",
+                                  "lesionResults":[{"toothCode":"16","severityCode":"C3"}]
+                                }
+                                """,
+                        "C3",
+                        new BigDecimal("0.7200"),
+                        "1",
+                        2001L,
+                        1001L)));
+        when(anaVisualAssetRepository.listByTaskId(6001L)).thenReturn(List.of());
+
+        AnalysisTaskDetailVO detail = appService.getTaskDetail(6001L);
+
+        assertThat(detail.summary()).isNotNull();
+        assertThat(detail.summary().gradingLabel()).isEqualTo("C3");
+        assertThat(detail.summary().confidenceScore()).isEqualTo(0.61d);
+        assertThat(detail.summary().uncertaintyScore()).isEqualTo(0.72d);
+        assertThat(detail.summary().needsReview()).isTrue();
+        assertThat(detail.summary().reviewSuggestedFlag()).isEqualTo("1");
+        assertThat(detail.summary().rawResultJson()).isNotNull();
+        assertThat(detail.summary().rawResultJson().path("gradingLabel").asText()).isEqualTo("C3");
+        assertThat(detail.summary().rawResultJson().path("needsReview").asBoolean()).isTrue();
+    }
+
     private void setCurrentUser(AuthenticatedUser user) {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 user,

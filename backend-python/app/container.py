@@ -62,6 +62,13 @@ class AppContainer:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.rag_service: Any = None
+        # Decouple pure imaging worker runtime from RAG dependencies:
+        # when HTTP APIs are disabled and analysis KB enhancement is off,
+        # skip RAG stack bootstrap even if rag_runtime_enabled is true.
+        self.rag_runtime_active = bool(
+            settings.rag_runtime_enabled
+            and (settings.analysis_kb_enhancement_enabled or settings.http_enabled)
+        )
         self.storage = MinioStorageClient(settings)
         self.image_fetch_service = ImageFetchService(settings, self.storage)
         self.visual_asset_service = VisualAssetService(settings, self.storage)
@@ -78,7 +85,7 @@ class AppContainer:
         self.vector_store = SimpleVectorStore()
         self.concept_normalization_service = ConceptNormalizationService()
 
-        if settings.rag_runtime_enabled:
+        if self.rag_runtime_active:
             self.embedding_provider = create_embedding_provider(settings)
             self.rerank_provider = create_rerank_provider(settings, self.embedding_provider)
             self.opensearch_client = create_opensearch_client(settings)

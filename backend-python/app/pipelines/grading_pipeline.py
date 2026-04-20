@@ -37,6 +37,8 @@ class GradingResult:
 class GradingPipeline:
     """Grading pipeline with mock / heuristic routing."""
 
+    _VALID_GRADING_LABELS = {"C0", "C1", "C2", "C3"}
+
     def __init__(self, registry: ModelRegistry, settings: Settings) -> None:
         self._registry = registry
         self._settings = settings
@@ -76,6 +78,11 @@ class GradingPipeline:
                 tooth_detections or [],
                 quality_results or [],
             )
+        except BusinessException as exc:
+            if mode == "real":
+                raise
+            log.warning("grading business validation failed - fallback to mock (hybrid) error=%s", exc)
+            return self._mock_result(image, fallback_reason=str(exc))
         except Exception as exc:
             if mode == "real":
                 raise BusinessException("M5008", f"grading failed: {exc}") from exc
@@ -96,9 +103,15 @@ class GradingPipeline:
         quality_results: list[Any],
     ) -> GradingResult:
         base_uncertainty = self._score(result.get("uncertaintyScore"), 0.5)
+        grading_label = self._normalize_grading_label(result.get("gradingLabel"))
         confidence_score = self._score(result.get("confidenceScore"), 1.0 - base_uncertainty)
         raw = dict(result.get("rawResult") or {})
-        lesion_grades = self._build_lesion_grades(segmentation_regions, raw.get("candidates"))
+        lesion_grades = self._build_lesion_grades(
+            segmentation_regions,
+            raw.get("candidates"),
+            default_severity=grading_label,
+            default_confidence=confidence_score,
+        )
         class_margin = self._score(
             raw.get("classMargin")
             if "classMargin" in raw
@@ -126,7 +139,7 @@ class GradingPipeline:
                 "lesionGrades": lesion_grades,
                 "toothAggregation": self._tooth_aggregation(lesion_grades),
                 "imageAggregation": {
-                    "highestSeverity": str(result.get("gradingLabel") or "C1"),
+                    "highestSeverity": grading_label,
                     "lesionCount": len(lesion_grades),
                     "confidenceScore": confidence_score,
                     "uncertaintyScore": uncertainty_score,
@@ -137,7 +150,7 @@ class GradingPipeline:
         log.info(
             "grading completed mode=real implType=%s label=%s uncertainty=%s threshold=%s needsReview=%s",
             result.get("implType") or ImplType.HEURISTIC.value,
-            result.get("gradingLabel") or "C1",
+            grading_label,
             uncertainty_score,
             self._settings.uncertainty_review_threshold,
             needs_review,
@@ -145,7 +158,7 @@ class GradingPipeline:
         return GradingResult(
             grading_mode="real",
             grading_impl_type=str(result.get("implType") or ImplType.HEURISTIC.value),
-            grading_label=str(result.get("gradingLabel") or "C1"),
+            grading_label=grading_label,
             confidence_score=confidence_score,
             uncertainty_score=uncertainty_score,
             needs_review=needs_review,
@@ -201,37 +214,85 @@ class GradingPipeline:
     def _build_lesion_grades(
         segmentation_regions: list[dict[str, Any]],
         candidates: Any,
+        *,
+        default_severity: str,
+        default_confidence: float,
     ) -> list[dict[str, Any]]:
-        if not isinstance(candidates, list) or not candidates:
+        if not segmentation_regions:
             return []
         by_region: dict[int, dict[str, Any]] = {}
-        for item in candidates:
-            if not isinstance(item, dict):
-                continue
-            try:
-                index = int(item.get("regionIndex") or item.get("region_index") or 0)
-            except (TypeError, ValueError):
-                index = 0
-            by_region[index] = item
+        if isinstance(candidates, list):
+            for item in candidates:
+                if not isinstance(item, dict):
+                    continue
+                try:
+                    index = int(item.get("regionIndex") or item.get("region_index") or 0)
+                except (TypeError, ValueError):
+                    index = 0
+                by_region[index] = item
 
         lesion_grades: list[dict[str, Any]] = []
         for index, region in enumerate(segmentation_regions):
             candidate = by_region.get(index)
+            boundary_distance = GradingPipeline._safe_float(
+                candidate.get("boundaryDistance") if isinstance(candidate, dict) else None,
+                max(0.0, min(1.0, 1.0 - default_confidence)),
+            )
+            severity_code = GradingPipeline._normalize_severity_code(
+                candidate.get("severityLabel") if isinstance(candidate, dict) else None,
+                default_severity,
+            )
+            severity_score = GradingPipeline._safe_float(
+                candidate.get("severityScore") if isinstance(candidate, dict) else None,
+                GradingPipeline._safe_float(region.get("score"), 0.0),
+            )
+            confidence_score = round(max(0.0, min(1.0, 1.0 - boundary_distance)), 4)
             if candidate is None:
-                continue
+                confidence_score = round(max(0.0, min(1.0, default_confidence)), 4)
             lesion_grades.append(
                 {
                     "regionIndex": index,
-                    "toothCode": str(region.get("toothCode") or region.get("tooth_code") or candidate.get("toothCode") or "16"),
-                    "severityCode": str(candidate.get("severityLabel") or "C1"),
-                    "severityScore": float(candidate.get("severityScore") or 0.0),
-                    "confidenceScore": round(max(0.0, min(1.0, 1.0 - float(candidate.get("boundaryDistance") or 0.5))), 4),
-                    "boundaryDistance": float(candidate.get("boundaryDistance") or 0.0),
-                    "bbox": region.get("bbox") if isinstance(region.get("bbox"), list) else candidate.get("bbox"),
-                    "score": candidate.get("segmentationScore") or region.get("score"),
+                    "toothCode": str(
+                        region.get("toothCode")
+                        or region.get("tooth_code")
+                        or (candidate.get("toothCode") if isinstance(candidate, dict) else None)
+                        or "16"
+                    ),
+                    "severityCode": severity_code,
+                    "severityScore": severity_score,
+                    "confidenceScore": confidence_score,
+                    "boundaryDistance": boundary_distance,
+                    "bbox": region.get("bbox")
+                    if isinstance(region.get("bbox"), list)
+                    else (candidate.get("bbox") if isinstance(candidate, dict) else None),
+                    "score": (candidate.get("segmentationScore") if isinstance(candidate, dict) else None)
+                    or region.get("score"),
                 }
             )
         return lesion_grades
+
+    def _normalize_grading_label(self, value: Any) -> str:
+        text = str(value or "").strip().upper()
+        if text in self._VALID_GRADING_LABELS:
+            return text
+        raise BusinessException(
+            "M5024",
+            f"grading result missing or invalid gradingLabel: {value!r}",
+        )
+
+    @classmethod
+    def _normalize_severity_code(cls, value: Any, default: str) -> str:
+        text = str(value or "").strip().upper()
+        if text in cls._VALID_GRADING_LABELS:
+            return text
+        return default
+
+    @staticmethod
+    def _safe_float(value: Any, default: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(default)
 
     @staticmethod
     def _tooth_aggregation(lesion_grades: list[dict[str, Any]]) -> list[dict[str, Any]]:

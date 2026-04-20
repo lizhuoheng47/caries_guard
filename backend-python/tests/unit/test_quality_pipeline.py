@@ -79,7 +79,9 @@ class TestHybridMode:
         pipeline = QualityPipeline(registry, settings)
 
         result = pipeline.check(_image_input(), sample_image)
-        assert result.check_result_code in {"PASS", "FAIL"}
+        assert result.check_result_code in {"PASS", "WARN", "FAIL"}
+        assert result.quality_status in {"PASS", "WARN", "FAIL"}
+        assert result.quality_score_float is not None
         assert result.quality_score >= 0
         # Should NOT contain "mock" since it went through heuristic
         assert "mock" not in (result.suggestion_text or "")
@@ -147,4 +149,82 @@ class TestRealMode:
         pipeline = QualityPipeline(registry, settings)
 
         result = pipeline.check(_image_input(), sample_image)
-        assert result.check_result_code in {"PASS", "FAIL"}
+        assert result.check_result_code in {"PASS", "WARN", "FAIL"}
+        assert result.impl_type == "HEURISTIC"
+
+    def test_real_warn_continues(self, sample_image: Path, monkeypatch):
+        settings = _settings(CG_AI_RUNTIME_MODE="real")
+        registry = ModelRegistry(settings)
+        registry.startup()
+        pipeline = QualityPipeline(registry, settings)
+        adapter = registry.get_quality_model()
+
+        monkeypatch.setattr(
+            adapter,
+            "infer",
+            lambda _path: {
+                "qualityStatusCode": "WARN",
+                "qualityScore": 0.61,
+                "qualityIssues": ["blur"],
+                "retakeSuggested": False,
+                "blurScore": 0.51,
+                "exposureScore": 0.84,
+                "integrityScore": 0.7,
+                "occlusionScore": 0.82,
+                "implType": "HEURISTIC",
+                "modelVersion": "test-v1",
+                "inferenceMillis": 11,
+                "rawResult": {},
+            },
+        )
+
+        result = pipeline.check(_image_input(), sample_image)
+        assert result.check_result_code == "WARN"
+        assert result.quality_issues == ["blur"]
+        assert result.retake_suggested is False
+
+    def test_real_fail_continue_branch(self, sample_image: Path, monkeypatch):
+        settings = _settings(CG_AI_RUNTIME_MODE="real", quality_fail_strategy="CONTINUE")
+        registry = ModelRegistry(settings)
+        registry.startup()
+        pipeline = QualityPipeline(registry, settings)
+        adapter = registry.get_quality_model()
+
+        monkeypatch.setattr(
+            adapter,
+            "infer",
+            lambda _path: {
+                "qualityStatusCode": "FAIL",
+                "qualityScore": 0.28,
+                "qualityIssues": ["occlusion", "field_cutoff"],
+                "retakeSuggested": True,
+                "blurScore": 0.2,
+                "exposureScore": 0.41,
+                "integrityScore": 0.16,
+                "occlusionScore": 0.11,
+                "implType": "HEURISTIC",
+                "modelVersion": "test-v1",
+                "inferenceMillis": 12,
+                "rawResult": {},
+            },
+        )
+
+        result = pipeline.check(_image_input(), sample_image)
+        assert result.check_result_code == "FAIL"
+        assert result.retake_suggested is True
+
+    def test_real_mode_fail_fast_raises_on_fail(self, tmp_path: Path):
+        settings = _settings(
+            CG_AI_RUNTIME_MODE="real",
+            quality_fail_strategy="FAIL_FAST",
+        )
+        registry = ModelRegistry(settings)
+        registry.startup()
+        pipeline = QualityPipeline(registry, settings)
+
+        # Pure black image should be classified as FAIL.
+        bad = tmp_path / "black.png"
+        Image.fromarray(np.zeros((256, 512), dtype=np.uint8), mode="L").save(bad)
+        with pytest.raises(BusinessException) as exc_info:
+            pipeline.check(_image_input(), bad)
+        assert exc_info.value.code == "M5003"

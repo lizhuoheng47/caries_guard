@@ -190,3 +190,25 @@ class TestRealMode:
         with pytest.raises(BusinessException) as exc_info:
             pipeline.grade(_image(), sample_image, _regions(), _detections())
         assert exc_info.value.code == "M5008"
+
+    def test_invalid_real_grading_label_raises_explicitly(self, sample_image: Path, monkeypatch):
+        settings = _settings(CG_AI_RUNTIME_MODE="real")
+        registry = ModelRegistry(settings)
+        registry.startup()
+        adapter = registry.get_grading_model()
+
+        def invalid_label(*args, **kwargs):
+            return {
+                "gradingLabel": "UNKNOWN",
+                "confidenceScore": 0.72,
+                "uncertaintyScore": 0.18,
+                "implType": "HEURISTIC",
+                "rawResult": {"classMargin": 0.08},
+            }
+
+        monkeypatch.setattr(adapter, "infer", invalid_label)
+        pipeline = GradingPipeline(registry, settings)
+
+        with pytest.raises(BusinessException) as exc_info:
+            pipeline.grade(_image(), sample_image, _regions(), _detections())
+        assert exc_info.value.code in {"M5008", "M5024"}

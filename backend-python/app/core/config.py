@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 _VALID_RUNTIME_MODES = {"mock", "hybrid", "real"}
 _VALID_VECTOR_STORE_TYPES = {"LOCAL_JSON", "OPENSEARCH"}
 _VALID_MODEL_IMPL_TYPES = {"MOCK", "HEURISTIC", "ML_MODEL"}
+_VALID_QUALITY_FAIL_STRATEGIES = {"CONTINUE", "FAIL_FAST"}
 
 
 def bool_env(name: str, default: bool) -> bool:
@@ -82,6 +83,16 @@ def _validate_model_impl_type(name: str, raw: str) -> str:
     if value not in _VALID_MODEL_IMPL_TYPES:
         raise ValueError(
             f"{name}={raw!r} is invalid; allowed values: {sorted(_VALID_MODEL_IMPL_TYPES)}"
+        )
+    return value
+
+
+def _validate_quality_fail_strategy(raw: str) -> str:
+    value = (raw or "").strip().upper()
+    if value not in _VALID_QUALITY_FAIL_STRATEGIES:
+        raise ValueError(
+            f"CG_QUALITY_FAIL_STRATEGY={raw!r} is invalid; "
+            f"allowed values: {sorted(_VALID_QUALITY_FAIL_STRATEGIES)}"
         )
     return value
 
@@ -249,6 +260,8 @@ class Settings:
     model_device: str = os.getenv("CG_MODEL_DEVICE", "cpu")
     model_weights_dir: str = os.getenv("CG_MODEL_WEIGHTS_DIR", "/app/model-weights")
     model_confidence_threshold: float = float_env("CG_MODEL_CONFIDENCE_THRESHOLD", 0.5)
+    quality_model_param_path: str = os.getenv("CG_QUALITY_MODEL_PARAM_PATH", "").strip()
+    quality_fail_strategy: str = os.getenv("CG_QUALITY_FAIL_STRATEGY", "CONTINUE").upper()
     segmentation_force_fail: bool = bool_env("CG_SEGMENTATION_FORCE_FAIL", False)
     grading_force_fail: bool = bool_env("CG_GRADING_FORCE_FAIL", False)
     uncertainty_review_threshold: float = float_env("CG_UNCERTAINTY_REVIEW_THRESHOLD", 0.35)
@@ -262,6 +275,7 @@ class Settings:
         object.__setattr__(self, "model_segmentation_impl_type", _validate_model_impl_type("CG_MODEL_SEGMENTATION_IMPL_TYPE", self.model_segmentation_impl_type))
         object.__setattr__(self, "model_grading_impl_type", _validate_model_impl_type("CG_MODEL_GRADING_IMPL_TYPE", self.model_grading_impl_type))
         object.__setattr__(self, "model_risk_impl_type", _validate_model_impl_type("CG_MODEL_RISK_IMPL_TYPE", self.model_risk_impl_type))
+        object.__setattr__(self, "quality_fail_strategy", _validate_quality_fail_strategy(self.quality_fail_strategy))
 
         # ── Fail-fast Validation ──
         # RAG strict dependency validation is only required when analysis-to-KB

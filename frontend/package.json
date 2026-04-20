@@ -12,9 +12,11 @@
     "axios": "^1.15.0",
     "echarts": "^6.0.0",
     "lucide-vue-next": "^1.0.0",
+    "naive-ui": "^2.44.1",
     "pinia": "^3.0.4",
     "vue": "^3.5.32",
     "vue-echarts": "^8.0.1",
+    "vue-i18n": "^11.3.2",
     "vue-router": "^5.0.4"
   },
   "devDependencies": {

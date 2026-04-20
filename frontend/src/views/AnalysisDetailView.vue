@@ -1,352 +1,368 @@
 <template>
-  <div v-if="detail" class="flex flex-col h-full p-4 lg:p-6 pb-0 overflow-hidden page-bg">
-    <div class="flex items-center justify-between mb-4 shrink-0 gap-4">
-      <div class="flex items-center gap-3 min-w-0">
-        <NeuralButton variant="ghost" @click="router.back()">返回</NeuralButton>
-        <div class="h-4 w-px bg-[var(--ln)]"></div>
-        <div class="min-w-0">
-          <div class="font-mono text-[11px] text-[var(--td)] tracking-[0.12em] uppercase">
-            Analysis / {{ detail.task.no }}
+  <div v-if="detail" class="page">
+    <div class="page-hello" style="margin-bottom: 18px">
+      <div>
+        <div class="micro">Analysis Detail</div>
+        <h1 class="page-hello-title">影像分析详情</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <button class="btn btn-ghost" @click="router.back()">
+          <AppIcon name="chevron_right" :size="14" style="transform: rotate(180deg)" />
+          返回
+        </button>
+        <span class="chip" :style="statusChipStyle(taskStatus)">{{ taskStatusLabel(taskStatus) }}</span>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 18px; margin-bottom: 16px">
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+        <div class="home-stat" style="padding: 0">
+          <div class="micro">AI 分级</div>
+          <div class="home-stat-n" style="font-size: 24px; margin-top: 8px">{{ detail.summary.grade }}</div>
+        </div>
+        <div class="home-stat" style="padding: 0">
+          <div class="micro">病灶数量</div>
+          <div class="home-stat-n" style="font-size: 24px; margin-top: 8px">{{ detail.summary.lesionCount }}</div>
+        </div>
+        <div class="home-stat" style="padding: 0">
+          <div class="micro">置信度</div>
+          <div class="home-stat-n" style="font-size: 24px; margin-top: 8px">
+            {{ detail.summary.confidence != null ? `${Math.round(detail.summary.confidence * 100)}%` : '--' }}
           </div>
-          <div class="flex items-center gap-2 mt-1">
-            <h2 class="text-[20px] font-medium text-[var(--tp)] truncate">龋病影像分析详情</h2>
-            <StatusChip :status="taskStatus" />
+        </div>
+        <div class="home-stat" style="padding: 0">
+          <div class="micro">不确定性</div>
+          <div class="home-stat-n" style="font-size: 24px; margin-top: 8px">
+            {{ detail.summary.uncertainty != null ? detail.summary.uncertainty.toFixed(2) : '--' }}
           </div>
         </div>
       </div>
-
-      <div class="font-mono text-[11px] text-[var(--td)] text-right">
-        <div>{{ detail.caseInfo.no || 'CASE-UNKNOWN' }}</div>
-        <div v-if="detail.task.inferenceMillis">耗时 {{ (detail.task.inferenceMillis / 1000).toFixed(2) }}s</div>
-      </div>
     </div>
 
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 shrink-0">
-      <KpiCard label="AI 分级" :value="detail.summary.grade" color="cyan" />
-      <KpiCard label="病灶数量" :value="String(detail.summary.lesionCount)" color="amber" />
-      <KpiCard label="置信度" :value="detail.summary.confidence != null ? `${Math.round(detail.summary.confidence * 100)}%` : '--'" color="emerald" />
-      <KpiCard label="风险等级" :value="detail.summary.riskLevel || '--'" :color="detail.summary.riskLevel?.toUpperCase().includes('HIGH') ? 'magenta' : 'violet'" />
-    </div>
-
-    <div class="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[1.35fr_0.95fr] gap-3 mb-4 overflow-hidden">
-      <Panel title="影像与标注" color="cyan">
-        <template #meta>
-          <div class="flex gap-1 bg-[rgba(3,8,18,0.55)] p-0.5 rounded-[3px] border border-[var(--ln)]">
+    <div style="display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, .95fr); gap: 16px; margin-bottom: 16px">
+      <section class="card" style="overflow: hidden">
+        <div class="card-head">
+          <h3>影像与标注</h3>
+          <div class="card-head-actions" style="gap: 8px">
             <button
               v-for="option in canvasOptions"
               :key="option.code"
-              type="button"
-              class="px-2 py-0.5 text-[10px] font-mono rounded-[2px] transition-colors"
-              :class="activeCanvas === option.code ? 'bg-[var(--cyan)]/20 text-[var(--cyan)]' : 'text-[var(--td)] hover:text-[var(--tp)]'"
+              class="lib-filter"
+              :class="{ on: activeCanvas === option.code }"
               @click="activeCanvas = option.code"
             >
               {{ option.label }}
             </button>
           </div>
-        </template>
+        </div>
 
-        <div class="h-full flex flex-col gap-3">
-          <div class="relative flex-1 min-h-[360px] rounded-[4px] border border-[var(--ln)] bg-[rgba(3,8,18,0.68)] overflow-hidden">
-            <div class="absolute inset-0 opacity-[0.05]" style="background-image: linear-gradient(var(--cyan) 1px, transparent 1px), linear-gradient(90deg, var(--cyan) 1px, transparent 1px); background-size: 18px 18px;"></div>
-
-            <div class="absolute inset-3 rounded-[4px] overflow-hidden border border-[var(--ln)] bg-black/30 flex items-center justify-center">
+        <div style="padding: 18px">
+          <div style="position: relative; min-height: 460px; border-radius: 18px; overflow: hidden; background: linear-gradient(180deg, #0d1215, #1d2a31); border: 1px solid #23343d">
+            <div style="position: absolute; inset: 16px; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.24)">
               <img
                 v-if="currentCanvasUrl"
                 :src="currentCanvasUrl"
                 alt="analysis canvas"
-                class="max-w-full max-h-full object-contain"
+                style="max-width: 100%; max-height: 100%; object-fit: contain"
               />
-              <div v-else class="text-[12px] text-[var(--td)]">当前没有可显示的图像资源</div>
+              <div v-else style="color: rgba(255,255,255,.72); font-size: 13px">当前没有可展示的图像资源</div>
             </div>
 
             <div
-              v-if="shouldDrawBoxes"
               v-for="lesion in drawableLesions"
+              v-if="shouldDrawBoxes"
               :key="lesion.id"
-              class="absolute pointer-events-none"
               :style="lesionBoxStyle(lesion)"
+              style="position: absolute; pointer-events: none"
             >
-              <div
-                class="absolute inset-0 border"
-                :class="lesionTone(lesion.severityCode).border"
-              ></div>
-              <div
-                class="absolute -top-5 left-0 px-1.5 py-0.5 rounded-[2px] font-mono text-[9px] text-[var(--void)] whitespace-nowrap"
-                :class="lesionTone(lesion.severityCode).badge"
-              >
+              <div :style="lesionBorderStyle(lesion.severityCode)"></div>
+              <div :style="lesionBadgeStyle(lesion.severityCode)">
                 {{ lesion.severityCode || 'LESION' }} {{ lesion.toothCode ? `T${lesion.toothCode}` : '' }}
               </div>
             </div>
 
-            <div class="absolute top-3 left-3 z-10 flex flex-col gap-2">
-              <div class="px-2 py-1 rounded-[3px] border border-[var(--ln)] bg-[rgba(3,8,18,0.7)] font-mono text-[10px] text-[var(--cyan)]">
-                {{ activeCanvasLabel }}
-              </div>
-              <div class="px-2 py-1 rounded-[3px] border border-[var(--ln)] bg-[rgba(3,8,18,0.7)] font-mono text-[10px] text-[var(--ts)]">
-                {{ detail.summary.lesionCount }} 处病灶 / {{ detail.summary.abnormalToothCount }} 颗异常牙
-              </div>
+            <div style="position: absolute; top: 18px; left: 18px; display: grid; gap: 8px">
+              <span class="chip chip-neutral">{{ activeCanvasLabel }}</span>
+              <span class="chip chip-neutral">{{ detail.summary.lesionCount }} 个病灶 / {{ detail.summary.abnormalToothCount }} 颗异常牙</span>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)] p-3">
-              <div class="font-mono text-[10px] text-[var(--td)] uppercase tracking-[0.12em] mb-2">临床摘要</div>
-              <p class="text-[13px] text-[var(--tp)] leading-relaxed">
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px">
+            <div class="card" style="padding: 14px">
+              <div class="micro">临床摘要</div>
+              <p style="font-size: 13px; color: var(--ink-2); line-height: 1.7; margin: 10px 0 0">
                 {{ detail.summary.clinicalSummary || '暂无临床摘要。' }}
               </p>
             </div>
-            <div class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)] p-3">
-              <div class="font-mono text-[10px] text-[var(--td)] uppercase tracking-[0.12em] mb-2">患者信息</div>
-              <div class="text-[12px] text-[var(--ts)] flex flex-col gap-1">
+            <div class="card" style="padding: 14px">
+              <div class="micro">患者信息</div>
+              <div style="display: grid; gap: 6px; margin-top: 10px; font-size: 13px; color: var(--ink-2)">
                 <span>患者标识：{{ detail.patient.idMasked || '--' }}</span>
                 <span>性别 / 年龄：{{ detail.patient.gender || '--' }} / {{ detail.patient.age ?? '--' }}</span>
                 <span>设备：{{ detail.image.sourceDevice || '--' }}</span>
               </div>
             </div>
-            <div class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)] p-3">
-              <div class="font-mono text-[10px] text-[var(--td)] uppercase tracking-[0.12em] mb-2">知识库版本</div>
-              <div class="text-[13px] text-[var(--tp)]">{{ detail.summary.knowledgeVersion || '未返回' }}</div>
-              <div class="mt-2 text-[11px] text-[var(--td)]">
-                {{ detail.rag.enabled ? '已启用本地知识库增强' : '未启用知识库增强' }}
+            <div class="card" style="padding: 14px">
+              <div class="micro">知识增强</div>
+              <div style="margin-top: 10px; font-size: 13px; color: var(--ink-2)">{{ detail.summary.knowledgeVersion || '--' }}</div>
+              <div style="margin-top: 8px; font-size: 12px; color: var(--ink-3)">
+                {{ detail.rag.enabled ? '当前任务已启用知识增强。' : '当前任务未启用知识增强。' }}
               </div>
             </div>
           </div>
         </div>
-      </Panel>
+      </section>
 
-      <div class="min-h-0 flex flex-col gap-3 overflow-hidden">
-        <Panel title="病灶列表" color="amber">
-          <div class="flex flex-col gap-3">
-            <div
-              v-for="lesion in detail.summary.lesions"
-              :key="lesion.id"
-              class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.5)] p-3"
-            >
-              <div class="flex items-start justify-between gap-3">
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <section class="card" style="overflow: hidden">
+          <div class="card-head"><h3>病灶列表</h3></div>
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; max-height: 420px; overflow-y: auto">
+            <div v-for="lesion in detail.summary.lesions" :key="lesion.id" class="card" style="padding: 14px; background: var(--surface-2)">
+              <div style="display: flex; justify-content: space-between; gap: 12px; align-items: start">
                 <div>
-                  <div class="flex items-center gap-2">
-                    <span class="font-mono text-[12px] text-[var(--tp)]">{{ lesion.severityCode || 'UNKNOWN' }}</span>
-                    <span class="font-mono text-[11px] text-[var(--td)]">{{ lesion.toothCode ? `牙位 ${lesion.toothCode}` : '未定位牙位' }}</span>
+                  <div style="display: flex; gap: 8px; align-items: center">
+                    <span class="chip" :style="lesionListChipStyle(lesion.severityCode)">{{ lesion.severityCode || 'UNKNOWN' }}</span>
+                    <span class="mono" style="font-size: 11px; color: var(--ink-3)">{{ lesion.toothCode ? `牙位 ${lesion.toothCode}` : '未定位牙位' }}</span>
                   </div>
-                  <div class="mt-2 text-[12px] text-[var(--ts)] leading-relaxed">{{ lesion.summary || '暂无病灶描述。' }}</div>
+                  <div style="margin-top: 10px; font-size: 13px; color: var(--ink-2); line-height: 1.7">{{ lesion.summary || '暂无病灶描述。' }}</div>
                 </div>
-                <div class="text-right font-mono text-[11px] text-[var(--td)] shrink-0">
+                <div style="text-align: right; font-size: 11px; color: var(--ink-3)">
                   <div>{{ lesion.areaRatio != null ? `${(lesion.areaRatio * 100).toFixed(2)}%` : '--' }}</div>
-                  <div>{{ lesion.areaPx != null ? `${lesion.areaPx}px` : '--' }}</div>
+                  <div style="margin-top: 4px">{{ lesion.areaPx != null ? `${lesion.areaPx}px` : '--' }}</div>
                 </div>
               </div>
-              <div class="mt-3 text-[11px] text-[var(--td)]">
-                治疗建议：{{ lesion.treatmentSuggestion || '请结合医生复核。' }}
+              <div style="margin-top: 10px; font-size: 12px; color: var(--ink-3)">
+                处理建议：{{ lesion.treatmentSuggestion || '请结合医生复核后确认。' }}
               </div>
             </div>
-
-            <div v-if="detail.summary.lesions.length === 0" class="text-[12px] text-[var(--td)]">
-              当前结果未返回结构化病灶列表。
-            </div>
+            <div v-if="detail.summary.lesions.length === 0" style="font-size: 13px; color: var(--ink-3)">当前结果没有结构化病灶列表。</div>
           </div>
-        </Panel>
+        </section>
 
-        <Panel title="治疗与建议" color="emerald">
-          <div class="flex flex-col gap-3">
-            <div class="rounded-[4px] border border-[var(--emerald)]/25 bg-[var(--emerald)]/5 p-3">
-              <div class="font-mono text-[10px] text-[var(--emerald)] uppercase tracking-[0.12em] mb-2">知识库增强建议</div>
-              <div class="text-[13px] text-[var(--tp)] leading-relaxed">
+        <section class="card" style="overflow: hidden">
+          <div class="card-head"><h3>治疗建议</h3></div>
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+            <div class="card" style="padding: 14px; background: var(--brand-50); border-color: var(--brand-200)">
+              <div class="micro" style="color: var(--brand-800)">知识增强建议</div>
+              <div style="margin-top: 8px; font-size: 13px; color: var(--ink-2); line-height: 1.7">
                 {{ detail.summary.followUpRecommendation || detail.rag.answer || '暂无建议。' }}
               </div>
             </div>
-
-            <div>
-              <div class="font-mono text-[10px] text-[var(--td)] uppercase tracking-[0.12em] mb-2">治疗计划</div>
-              <div class="flex flex-col gap-2">
-                <div
-                  v-for="(item, index) in detail.summary.treatmentPlan"
-                  :key="`${item.title}-${index}`"
-                  class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.45)] p-3"
-                >
-                  <div class="flex items-center justify-between gap-3">
-                    <span class="text-[13px] text-[var(--tp)]">{{ item.title }}</span>
-                    <span class="font-mono text-[10px] text-[var(--emerald)]">{{ item.priority }}</span>
-                  </div>
-                  <div class="mt-2 text-[12px] text-[var(--ts)] leading-relaxed">{{ item.details }}</div>
-                </div>
-                <div v-if="detail.summary.treatmentPlan.length === 0" class="text-[12px] text-[var(--td)]">
-                  当前结果未返回结构化治疗计划。
-                </div>
-              </div>
-            </div>
-          </div>
-        </Panel>
-
-        <Panel title="知识库引用" color="violet">
-          <div class="flex flex-col gap-2">
             <div
-              v-for="citation in detail.summary.citations"
-              :key="citation.index"
-              class="rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.45)] p-3"
+              v-for="(item, index) in detail.summary.treatmentPlan"
+              :key="`${item.title}-${index}`"
+              class="card"
+              style="padding: 14px; background: var(--surface-2)"
             >
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-[13px] text-[var(--tp)]">{{ citation.title }}</span>
-                <span class="font-mono text-[10px] text-[var(--violet)]">#{{ citation.index }}</span>
+              <div style="display: flex; justify-content: space-between; gap: 10px; align-items: center">
+                <strong style="font-size: 13px">{{ item.title }}</strong>
+                <span class="chip chip-neutral">{{ item.priority }}</span>
               </div>
-              <div class="mt-2 text-[12px] text-[var(--ts)] leading-relaxed">{{ citation.excerpt || '无摘要片段。' }}</div>
-              <div v-if="citation.sourceUri" class="mt-2 font-mono text-[10px] text-[var(--td)]">{{ citation.sourceUri }}</div>
+              <div style="margin-top: 8px; font-size: 12px; color: var(--ink-3); line-height: 1.7">{{ item.details }}</div>
             </div>
-            <div v-if="detail.summary.citations.length === 0" class="text-[12px] text-[var(--td)]">
-              当前结果未返回知识库引用。
-            </div>
+            <div v-if="detail.summary.treatmentPlan.length === 0" style="font-size: 13px; color: var(--ink-3)">当前结果没有结构化治疗计划。</div>
           </div>
-        </Panel>
+        </section>
+
+        <section class="card" style="overflow: hidden">
+          <div class="card-head"><h3>知识引用</h3></div>
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; max-height: 280px; overflow-y: auto">
+            <div v-for="citation in detail.summary.citations" :key="citation.index" class="card" style="padding: 14px; background: var(--surface-2)">
+              <div style="display: flex; justify-content: space-between; gap: 8px; align-items: start">
+                <strong style="font-size: 13px">{{ citation.title }}</strong>
+                <span class="chip chip-neutral">#{{ citation.index }}</span>
+              </div>
+              <div style="margin-top: 8px; font-size: 12px; color: var(--ink-3); line-height: 1.7">{{ citation.excerpt || '无摘要片段。' }}</div>
+              <div v-if="citation.sourceUri" class="mono" style="margin-top: 8px; font-size: 10px; color: var(--ink-4)">{{ citation.sourceUri }}</div>
+            </div>
+            <div v-if="detail.summary.citations.length === 0" style="font-size: 13px; color: var(--ink-3)">当前结果没有返回知识引用。</div>
+          </div>
+        </section>
       </div>
     </div>
 
-    <div class="shrink-0 mb-4">
-      <Panel title="处理时间线" color="violet">
-        <div class="flex flex-wrap gap-3">
-          <div
-            v-for="node in detail.timeline"
-            :key="node.code"
-            class="min-w-[180px] rounded-[4px] border border-[var(--ln)] bg-[rgba(10,20,40,0.45)] p-3"
-          >
-            <div class="flex items-center justify-between gap-3">
-              <span class="text-[13px] text-[var(--tp)]">{{ node.name }}</span>
-              <span class="font-mono text-[10px]" :class="timelineTone(node.status)">{{ node.status }}</span>
-            </div>
-            <div v-if="node.description" class="mt-2 text-[12px] text-[var(--ts)]">{{ node.description }}</div>
-            <div v-if="node.time" class="mt-2 font-mono text-[10px] text-[var(--td)]">{{ formatDateTime(node.time) }}</div>
+    <section class="card" style="overflow: hidden">
+      <div class="card-head"><h3>处理时间线</h3></div>
+      <div style="padding: 16px; display: flex; flex-wrap: wrap; gap: 12px">
+        <div v-for="node in detail.timeline" :key="node.code" class="card" style="padding: 14px; min-width: 180px; background: var(--surface-2)">
+          <div style="display: flex; justify-content: space-between; gap: 10px; align-items: center">
+            <strong style="font-size: 13px">{{ node.name }}</strong>
+            <span class="chip" :style="timelineChipStyle(node.status)">{{ timelineStatusLabel(node.status) }}</span>
           </div>
-          <div v-if="detail.timeline.length === 0" class="text-[12px] text-[var(--td)]">当前没有可展示的时间线节点。</div>
+          <div v-if="node.description" style="margin-top: 8px; font-size: 12px; color: var(--ink-3)">{{ node.description }}</div>
+          <div v-if="node.time" class="mono" style="margin-top: 8px; font-size: 10px; color: var(--ink-4)">{{ formatDateTime(node.time) }}</div>
         </div>
-      </Panel>
-    </div>
+        <div v-if="detail.timeline.length === 0" style="font-size: 13px; color: var(--ink-3)">当前没有可展示的时间线节点。</div>
+      </div>
+    </section>
   </div>
 
-  <div v-else-if="store.loading" class="flex-1 flex flex-col items-center justify-center">
-    <div class="w-16 h-16 rounded-full border border-[var(--cyan)]/30 border-t-[var(--cyan)] animate-spin mb-4 shadow-[0_0_15px_rgba(0,229,255,0.2)]"></div>
-    <div class="font-mono text-[12px] text-[var(--cyan)] tracking-[0.2em] animate-pulse-opacity">LOADING ANALYSIS...</div>
+  <div v-else-if="store.loading" style="min-height: 60vh; display: grid; place-items: center">
+    <div class="card" style="padding: 24px 28px; text-align: center">
+      <div class="micro">Loading</div>
+      <div style="margin-top: 8px; font-size: 14px; color: var(--ink-2)">正在加载分析详情...</div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import type { AnalysisLesion } from '../models/analysis';
-import { useAnalysisStore } from '../stores/analysis';
-import KpiCard from '../components/shared/KpiCard.vue';
-import NeuralButton from '../components/shared/NeuralButton.vue';
-import Panel from '../components/shared/Panel.vue';
-import StatusChip from '../components/shared/StatusChip.vue';
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import AppIcon from '@/components/AppIcon.vue'
+import type { AnalysisLesion } from '@/models/analysis'
+import { useAnalysisStore } from '@/stores/analysis'
 
-const route = useRoute();
-const router = useRouter();
-const store = useAnalysisStore();
+const route = useRoute()
+const router = useRouter()
+const store = useAnalysisStore()
 
-const activeCanvas = ref('source');
-
-const detail = computed(() => store.currentDetail);
+const activeCanvas = ref('source')
+const detail = computed(() => store.currentDetail)
 
 const taskStatus = computed<'DONE' | 'RUNNING' | 'REVIEW' | 'FAILED' | 'QUEUED'>(() => {
-  const status = (detail.value?.task.status || '').toUpperCase();
-  if (status === 'SUCCESS' || status === 'DONE') return 'DONE';
-  if (status === 'RUNNING') return 'RUNNING';
-  if (status === 'REVIEW') return 'REVIEW';
-  if (status === 'FAILED') return 'FAILED';
-  return 'QUEUED';
-});
+  const status = (detail.value?.task.status || '').toUpperCase()
+  if (status === 'SUCCESS' || status === 'DONE') return 'DONE'
+  if (status === 'RUNNING') return 'RUNNING'
+  if (status === 'REVIEW') return 'REVIEW'
+  if (status === 'FAILED') return 'FAILED'
+  return 'QUEUED'
+})
+
+const taskStatusLabel = (status: typeof taskStatus.value) => {
+  switch (status) {
+    case 'DONE':
+      return '已完成'
+    case 'RUNNING':
+      return '运行中'
+    case 'REVIEW':
+      return '待复核'
+    case 'FAILED':
+      return '失败'
+    default:
+      return '排队中'
+  }
+}
+
+const statusChipStyle = (status: typeof taskStatus.value) => {
+  switch (status) {
+    case 'DONE':
+      return 'background: var(--ok-100); color: var(--ok-700);'
+    case 'RUNNING':
+      return 'background: var(--brand-100); color: var(--brand-800);'
+    case 'REVIEW':
+      return 'background: var(--warn-100); color: var(--warn-700);'
+    case 'FAILED':
+      return 'background: var(--danger-100); color: var(--danger-700);'
+    default:
+      return 'background: var(--bg-alt); color: var(--ink-2);'
+  }
+}
 
 const canvasOptions = computed(() => {
-  const options = [
-    { code: 'source', label: '原图', url: detail.value?.image.url },
-  ];
-
+  const options = [{ code: 'source', label: '原图', url: detail.value?.image.url }]
   for (const asset of detail.value?.task.visualAssets || []) {
-    if (!asset.url) continue;
+    if (!asset.url) continue
     options.push({
       code: asset.type.toLowerCase(),
       label: asset.label,
-      url: asset.url,
-    });
+      url: asset.url
+    })
   }
-  return options;
-});
+  return options
+})
 
-const activeCanvasLabel = computed(() => canvasOptions.value.find((item) => item.code === activeCanvas.value)?.label || '原图');
-
-const currentCanvasUrl = computed(() => canvasOptions.value.find((item) => item.code === activeCanvas.value)?.url);
+const activeCanvasLabel = computed(() => canvasOptions.value.find((item) => item.code === activeCanvas.value)?.label || '原图')
+const currentCanvasUrl = computed(() => canvasOptions.value.find((item) => item.code === activeCanvas.value)?.url)
 
 const drawableLesions = computed(() =>
-  (detail.value?.summary.lesions || []).filter((lesion) => Array.isArray(lesion.bbox) && lesion.bbox.length === 4),
-);
+  (detail.value?.summary.lesions || []).filter((lesion) => Array.isArray(lesion.bbox) && lesion.bbox.length === 4)
+)
 
-const shouldDrawBoxes = computed(() =>
-  activeCanvas.value === 'source' &&
-  Boolean(detail.value?.summary.annotationImageWidth) &&
-  Boolean(detail.value?.summary.annotationImageHeight) &&
-  drawableLesions.value.length > 0,
-);
+const shouldDrawBoxes = computed(
+  () =>
+    activeCanvas.value === 'source' &&
+    Boolean(detail.value?.summary.annotationImageWidth) &&
+    Boolean(detail.value?.summary.annotationImageHeight) &&
+    drawableLesions.value.length > 0
+)
 
-const lesionTone = (severityCode?: string) => {
+const lesionColor = (severityCode?: string) => {
   switch ((severityCode || '').toUpperCase()) {
     case 'C3':
-      return {
-        border: 'border-[var(--magenta)] shadow-[0_0_12px_rgba(255,79,129,0.28)]',
-        badge: 'bg-[var(--magenta)]',
-      };
+      return '#e5483c'
     case 'C2':
-      return {
-        border: 'border-[var(--amber)] shadow-[0_0_12px_rgba(255,181,71,0.28)]',
-        badge: 'bg-[var(--amber)]',
-      };
+      return '#e08a2c'
     default:
-      return {
-        border: 'border-[var(--cyan)] shadow-[0_0_12px_rgba(0,229,255,0.28)]',
-        badge: 'bg-[var(--cyan)]',
-      };
+      return '#12a594'
   }
-};
+}
+
+const lesionBorderStyle = (severityCode?: string) => {
+  const color = lesionColor(severityCode)
+  return `position:absolute; inset:0; border:2px solid ${color}; border-radius: 8px; box-shadow: 0 0 0 1px rgba(255,255,255,.06);`
+}
+
+const lesionBadgeStyle = (severityCode?: string) => {
+  const color = lesionColor(severityCode)
+  return `position:absolute; top:-24px; left:0; padding: 4px 8px; border-radius: 8px; background:${color}; color:#fff; font-family: var(--font-mono); font-size:10px; white-space: nowrap;`
+}
+
+const lesionListChipStyle = (severityCode?: string) => {
+  const code = (severityCode || '').toUpperCase()
+  if (code === 'C3') return 'background: var(--danger-100); color: var(--danger-700);'
+  if (code === 'C2') return 'background: var(--warn-100); color: var(--warn-700);'
+  return 'background: var(--brand-100); color: var(--brand-800);'
+}
 
 const lesionBoxStyle = (lesion: AnalysisLesion) => {
-  const bbox = lesion.bbox || [0, 0, 0, 0];
-  const imageWidth = detail.value?.summary.annotationImageWidth || 1;
-  const imageHeight = detail.value?.summary.annotationImageHeight || 1;
+  const bbox = lesion.bbox || [0, 0, 0, 0]
+  const imageWidth = detail.value?.summary.annotationImageWidth || 1
+  const imageHeight = detail.value?.summary.annotationImageHeight || 1
   return {
     left: `${(bbox[0] / imageWidth) * 100}%`,
     top: `${(bbox[1] / imageHeight) * 100}%`,
     width: `${((bbox[2] - bbox[0]) / imageWidth) * 100}%`,
-    height: `${((bbox[3] - bbox[1]) / imageHeight) * 100}%`,
-  };
-};
+    height: `${((bbox[3] - bbox[1]) / imageHeight) * 100}%`
+  }
+}
 
-const timelineTone = (status: string) => {
+const timelineStatusLabel = (status: string) => {
   switch (status) {
     case 'COMPLETED':
-      return 'text-[var(--emerald)]';
+      return '完成'
     case 'CURRENT':
-      return 'text-[var(--cyan)]';
+      return '当前'
     default:
-      return 'text-[var(--td)]';
+      return '待处理'
   }
-};
+}
 
-const formatDateTime = (value: string) => new Date(value).toLocaleString();
+const timelineChipStyle = (status: string) => {
+  if (status === 'COMPLETED') return 'background: var(--ok-100); color: var(--ok-700);'
+  if (status === 'CURRENT') return 'background: var(--brand-100); color: var(--brand-800);'
+  return 'background: var(--bg-alt); color: var(--ink-2);'
+}
+
+const formatDateTime = (value: string) => new Date(value).toLocaleString()
 
 const fetchDetail = async () => {
-  const taskIdentifier = String(route.params.taskId || '');
-  if (!taskIdentifier) return;
-  await store.fetchDetail(taskIdentifier);
-};
+  const taskIdentifier = String(route.params.taskId || '')
+  if (!taskIdentifier) return
+  await store.fetchDetail(taskIdentifier)
+}
 
 watch(detail, () => {
-  activeCanvas.value = 'source';
-});
+  activeCanvas.value = 'source'
+})
 
 watch(
   () => route.params.taskId,
   async (taskId, previous) => {
     if (taskId && taskId !== previous) {
-      await fetchDetail();
+      await fetchDetail()
     }
-  },
-);
+  }
+)
 
-onMounted(fetchDetail);
+onMounted(fetchDetail)
 </script>

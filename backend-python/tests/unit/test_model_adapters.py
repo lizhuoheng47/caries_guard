@@ -45,17 +45,20 @@ class TestQualityModelAdapter:
         result = adapter.infer(sample_image)
 
         assert "qualityStatusCode" in result
-        assert result["qualityStatusCode"] in {"PASS", "FAIL"}
+        assert result["qualityStatusCode"] in {"PASS", "WARN", "FAIL"}
         assert "qualityScore" in result
         assert 0.0 <= result["qualityScore"] <= 1.0
         assert "blurScore" in result
         assert "exposureScore" in result
-        assert "edgeDensityScore" in result
-        assert "issues" in result
-        assert isinstance(result["issues"], list)
+        assert "integrityScore" in result
+        assert "qualityIssues" in result
+        assert isinstance(result["qualityIssues"], list)
+        assert "retakeSuggested" in result
+        assert "modelVersion" in result
+        assert "inferenceMillis" in result
         assert result["implType"] == "HEURISTIC"
         assert "rawResult" in result
-        assert "laplacianVar" in result["rawResult"]
+        assert "issueConfidences" in result["rawResult"]
 
     def test_infer_blurry_image_detects_blur(self, tmp_path: Path):
         """A uniform gray image should be flagged as blurry."""
@@ -67,13 +70,13 @@ class TestQualityModelAdapter:
         adapter = QualityModelAdapter(confidence_threshold=0.3)
         adapter.load()
         result = adapter.infer(path)
-        assert "HIGH_BLUR" in result["issues"]
+        assert "blur" in result["qualityIssues"]
 
     def test_info_dict(self):
         adapter = QualityModelAdapter()
         adapter.load()
         info = adapter.info()
-        assert info["modelCode"] == "quality-check-heuristic-v1"
+        assert info["modelCode"] == "quality-assessment-cv-v2"
         assert info["implType"] == "HEURISTIC"
         assert info["loaded"] is True
 

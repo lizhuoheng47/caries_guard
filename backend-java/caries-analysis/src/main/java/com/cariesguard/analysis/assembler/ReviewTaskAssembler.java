@@ -37,7 +37,9 @@ public class ReviewTaskAssembler {
                                        AnalysisCaseModel medicalCase,
                                        AnalysisImageModel imageModel) {
         ReviewTaskDetailVO vo = new ReviewTaskDetailVO();
+        AnalysisSummaryVO summary = task.summary();
         vo.setTask(task);
+        vo.setReviewStatusCode(resolveNeedsReview(summary) ? "REVIEW_PENDING" : "NOT_REQUIRED");
         vo.setCaseInfo(toCaseInfo(task, medicalCase));
         vo.setImage(toImage(imageModel));
         vo.setAiResult(toAiResult(task));

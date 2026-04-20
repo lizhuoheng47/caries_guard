@@ -101,6 +101,16 @@ class ModelRegistry:
                     confidence_threshold=self._settings.model_confidence_threshold,
                     settings=self._settings
                 )
+            elif module == "quality":
+                try:
+                    adapter = cls(
+                        confidence_threshold=self._settings.model_confidence_threshold,
+                        settings=self._settings,
+                    )
+                except TypeError:
+                    adapter = cls(
+                        confidence_threshold=self._settings.model_confidence_threshold
+                    )
             else:
                 adapter = cls(
                     confidence_threshold=self._settings.model_confidence_threshold

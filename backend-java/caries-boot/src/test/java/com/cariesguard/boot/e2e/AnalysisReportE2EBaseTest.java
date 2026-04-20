@@ -544,17 +544,38 @@ abstract class AnalysisReportE2EBaseTest {
         root.put("startedAt", LocalDateTime.now().minusSeconds(20).toString());
         root.put("completedAt", LocalDateTime.now().toString());
         root.put("modelVersion", "caries-v1");
+        root.put("gradingLabel", "C3");
+        root.put("confidenceScore", 0.5800d);
+        root.put("uncertaintyScore", 0.6200d);
+        root.put("needsReview", true);
 
         ObjectNode summary = root.putObject("summary");
-        summary.put("overallHighestSeverity", "C2");
-        summary.put("uncertaintyScore", 0.2700d);
+        summary.put("overallHighestSeverity", "C3");
+        summary.put("uncertaintyScore", 0.6200d);
         summary.put("reviewSuggestedFlag", "1");
         summary.put("teethCount", 8);
 
         ObjectNode rawResult = root.putObject("rawResultJson");
-        rawResult.put("overallHighestSeverity", "C2");
-        rawResult.put("uncertaintyScore", 0.2700d);
+        rawResult.put("overallHighestSeverity", "C3");
+        rawResult.put("gradingMode", "real");
+        rawResult.put("gradingImplType", "HEURISTIC");
+        rawResult.put("gradingLabel", "C3");
+        rawResult.put("confidenceScore", 0.5800d);
+        rawResult.put("uncertaintyMode", "real");
+        rawResult.put("uncertaintyImplType", "COMPOSITE_HEURISTIC");
+        rawResult.put("uncertaintyScore", 0.6200d);
+        rawResult.put("needsReview", true);
+        rawResult.put("reviewThreshold", 0.3500d);
         rawResult.put("reviewSuggestedFlag", "1");
+        ArrayNode uncertaintyReasons = rawResult.putArray("uncertaintyReasons");
+        uncertaintyReasons.add("UNCERTAINTY_THRESHOLD_EXCEEDED");
+        ArrayNode lesionResults = rawResult.putArray("lesionResults");
+        ObjectNode lesion = lesionResults.addObject();
+        lesion.put("imageId", 0L);
+        lesion.put("toothCode", "16");
+        lesion.put("severityCode", "C3");
+        lesion.put("confidenceScore", 0.58d);
+        lesion.put("uncertaintyScore", 0.62d);
 
         ArrayNode assets = root.putArray("visualAssets");
         ObjectNode heatmap = assets.addObject();

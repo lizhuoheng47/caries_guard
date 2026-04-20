@@ -1,0 +1,14 @@
+{
+  "modelVersion": "quality-cv-multisignal-v1",
+  "failThreshold": 0.78,
+  "warnThreshold": 0.42,
+  "issueThreshold": 0.45,
+  "issueWeights": {
+    "blur": 0.24,
+    "under_exposure": 0.14,
+    "over_exposure": 0.14,
+    "occlusion": 0.19,
+    "field_cutoff": 0.16,
+    "artifact": 0.13
+  }
+}
