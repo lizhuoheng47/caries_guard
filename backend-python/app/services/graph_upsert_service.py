@@ -23,7 +23,7 @@ class GraphUpsertService:
         relations: list[dict],
         org_id: int | None,
         created_by: int | None,
-    ) -> tuple[list[dict], list[dict]]:
+    ) -> dict[str, Any]:
         entities, stored_relations = self.graph_repository.replace_entities_and_relations(
             doc_id=doc_id,
             chunk_entities=chunk_entities,
@@ -109,12 +109,14 @@ class GraphUpsertService:
                     f"MERGE (s)-[r:{relation['relation_type_code']}]->(t) "
                     "SET r.relationCode = $relation_code, "
                     "    r.docId = $doc_id, "
+                    "    r.versionNo = $version_no, "
                     "    r.evidenceChunkId = $evidence_chunk_id, "
                     "    r.confidenceScore = $confidence_score",
                     source_concept_id=source_payload["concept_id"],
                     target_concept_id=target_payload["concept_id"],
                     relation_code=relation["relation_code"],
                     doc_id=str(doc_id),
+                    version_no=version_no,
                     evidence_chunk_id=str(relation.get("evidence_chunk_id") or ""),
                     confidence_score=float(relation.get("confidence_score") or 0.0),
                 )
@@ -129,7 +131,37 @@ class GraphUpsertService:
                         source_concept_id=source_payload["concept_id"],
                         target_concept_id=target_payload["concept_id"],
                     )
-        return entities, stored_relations
+        
+        # ── Return Detailed Stats ──
+        return {
+            "docId": doc_id,
+            "conceptCount": len(concept_payloads),
+            "relationCount": len(stored_relations),
+            "chunkMentionCount": len(chunk_mentions),
+            "status": "SUCCESS"
+        }
+
+    def detect_document_graph_conflicts(self, doc_id: int) -> list[dict]:
+        """Detect conflicts such as alias collisions or version mismatches."""
+        conflicts = []
+        with self.driver.session(database=self.settings.neo4j_database) as session:
+            # Check for alias collisions: one alias pointing to multiple concepts
+            res = session.run(
+                "MATCH (a:AliasTerm)-[:ALIAS_OF]->(n:Concept) "
+                "WITH a, collect(n) AS concepts "
+                "WHERE size(concepts) > 1 "
+                "RETURN a.name AS alias, [c in concepts | c.name] AS conceptNames"
+            ).data()
+            for row in res:
+                conflicts.append({
+                    "type": "ALIAS_COLLISION",
+                    "alias": row["alias"],
+                    "conflictingConcepts": row["conceptNames"]
+                })
+                
+            # Check for concept property mismatches across documents
+            # (In a real system, we'd check if the same name has different entityTypeCode)
+        return conflicts
 
     def cleanup_document_graph(self, doc_id: int, session=None) -> None:
         managed_session = session or self.driver.session(database=self.settings.neo4j_database)

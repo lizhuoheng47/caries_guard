@@ -51,8 +51,23 @@ public class AnalysisQueryAppService {
         AnalysisTaskViewModel task = anaTaskRecordRepository.findById(taskId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Analysis task does not exist"));
         ensureOrgAccess(operator, task.orgId());
-        AnalysisSummaryVO summary = anaResultSummaryRepository.findByTaskId(taskId).map(this::toSummaryVO).orElse(null);
-        List<AnalysisVisualAssetVO> visualAssets = anaVisualAssetRepository.listByTaskId(taskId).stream()
+        return toTaskDetailVO(task);
+    }
+
+    public AnalysisTaskDetailVO getTaskDetailByTaskNo(String taskNo) {
+        if (!StringUtils.hasText(taskNo)) {
+            throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "taskNo is required");
+        }
+        AuthenticatedUser operator = SecurityContextUtils.currentUser();
+        AnalysisTaskViewModel task = anaTaskRecordRepository.findByTaskNo(taskNo.trim())
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Analysis task does not exist"));
+        ensureOrgAccess(operator, task.orgId());
+        return toTaskDetailVO(task);
+    }
+
+    private AnalysisTaskDetailVO toTaskDetailVO(AnalysisTaskViewModel task) {
+        AnalysisSummaryVO summary = anaResultSummaryRepository.findByTaskId(task.taskId()).map(this::toSummaryVO).orElse(null);
+        List<AnalysisVisualAssetVO> visualAssets = anaVisualAssetRepository.listByTaskId(task.taskId()).stream()
                 .map(item -> new AnalysisVisualAssetVO(
                         item.assetTypeCode(),
                         item.attachmentId(),

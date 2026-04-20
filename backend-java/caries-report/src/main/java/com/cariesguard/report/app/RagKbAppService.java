@@ -122,6 +122,15 @@ public class RagKbAppService {
         return versionAction("/knowledge/documents/" + docId + "/rollback", command);
     }
 
+    public Object deleteDocument(Long docId) {
+        AuthenticatedUser user = SecurityContextUtils.currentUser();
+        Map<String, Object> query = new LinkedHashMap<>();
+        query.put("trace_id", TraceIdUtils.currentTraceId());
+        query.put("operator_id", user.getUserId());
+        query.put("org_id", user.getOrgId());
+        return ragAdminClient.delete("/knowledge/documents/" + docId, query, TraceIdUtils.currentTraceId());
+    }
+
     public Object rebuild(RagKbRebuildCommand command) {
         AuthenticatedUser user = SecurityContextUtils.currentUser();
         Map<String, Object> payload = new LinkedHashMap<>();

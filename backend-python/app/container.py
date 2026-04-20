@@ -46,6 +46,7 @@ from app.services.lexical_retriever import LexicalRetriever
 from app.services.model_switch_service import ModelSwitchService
 from app.services.open_search_index_service import OpenSearchIndexService
 from app.services.query_rewrite_service import QueryRewriteService
+from app.services.qwen_vision_service import QwenVisionService
 from app.services.rag_orchestrator import RagOrchestrator
 from app.services.rag_log_service import RagLogService
 from app.services.refusal_policy_service import RefusalPolicyService
@@ -71,6 +72,7 @@ class AppContainer:
         self.ai_runtime_repository = AiRuntimeRepository()
         self.governance_repository = GovernanceRepository()
         self.callback_service = CallbackService(settings, self.ai_runtime_repository)
+        self.qwen_vision_service = QwenVisionService(settings)
         self.vector_store = SimpleVectorStore()
         self.concept_normalization_service = ConceptNormalizationService()
         self.embedding_provider = create_embedding_provider(settings)
@@ -157,6 +159,7 @@ class AppContainer:
             grading_pipeline=self.grading_pipeline,
             risk_pipeline=self.risk_pipeline,
             ai_runtime_repository=self.ai_runtime_repository,
+            qwen_vision_service=self.qwen_vision_service,
         )
 
 

@@ -31,11 +31,28 @@ class OpenAiCompatibleLlmClient:
             ],
             "temperature": self.settings.llm_temperature,
         }
+        
+        start_time = time.perf_counter()
         response = self._post_with_retry(payload)
-        answer = response.get("choices", [{}])[0].get("message", {}).get("content")
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        
+        choice = response.get("choices", [{}])[0]
+        answer = choice.get("message", {}).get("content")
+        usage = response.get("usage")
+        finish_reason = choice.get("finish_reason")
+        
         if not answer:
             raise RuntimeError("LLM provider returned empty completion")
-        return LlmResult(answer_text=str(answer).strip(), prompt_text=prompt)
+            
+        return LlmResult(
+            answer_text=str(answer).strip(),
+            prompt_text=prompt,
+            provider="OPENAI_COMPATIBLE",
+            model=self.settings.llm_model_name,
+            latency_ms=latency_ms,
+            usage=usage,
+            finish_reason=finish_reason,
+        )
 
     def _post_with_retry(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not self.settings.llm_base_url:
@@ -44,6 +61,7 @@ class OpenAiCompatibleLlmClient:
         headers = {"Content-Type": "application/json"}
         if self.settings.llm_api_key:
             headers["Authorization"] = f"Bearer {self.settings.llm_api_key}"
+            
         last_error: Exception | None = None
         for attempt in range(self.settings.llm_retry_count + 1):
             try:
@@ -53,13 +71,29 @@ class OpenAiCompatibleLlmClient:
                     headers=headers,
                     timeout=self.settings.llm_timeout_seconds,
                 )
+                
+                if response.status_code == 429:
+                    # Rate limit - wait longer
+                    time.sleep(min(1.0 * (2 ** attempt), 5.0))
+                    continue
+                    
                 response.raise_for_status()
                 return response.json()
-            except Exception as exc:  # pragma: no cover - network path
+            except requests.exceptions.HTTPError as exc:
+                last_error = exc
+                if response.status_code >= 500:
+                    # Server error - retry
+                    if attempt < self.settings.llm_retry_count:
+                        time.sleep(min(0.5 * (2 ** attempt), 2.0))
+                        continue
+                raise RuntimeError(f"LLM API returned error {response.status_code}: {response.text}") from exc
+            except Exception as exc:
                 last_error = exc
                 if attempt < self.settings.llm_retry_count:
-                    time.sleep(min(0.25 * (attempt + 1), 1.0))
-        raise RuntimeError(f"LLM provider call failed: {last_error}")
+                    time.sleep(min(0.5 * (2 ** attempt), 2.0))
+                    continue
+                    
+        raise RuntimeError(f"LLM provider call failed after {self.settings.llm_retry_count} retries: {last_error}")
 
     @staticmethod
     def _build_prompt(scene: str, query: str, evidence: list[dict], context_text: str | None) -> str:

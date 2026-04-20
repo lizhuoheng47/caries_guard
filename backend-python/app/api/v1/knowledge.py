@@ -93,6 +93,23 @@ def update_document(doc_id: int, payload: KnowledgeDocumentUpdateRequest) -> dic
     return success_response(data=result, trace_id=payload.trace_id)
 
 
+@router.delete("/knowledge/documents/{doc_id}")
+def delete_document(
+    doc_id: int,
+    operator_id: int | None = None,
+    org_id: int | None = None,
+    trace_id: str | None = None,
+) -> dict:
+    container = get_container()
+    result = container.knowledge_service.delete_document(
+        doc_id=doc_id,
+        operator_id=operator_id,
+        org_id=org_id,
+        trace_id=trace_id,
+    )
+    return success_response(data=result, trace_id=trace_id)
+
+
 @router.post("/knowledge/documents/{doc_id}/submit-review")
 def submit_review(doc_id: int, payload: KnowledgeVersionActionRequest) -> dict:
     container = get_container()

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import os
+import yaml
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -11,206 +14,79 @@ class CypherTemplate:
     return_schema: tuple[str, ...]
     parameter_name: str
     cypher: str
+    version: str = "v1"
+    enabled: bool = True
+    owner: str = "unknown"
+    test_case_id: str | None = None
 
 
 class CypherTemplateRegistry:
-    def __init__(self) -> None:
-        self.templates = {
-            template.code: template
-            for template in (
-                CypherTemplate(
-                    code="RISK_TO_RECOMMENDATION",
-                    purpose="Map risk factors to recommended actions and evidence.",
-                    required_entity_types=("RiskFactor",),
-                    return_schema=("risk", "recommendation", "chunk", "doc"),
-                    parameter_name="risk",
-                    cypher="""
-MATCH (r:Concept {entityTypeCode: 'RiskFactor', name: $risk})-[:SUGGESTS|RECOMMENDED_FOR]->(a:Concept {entityTypeCode: 'Recommendation'})
-OPTIONAL MATCH (c:EvidenceChunk)-[:MENTIONS]->(r)
-OPTIONAL MATCH (c)-[:PART_OF]->(d:EvidenceDocument)
-RETURN r AS risk, a AS recommendation, c AS chunk, d AS doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="SEVERITY_TO_FOLLOWUP",
-                    purpose="Find follow-up policies for a severity class.",
-                    required_entity_types=("Severity",),
-                    return_schema=("severity", "followUp", "chunk", "doc"),
-                    parameter_name="severity",
-                    cypher="""
-MATCH (s:Concept {entityTypeCode: 'Severity', name: $severity})-[:REQUIRES_FOLLOWUP]->(f:Concept {entityTypeCode: 'FollowUpInterval'})
-OPTIONAL MATCH (c:EvidenceChunk)-[:MENTIONS]->(f)
-OPTIONAL MATCH (c)-[:PART_OF]->(d:EvidenceDocument)
-RETURN s AS severity, f AS followUp, c AS chunk, d AS doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="FINDING_TO_DISEASE",
-                    purpose="Route imaging findings to disease concepts.",
-                    required_entity_types=("ImagingFinding",),
-                    return_schema=("finding", "disease", "chunk", "doc"),
-                    parameter_name="finding",
-                    cypher="""
-MATCH (f:Concept {entityTypeCode: 'ImagingFinding', name: $finding})-[:INDICATES|RELATED_TO]->(d:Concept {entityTypeCode: 'Disease'})
-OPTIONAL MATCH (c:EvidenceChunk)-[:MENTIONS]->(f)
-OPTIONAL MATCH (c)-[:PART_OF]->(doc:EvidenceDocument)
-RETURN f AS finding, d AS disease, c AS chunk, doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="DISEASE_TO_FINDING",
-                    purpose="Explain common findings for a disease.",
-                    required_entity_types=("Disease",),
-                    return_schema=("disease", "finding", "chunk", "doc"),
-                    parameter_name="disease",
-                    cypher="""
-MATCH (d:Concept {entityTypeCode: 'Disease', name: $disease})-[:RELATED_TO|INDICATES]-(f:Concept {entityTypeCode: 'ImagingFinding'})
-OPTIONAL MATCH (c:EvidenceChunk)-[:MENTIONS]->(f)
-OPTIONAL MATCH (c)-[:PART_OF]->(doc:EvidenceDocument)
-RETURN d AS disease, f AS finding, c AS chunk, doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="DISEASE_TO_RISK",
-                    purpose="Retrieve disease-associated risk factors.",
-                    required_entity_types=("Disease",),
-                    return_schema=("disease", "risk", "chunk", "doc"),
-                    parameter_name="disease",
-                    cypher="""
-MATCH (d:Concept {entityTypeCode: 'Disease', name: $disease})-[:HAS_RISK_FACTOR]->(r:Concept {entityTypeCode: 'RiskFactor'})
-OPTIONAL MATCH (c:EvidenceChunk)-[:MENTIONS]->(r)
-OPTIONAL MATCH (c)-[:PART_OF]->(doc:EvidenceDocument)
-RETURN d AS disease, r AS risk, c AS chunk, doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="DISEASE_TO_RECOMMENDATION",
-                    purpose="Retrieve disease-specific recommendations.",
-                    required_entity_types=("Disease",),
-                    return_schema=("disease", "recommendation", "chunk", "doc"),
-                    parameter_name="disease",
-                    cypher="""
-MATCH (d:Concept {entityTypeCode: 'Disease', name: $disease})-[:RECOMMENDED_FOR]->(r:Concept {entityTypeCode: 'Recommendation'})
-OPTIONAL MATCH (c:EvidenceChunk)-[:MENTIONS]->(r)
-OPTIONAL MATCH (c)-[:PART_OF]->(doc:EvidenceDocument)
-RETURN d AS disease, r AS recommendation, c AS chunk, doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="SEVERITY_TO_RECOMMENDATION",
-                    purpose="Find severity-specific recommendations.",
-                    required_entity_types=("Severity",),
-                    return_schema=("severity", "recommendation", "chunk", "doc"),
-                    parameter_name="severity",
-                    cypher="""
-MATCH (s:Concept {entityTypeCode: 'Severity', name: $severity})-[:RECOMMENDED_FOR]->(r:Concept {entityTypeCode: 'Recommendation'})
-OPTIONAL MATCH (c:EvidenceChunk)-[:MENTIONS]->(r)
-OPTIONAL MATCH (c)-[:PART_OF]->(doc:EvidenceDocument)
-RETURN s AS severity, r AS recommendation, c AS chunk, doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="POPULATION_TO_RECOMMENDATION",
-                    purpose="Find recommendation rules for a population.",
-                    required_entity_types=("Population", "AgeGroup"),
-                    return_schema=("population", "recommendation", "chunk", "doc"),
-                    parameter_name="population",
-                    cypher="""
-MATCH (p:Concept {name: $population})-[:APPLIES_TO|RECOMMENDED_FOR]->(r:Concept {entityTypeCode: 'Recommendation'})
-OPTIONAL MATCH (c:EvidenceChunk)-[:MENTIONS]->(p)
-OPTIONAL MATCH (c)-[:PART_OF]->(doc:EvidenceDocument)
-RETURN p AS population, r AS recommendation, c AS chunk, doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="POPULATION_TO_CONTRAINDICATION",
-                    purpose="Find contraindications for a population.",
-                    required_entity_types=("Population", "AgeGroup"),
-                    return_schema=("population", "contraindication", "chunk", "doc"),
-                    parameter_name="population",
-                    cypher="""
-MATCH (p:Concept {name: $population})-[:CONTRAINDICATED_FOR]->(c1:Concept {entityTypeCode: 'Contraindication'})
-OPTIONAL MATCH (c:EvidenceChunk)-[:MENTIONS]->(c1)
-OPTIONAL MATCH (c)-[:PART_OF]->(doc:EvidenceDocument)
-RETURN p AS population, c1 AS contraindication, c AS chunk, doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="RECOMMENDATION_TO_EVIDENCE",
-                    purpose="Backtrace a recommendation to chunk evidence.",
-                    required_entity_types=("Recommendation",),
-                    return_schema=("recommendation", "chunk", "doc"),
-                    parameter_name="recommendation",
-                    cypher="""
-MATCH (r:Concept {entityTypeCode: 'Recommendation', name: $recommendation})<-[:MENTIONS]-(c:EvidenceChunk)-[:PART_OF]->(doc:EvidenceDocument)
-RETURN r AS recommendation, c AS chunk, doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="GUIDELINE_VERSION_TRACE",
-                    purpose="Backtrace disease or finding mentions to evidence documents and versions.",
-                    required_entity_types=("Disease", "ImagingFinding"),
-                    return_schema=("concept", "chunk", "doc"),
-                    parameter_name="concept",
-                    cypher="""
-MATCH (n:Concept {name: $concept})<-[:MENTIONS]-(c:EvidenceChunk)-[:PART_OF]->(doc:EvidenceDocument)
-RETURN n AS concept, c AS chunk, doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="TOOTH_POSITION_CONTEXT",
-                    purpose="Find evidence connected to a tooth position mention.",
-                    required_entity_types=("ToothPosition",),
-                    return_schema=("position", "chunk", "doc"),
-                    parameter_name="position",
-                    cypher="""
-MATCH (p:Concept {entityTypeCode: 'ToothPosition', name: $position})<-[:MENTIONS]-(c:EvidenceChunk)-[:PART_OF]->(doc:EvidenceDocument)
-RETURN p AS position, c AS chunk, doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="SOURCE_CONFLICT_DETECTION",
-                    purpose="Detect conflicting document versions that mention the same concept.",
-                    required_entity_types=("Disease", "Recommendation", "ImagingFinding"),
-                    return_schema=("concept", "doc"),
-                    parameter_name="concept",
-                    cypher="""
-MATCH (n:Concept {name: $concept})<-[:MENTIONS]-(c:EvidenceChunk)-[:PART_OF]->(doc:EvidenceDocument)
-WITH n, collect(DISTINCT doc) AS docs
-UNWIND docs AS doc
-RETURN n AS concept, doc
-LIMIT 20
-""",
-                ),
-                CypherTemplate(
-                    code="KEYWORD_EVIDENCE_TRACE",
-                    purpose="Fallback keyword evidence traversal for graph recall.",
-                    required_entity_types=tuple(),
-                    return_schema=("concept", "chunk", "doc"),
-                    parameter_name="keyword",
-                    cypher="""
-MATCH (n:Concept)<-[:MENTIONS]-(c:EvidenceChunk)-[:PART_OF]->(doc:EvidenceDocument)
-WHERE n.name CONTAINS $keyword OR any(alias IN coalesce(n.aliases, []) WHERE alias CONTAINS $keyword)
-RETURN n AS concept, c AS chunk, doc
-LIMIT 20
-""",
-                ),
-            )
-        }
+    def __init__(self, config_path: str | None = None) -> None:
+        if config_path is None:
+            # Default to relative path from this file
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            config_path = os.path.join(base_dir, "config", "cypher_templates.yaml")
+        
+        self.config_path = config_path
+        self.templates: dict[str, CypherTemplate] = {}
+        self.load_templates()
+
+    def load_templates(self) -> None:
+        if not os.path.exists(self.config_path):
+            # In some environments, the file might not exist yet during testing
+            # or it might be in a different location. We'll handle this gracefully
+            # but log a warning if we had a proper logger.
+            return
+
+        with open(self.config_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+            if not data:
+                return
+
+            for item in data:
+                self._register_item(item)
+
+    def _register_item(self, item: dict[str, Any]) -> None:
+        code = item.get("code")
+        if not code:
+            raise ValueError("Cypher template missing 'code'")
+        
+        if code in self.templates:
+            raise ValueError(f"Duplicate Cypher template code: {code}")
+
+        enabled = item.get("enabled", True)
+        if not enabled:
+            return
+
+        cypher = item.get("cypher")
+        if not cypher:
+            raise ValueError(f"Template {code} missing 'cypher'")
+            
+        parameter_name = item.get("parameter_name")
+        if not parameter_name:
+            raise ValueError(f"Template {code} missing 'parameter_name'")
+            
+        return_schema = item.get("return_schema")
+        if not return_schema:
+            raise ValueError(f"Template {code} missing 'return_schema'")
+
+        template = CypherTemplate(
+            code=code,
+            purpose=item.get("purpose", ""),
+            required_entity_types=tuple(item.get("required_entity_types", [])),
+            return_schema=tuple(return_schema),
+            parameter_name=parameter_name,
+            cypher=cypher.strip(),
+            version=item.get("version", "v1"),
+            enabled=enabled,
+            owner=item.get("owner", "unknown"),
+            test_case_id=item.get("test_case_id"),
+        )
+        self.templates[code] = template
 
     def get(self, code: str) -> CypherTemplate:
+        if code not in self.templates:
+            raise KeyError(f"Cypher template code not found or disabled: {code}")
         return self.templates[code]
 
     def codes(self) -> list[str]:

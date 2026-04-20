@@ -158,6 +158,11 @@ class RagDebugMeta(CamelModel):
     evidence_sufficient: bool
     rerank_provider: str | None = None
     rerank_model: str | None = None
+    channel_hit_summary: dict[str, int] | None = None
+    provider_summary: dict[str, str] | None = None
+    index_summary: str | None = None
+    graph_used: bool = False
+    graph_fallback_used: bool = False
 
 
 class RagAnswer(CamelModel):
@@ -178,4 +183,7 @@ class RagAnswer(CamelModel):
     case_context_summary: str | None = None
     trace_id: str | None = None
     latency_ms: int
+    retrieval_channel_summary: dict[str, int] | None = None
+    evidence_sufficient: bool = True
+    distinct_document_count: int = 0
     debug: RagDebugMeta | None = None

@@ -16,7 +16,7 @@ from app.schemas.request import PatientProfile
 from app.services.risk_fusion_service import RiskFusionService
 
 
-class RiskFusionAdapter(BaseModelAdapter):
+class RiskHeuristicFusionAdapter(BaseModelAdapter):
     """Heuristic risk-fusion adapter for Phase 5D."""
 
     model_code = "risk-fusion-heuristic-v1"

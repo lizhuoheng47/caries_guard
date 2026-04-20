@@ -20,7 +20,7 @@ from app.infra.model.base_model import BaseModelAdapter, ImplType
 log = get_logger("cariesguard-ai.model.grading")
 
 
-class GradingModelAdapter(BaseModelAdapter):
+class GradingHeuristicAdapter(BaseModelAdapter):
     """Heuristic caries grading adapter for Phase 5C."""
 
     model_code = "caries-grading-heuristic-v1"

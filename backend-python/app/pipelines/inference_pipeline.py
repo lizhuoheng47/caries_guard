@@ -31,6 +31,7 @@ from app.schemas.callback import (
 )
 from app.schemas.request import AnalyzeRequest, ImageInput
 from app.services.image_fetch_service import FetchedImage, ImageFetchService, TaskWorkspace
+from app.services.qwen_vision_service import QwenVisionService, VisionAnalysisResult
 from app.services.risk_service import RiskService
 from app.services.visual_asset_service import VisualAssetService
 
@@ -51,6 +52,7 @@ class InferencePipeline:
         grading_pipeline: GradingPipeline | None = None,
         risk_pipeline: RiskPipeline | None = None,
         ai_runtime_repository: AiRuntimeRepository | None = None,
+        qwen_vision_service: QwenVisionService | None = None,
     ) -> None:
         self.settings = settings
         self.image_fetch_service = image_fetch_service
@@ -63,6 +65,7 @@ class InferencePipeline:
         self.grading_pipeline = grading_pipeline
         self.risk_pipeline = risk_pipeline
         self.ai_runtime_repository = ai_runtime_repository
+        self.qwen_vision_service = qwen_vision_service
 
     def run(self, raw_task: dict[str, Any]) -> dict[str, Any]:
         task = self._parse_task(raw_task)
@@ -88,6 +91,7 @@ class InferencePipeline:
 
             # ── Phase 5A: mode-aware tooth detection ────────────────────
             tooth_detections = self.detection_pipeline.detect_all(task.images, fetched_images)
+            qwen_vision_result = self._analyze_with_qwen(task, fetched_images, tooth_detections)
 
             visual_assets, segmentation_result = self._create_visual_assets(
                 task,
@@ -95,12 +99,14 @@ class InferencePipeline:
                 workspace,
                 model_version,
                 tooth_detections,
+                qwen_vision_result,
             )
             grading_result = self._create_grading_result(
                 task,
                 fetched_images,
                 segmentation_result,
                 tooth_detections,
+                qwen_vision_result,
             )
             risk_result = self._create_risk_result(
                 task,
@@ -160,6 +166,8 @@ class InferencePipeline:
             "segmentationImplType": segmentation_impl_type,
             "segmentationRegions": segmentation_result.regions if segmentation_result is not None else [],
             "segmentationRawResult": segmentation_result.raw_result if segmentation_result is not None else {},
+            "annotationProvider": "QWEN" if qwen_vision_result is not None else None,
+            "annotationModel": self.settings.qwen_vision_model if qwen_vision_result is not None else None,
             "gradingMode": grading_result.grading_mode,
             "gradingImplType": grading_result.grading_impl_type,
             "gradingLabel": grading_result.grading_label,
@@ -180,20 +188,18 @@ class InferencePipeline:
             "doctorReviewRequiredReason": review_reason if grading_result.needs_review else None,
             "qualityCheckResults": [dump_camel(item) for item in quality_results],
             "toothDetections": [dump_camel(td) for td in tooth_detections],
-            "lesionResults": [
-                dump_camel(
-                    LesionResult(
-                        image_id=first_image_id,
-                        tooth_code=tooth_detections[0].tooth_code if tooth_detections else "16",
-                        severity_code=grading_result.grading_label,
-                        uncertainty_score=grading_result.uncertainty_score,
-                        lesion_area_px=512,
-                        lesion_area_ratio=0.01,
-                        mask_asset=self._asset_ref(visual_assets, "MASK"),
-                        overlay_asset=self._asset_ref(visual_assets, "OVERLAY"),
-                    )
-                )
-            ],
+            "lesionResults": self._build_lesion_results(
+                first_image_id,
+                tooth_detections,
+                grading_result,
+                visual_assets,
+                qwen_vision_result,
+            ),
+            "lesionCount": len(qwen_vision_result.findings) if qwen_vision_result is not None else 1,
+            "abnormalToothCount": self._abnormal_tooth_count(tooth_detections, qwen_vision_result),
+            "clinicalSummary": qwen_vision_result.clinical_summary if qwen_vision_result is not None else None,
+            "treatmentPlan": qwen_vision_result.treatment_plan if qwen_vision_result is not None else [],
+            "qwenVisionRawResult": qwen_vision_result.raw_result if qwen_vision_result is not None else None,
             "riskAssessment": dump_camel(risk_assessment),
             "visualAssets": [dump_camel(item) for item in visual_assets],
         }
@@ -295,6 +301,7 @@ class InferencePipeline:
         workspace: Path,
         model_version: str,
         tooth_detections: list[ToothDetection],
+        qwen_vision_result: VisionAnalysisResult | None = None,
     ) -> tuple[list[VisualAsset], SegmentationResult | None]:
         if not fetched_images or self.visual_asset_service is None:
             return [], None
@@ -304,6 +311,54 @@ class InferencePipeline:
         image_id = first_image.image_id
         generated_dir = workspace / "visual"
         generated_dir.mkdir(parents=True, exist_ok=True)
+
+        if qwen_vision_result is not None and self.qwen_vision_service is not None:
+            rendered = self.qwen_vision_service.render_visual_assets(
+                first_image.path,
+                qwen_vision_result,
+                generated_dir,
+            )
+            tooth_code = self._vision_tooth_code(qwen_vision_result)
+            assets = [
+                self.visual_asset_service.upload_visual(
+                    "MASK",
+                    task.org_id,
+                    case_no,
+                    task.task_no,
+                    model_version,
+                    image_id,
+                    rendered.mask_path,
+                    tooth_code=tooth_code,
+                ),
+                self.visual_asset_service.upload_visual(
+                    "OVERLAY",
+                    task.org_id,
+                    case_no,
+                    task.task_no,
+                    model_version,
+                    image_id,
+                    rendered.overlay_path,
+                    tooth_code=tooth_code,
+                ),
+                self.visual_asset_service.upload_visual(
+                    "HEATMAP",
+                    task.org_id,
+                    case_no,
+                    task.task_no,
+                    model_version,
+                    image_id,
+                    rendered.heatmap_path,
+                ),
+            ]
+            return assets, SegmentationResult(
+                segmentation_mode="real",
+                segmentation_impl_type="VLM_API",
+                regions=qwen_vision_result.to_regions(),
+                mask_path=rendered.mask_path,
+                overlay_path=rendered.overlay_path,
+                heatmap_path=rendered.heatmap_path,
+                raw_result=qwen_vision_result.raw_result,
+            )
 
         if self.segmentation_pipeline is not None:
             segmentation_result = self.segmentation_pipeline.segment(
@@ -362,7 +417,30 @@ class InferencePipeline:
         fetched_images: list[FetchedImage],
         segmentation_result: SegmentationResult | None,
         tooth_detections: list[ToothDetection],
+        qwen_vision_result: VisionAnalysisResult | None = None,
     ) -> GradingResult:
+        if qwen_vision_result is not None:
+            uncertainty_score = qwen_vision_result.overall_uncertainty_score
+            needs_review = uncertainty_score >= self.settings.uncertainty_review_threshold
+            raw_result = dict(qwen_vision_result.raw_result)
+            raw_result.update(
+                {
+                    "reviewThreshold": self.settings.uncertainty_review_threshold,
+                    "needsReview": needs_review,
+                    "clinicalSummary": qwen_vision_result.clinical_summary,
+                    "treatmentPlan": qwen_vision_result.treatment_plan,
+                }
+            )
+            return GradingResult(
+                grading_mode="real",
+                grading_impl_type="VLM_API",
+                grading_label=qwen_vision_result.overall_severity_code,
+                confidence_score=qwen_vision_result.overall_confidence_score,
+                uncertainty_score=uncertainty_score,
+                needs_review=needs_review,
+                raw_result=raw_result,
+            )
+
         if self.grading_pipeline is None:
             uncertainty_score = 0.1
             return GradingResult(
@@ -387,6 +465,43 @@ class InferencePipeline:
             regions,
             tooth_detections,
         )
+
+    def _analyze_with_qwen(
+        self,
+        task: AnalyzeRequest,
+        fetched_images: list[FetchedImage],
+        tooth_detections: list[ToothDetection],
+    ) -> VisionAnalysisResult | None:
+        if self.qwen_vision_service is None or not self.qwen_vision_service.is_enabled():
+            return None
+        if self.model_registry.get_runtime_mode() == "mock" or not fetched_images:
+            return None
+
+        first_image = fetched_images[0]
+        relevant_detections = [
+            item
+            for item in tooth_detections
+            if item.image_id in {None, first_image.image_id}
+        ]
+        try:
+            result = self.qwen_vision_service.analyze(
+                first_image.path,
+                first_image.image_id,
+                relevant_detections,
+            )
+            log.info(
+                "qwen vision completed taskNo=%s imageId=%s findings=%s severity=%s",
+                task.task_no,
+                first_image.image_id,
+                len(result.findings),
+                result.overall_severity_code,
+            )
+            return result
+        except Exception as exc:
+            if self.model_registry.get_runtime_mode() == "real":
+                raise BusinessException("M5010", f"qwen vision analysis failed: {exc}") from exc
+            log.warning("qwen vision failed - fallback to existing pipeline (hybrid) error=%s", exc)
+            return None
 
     def _create_risk_result(
         self,
@@ -589,6 +704,57 @@ class InferencePipeline:
                 return AssetRef(bucket_name=asset.bucket_name, object_key=asset.object_key)
         return None
 
+    def _build_lesion_results(
+        self,
+        image_id: int | None,
+        tooth_detections: list[ToothDetection],
+        grading_result: GradingResult,
+        visual_assets: list[VisualAsset],
+        qwen_vision_result: VisionAnalysisResult | None,
+    ) -> list[dict[str, Any]]:
+        if qwen_vision_result is not None:
+            results: list[dict[str, Any]] = []
+            for finding in qwen_vision_result.findings:
+                results.append(
+                    dump_camel(
+                        LesionResult(
+                            image_id=image_id,
+                            tooth_code=finding.tooth_code or (tooth_detections[0].tooth_code if tooth_detections else "16"),
+                            severity_code=finding.severity_code,
+                            uncertainty_score=finding.uncertainty_score,
+                            lesion_area_px=finding.lesion_area_px,
+                            lesion_area_ratio=finding.lesion_area_ratio,
+                            mask_asset=self._asset_ref(visual_assets, "MASK"),
+                            overlay_asset=self._asset_ref(visual_assets, "OVERLAY"),
+                        )
+                    )
+                )
+            return results
+
+        return [
+            dump_camel(
+                LesionResult(
+                    image_id=image_id,
+                    tooth_code=tooth_detections[0].tooth_code if tooth_detections else "16",
+                    severity_code=grading_result.grading_label,
+                    uncertainty_score=grading_result.uncertainty_score,
+                    lesion_area_px=512,
+                    lesion_area_ratio=0.01,
+                    mask_asset=self._asset_ref(visual_assets, "MASK"),
+                    overlay_asset=self._asset_ref(visual_assets, "OVERLAY"),
+                )
+            )
+        ]
+
+    @staticmethod
+    def _abnormal_tooth_count(
+        tooth_detections: list[ToothDetection],
+        qwen_vision_result: VisionAnalysisResult | None,
+    ) -> int:
+        if qwen_vision_result is None:
+            return 1 if tooth_detections else 0
+        return len({item.tooth_code for item in qwen_vision_result.findings if item.tooth_code})
+
     @staticmethod
     def _segmentation_tooth_code(segmentation_result: SegmentationResult) -> str:
         for region in segmentation_result.regions:
@@ -596,6 +762,13 @@ class InferencePipeline:
             if tooth_code:
                 return str(tooth_code)
         return "16"
+
+    @staticmethod
+    def _vision_tooth_code(result: VisionAnalysisResult) -> str | None:
+        for finding in result.findings:
+            if finding.tooth_code:
+                return finding.tooth_code
+        return None
 
     def _review_reason(
         self,

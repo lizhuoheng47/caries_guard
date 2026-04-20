@@ -1,0 +1,38 @@
+{
+  "importResults": [],
+  "rebuildResults": [
+    {
+      "index": 1,
+      "kbCode": "kb_clinical_guideline",
+      "traceId": "kb-import-01-1c92553c1dfe",
+      "rebuildJobNo": "KBREBUILD-49803049A2DE4161",
+      "rebuildStatusCode": "SUCCESS",
+      "chunkCount": 14,
+      "graphStats": {
+        "kbCode": "kb_clinical_guideline",
+        "entityCount": 4,
+        "relationCount": 0,
+        "embeddingProvider": "HASHING",
+        "embeddingModel": "text-embedding-3-small",
+        "embeddingVersion": "2026-04"
+      }
+    },
+    {
+      "index": 2,
+      "kbCode": "kb_patient_education",
+      "traceId": "kb-import-02-0cf59da67508",
+      "rebuildJobNo": "KBREBUILD-762BC4B0B8144972",
+      "rebuildStatusCode": "SUCCESS",
+      "chunkCount": 4,
+      "graphStats": {
+        "kbCode": "kb_patient_education",
+        "entityCount": 4,
+        "relationCount": 0,
+        "embeddingProvider": "HASHING",
+        "embeddingModel": "text-embedding-3-small",
+        "embeddingVersion": "2026-04"
+      }
+    }
+  ],
+  "generatedAtEpoch": 1776611585
+}

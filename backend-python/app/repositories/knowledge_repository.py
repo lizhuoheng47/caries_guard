@@ -401,6 +401,54 @@ class KnowledgeRepository:
             row = session.execute(stmt).scalars().first()
             return _row_to_dict(row) if row else None
 
+    def ensure_document_version_row(
+        self,
+        doc_id: int,
+        version_no: str,
+        *,
+        parent_version_no: str | None,
+        normalized_content: str | None,
+        source_file_id: int | None,
+        review_status_code: str | None,
+        publish_status_code: str | None,
+        org_id: int | None,
+        created_by: int | None,
+        change_summary: str | None = "Auto backfill missing version row",
+    ) -> dict[str, Any]:
+        now = local_naive_now()
+        with session_scope() as session:
+            existing = session.execute(
+                select(KnowledgeDocumentVersion).where(
+                    KnowledgeDocumentVersion.doc_id == doc_id,
+                    KnowledgeDocumentVersion.version_no == version_no,
+                )
+            ).scalar_one_or_none()
+            if existing is not None:
+                return _row_to_dict(existing)
+
+            row = KnowledgeDocumentVersion(
+                doc_id=doc_id,
+                version_no=version_no,
+                parent_version_no=parent_version_no,
+                normalized_content=normalized_content,
+                structured_json=None,
+                section_tree=None,
+                table_json=None,
+                metadata_json=None,
+                change_summary=change_summary,
+                source_file_id=source_file_id,
+                review_status_code=review_status_code or "PENDING",
+                publish_status_code=publish_status_code or "DRAFT",
+                org_id=org_id,
+                created_by=created_by,
+                updated_by=created_by,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            session.flush()
+            return _row_to_dict(row)
+
     def list_document_versions(self, doc_id: int) -> list[dict[str, Any]]:
         with session_scope() as session:
             rows = session.execute(

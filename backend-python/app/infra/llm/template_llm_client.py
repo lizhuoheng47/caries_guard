@@ -1,17 +1,32 @@
 from __future__ import annotations
 
+from app.core.config import Settings
 from app.infra.llm.base_llm_client import LlmResult
 
 
 class TemplateLlmClient:
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+
     def generate(self, scene: str, query: str, evidence: list[dict], context_text: str | None = None) -> LlmResult:
+        if self.settings.ai_runtime_mode in {"real", "competition"}:
+            # Although 'competition' usually uses hybrid, the doc says:
+            # "若 competition-hybrid / real 模式仍命中该 client，则直接抛错"
+            # Note: in my previous turn I updated competition.env to 'hybrid'.
+            # I will check if runtime_mode is 'real' or if provider is specifically restricted.
+            pass
+
+        # Strict check as per doc
+        if self.settings.ai_runtime_mode == "real" or self.settings.app_env == "competition":
+             raise RuntimeError(f"TemplateLlmClient (MOCK) is forbidden in {self.settings.ai_runtime_mode} mode")
+
         prompt = self._build_prompt(scene, query, evidence, context_text)
         if not evidence:
             answer = (
                 "当前知识库没有检索到足够依据。建议补充已审核知识文档后再生成结论；"
                 "如涉及疼痛、肿胀、牙体缺损或高风险因素，应由口腔医生线下复核。"
             )
-            return LlmResult(answer_text=answer, prompt_text=prompt)
+            return LlmResult(answer_text=answer, prompt_text=prompt, provider="MOCK", model="template-llm-v1")
 
         citations = " ".join(f"[{index}]" for index in range(1, len(evidence) + 1))
         if scene == "PATIENT_EXPLAIN":
@@ -22,7 +37,7 @@ class TemplateLlmClient:
             advice = "该回答仅用于辅助复核，应结合影像、病史、检查和医生判断形成最终意见。"
         snippets = "；".join(item["chunk_text"].strip().replace("\n", " ")[:120] for item in evidence[:3])
         answer = f"{lead}{snippets}。{advice} 依据：{citations}"
-        return LlmResult(answer_text=answer, prompt_text=prompt)
+        return LlmResult(answer_text=answer, prompt_text=prompt, provider="MOCK", model="template-llm-v1")
 
     @staticmethod
     def _build_prompt(scene: str, query: str, evidence: list[dict], context_text: str | None) -> str:

@@ -87,6 +87,7 @@ class OpenSearchIndexService:
         version: dict[str, Any],
         chunks: list[dict[str, Any]],
     ) -> dict[str, Any]:
+        self._validate_embedding_metadata_consistency()
         self.ensure_indices()
         vectors = self._embed_chunk_texts([chunk["chunk_text"] for chunk in chunks])
         bulk_actions = []
@@ -176,6 +177,7 @@ class OpenSearchIndexService:
 
     def dense_search(self, kb_code: str, query: str, top_k: int) -> list[dict[str, Any]]:
         self.ensure_indices()
+        self._validate_index_dimension()
         query_vector = self.embedding_provider.embed(query)
         result = self.client.search(
             index=self.settings.opensearch_chunk_index,
@@ -204,16 +206,73 @@ class OpenSearchIndexService:
 
     def rebuild_documents(self, kb_code: str, versioned_documents: list[tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]]) -> dict[str, Any]:
         processed = []
+        total_chunks = 0
         for document, version, chunks in versioned_documents:
             self.delete_document_chunks(int(document["id"]))
+            res = self.index_document_version(kb_code, document, version, chunks)
             processed.append(
                 {
                     "docId": document["id"],
                     "docNo": document["doc_no"],
-                    **self.index_document_version(kb_code, document, version, chunks),
+                    **res,
                 }
             )
-        return {"kbCode": kb_code, "processedDocuments": processed}
+            total_chunks += res.get("indexedChunkCount", 0)
+        return {
+            "kbCode": kb_code,
+            "processedDocuments": processed,
+            "totalDocs": len(processed),
+            "totalChunks": total_chunks,
+            "embeddingProvider": self.embedding_provider.metadata.provider,
+            "embeddingModel": self.embedding_provider.metadata.model,
+            "embeddingVersion": self.embedding_provider.metadata.version,
+        }
+
+    def _validate_embedding_metadata_consistency(self) -> None:
+        """Check if existing index has different embedding metadata to prevent contamination."""
+        index_name = self.settings.opensearch_chunk_index
+        if not self.client.indices.exists(index=index_name):
+            return
+
+        # Sample one document to check metadata
+        query = {"query": {"match_all": {}}, "size": 1}
+        res = self.client.search(index=index_name, body=query)
+        hits = res.get("hits", {}).get("hits", [])
+        if not hits:
+            return
+
+        source = hits[0].get("_source", {})
+        old_provider = source.get("embeddingProvider")
+        old_model = source.get("embeddingModel")
+        
+        current = self.embedding_provider.metadata
+        if old_provider and old_provider != current.provider:
+            raise RuntimeError(
+                f"Index metadata mismatch: Index uses '{old_provider}', "
+                f"but current provider is '{current.provider}'. Rebuild required."
+            )
+        if old_model and old_model != current.model:
+             raise RuntimeError(
+                f"Index metadata mismatch: Index uses model '{old_model}', "
+                f"but current model is '{current.model}'. Rebuild required."
+            )
+
+    def _validate_index_dimension(self) -> None:
+        """Ensure the search vector dimension matches the index mapping."""
+        index_name = self.settings.opensearch_chunk_index
+        if not self.client.indices.exists(index=index_name):
+            return
+
+        mapping = self.client.indices.get_mapping(index=index_name)
+        props = mapping.get(index_name, {}).get("mappings", {}).get("properties", {})
+        dense_vector = props.get("denseVector", {})
+        index_dim = dense_vector.get("dimension")
+        
+        if index_dim is not None and index_dim != self.embedding_provider.metadata.dimension:
+            raise ValueError(
+                f"Dimension mismatch: Index '{index_name}' expects {index_dim}, "
+                f"but provider generates {self.embedding_provider.metadata.dimension}."
+            )
 
     def _embed_chunk_texts(self, texts: list[str]) -> list[list[float]]:
         vectors: list[list[float]] = []

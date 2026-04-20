@@ -52,6 +52,10 @@ public class HttpRagAdminClient {
         return exchange("PUT", path, null, serialize(payload), "application/json", traceId);
     }
 
+    public Object delete(String path, Map<String, ?> queryParams, String traceId) {
+        return exchange("DELETE", path, queryParams, null, "application/json", traceId);
+    }
+
     public Object multipart(String path, MultipartFile file, Map<String, ?> formFields, String traceId) {
         String boundary = "----CariesGuardBoundary" + UUID.randomUUID();
         try {

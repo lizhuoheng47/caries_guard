@@ -1,0 +1,13 @@
+{
+  "total_kept": 26,
+  "total_rejected": 6,
+  "visited_count": 32,
+  "domain_seen_counts": {
+    "ada.org": 3,
+    "aapd.org": 1,
+    "who.int": 1,
+    "nidcr.nih.gov": 4,
+    "cdc.gov": 16,
+    "cndent.com": 1
+  }
+}

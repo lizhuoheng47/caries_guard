@@ -2,6 +2,7 @@ services:
   mysql:
     image: mysql:8.4
     container_name: caries-mysql
+    profiles: ["dev", "competition", "staging-real"]
     environment:
       MYSQL_ROOT_PASSWORD: ${CARIES_MYSQL_PASSWORD:-1234}
       TZ: Asia/Shanghai
@@ -25,6 +26,7 @@ services:
   mysql-init:
     image: mysql:8.4
     container_name: caries-mysql-init
+    profiles: ["dev", "competition", "staging-real"]
     depends_on:
       mysql:
         condition: service_healthy
@@ -48,6 +50,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: caries-redis
+    profiles: ["dev", "competition", "staging-real"]
     ports:
       - "${CARIES_REDIS_HOST_PORT:-16379}:6379"
     healthcheck:
@@ -61,6 +64,7 @@ services:
   rabbitmq:
     image: rabbitmq:3.13-management
     container_name: caries-rabbitmq
+    profiles: ["dev", "competition", "staging-real"]
     environment:
       RABBITMQ_DEFAULT_USER: ${CARIES_RABBIT_USERNAME:-guest}
       RABBITMQ_DEFAULT_PASS: ${CARIES_RABBIT_PASSWORD:-guest}
@@ -78,6 +82,7 @@ services:
   minio:
     image: minio/minio:latest
     container_name: caries-minio
+    profiles: ["dev", "competition", "staging-real"]
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${CARIES_MINIO_ACCESS_KEY:-minioadmin}
@@ -93,6 +98,7 @@ services:
   minio-init:
     image: minio/mc:latest
     container_name: caries-minio-init
+    profiles: ["dev", "competition", "staging-real"]
     depends_on:
       minio:
         condition: service_started
@@ -133,6 +139,7 @@ services:
   opensearch:
     image: opensearchproject/opensearch:2.19.1
     container_name: caries-opensearch
+    profiles: ["dev", "competition", "staging-real"]
     environment:
       discovery.type: single-node
       DISABLE_INSTALL_DEMO_CONFIG: "true"
@@ -159,6 +166,7 @@ services:
   neo4j:
     image: neo4j:5.26-community
     container_name: caries-neo4j
+    profiles: ["dev", "competition", "staging-real"]
     environment:
       NEO4J_AUTH: ${CARIES_NEO4J_AUTH:-neo4j/cariesguard}
       NEO4J_server_default__listen__address: 0.0.0.0
@@ -183,6 +191,7 @@ services:
       context: ./backend-java
       dockerfile: Dockerfile
     container_name: caries-backend-java
+    profiles: ["dev", "competition", "staging-real"]
     environment:
       SPRING_PROFILES_ACTIVE: docker
       CARIES_MYSQL_HOST: mysql
@@ -217,6 +226,11 @@ services:
       TZ: Asia/Shanghai
     ports:
       - "${CARIES_BACKEND_JAVA_HOST_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health >/dev/null || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
     depends_on:
       mysql-init:
         condition: service_completed_successfully
@@ -235,11 +249,13 @@ services:
         aliases:
           - backend-java
 
+
   backend-python:
     build:
       context: ./backend-python
       dockerfile: Dockerfile
     container_name: caries-backend-python
+    profiles: ["dev", "competition", "staging-real"]
     environment:
       CG_RABBIT_HOST: rabbitmq
       CG_RABBIT_PORT: 5672
@@ -270,30 +286,32 @@ services:
       CG_DB_MIGRATION_ENABLED: "true"
       CG_RAG_INDEX_DIR: ${CG_RAG_INDEX_DIR:-/tmp/cariesguard/vector-index}
       CG_RAG_KNOWLEDGE_VERSION: ${CG_RAG_KNOWLEDGE_VERSION:-v1.0}
-      CG_RAG_VECTOR_STORE_TYPE: ${CG_RAG_VECTOR_STORE_TYPE:-OPENSEARCH}
+      CG_RAG_VECTOR_STORE_TYPE: ${CG_RAG_VECTOR_STORE_TYPE}
       CG_OPENSEARCH_HOSTS: ${CG_OPENSEARCH_HOSTS:-http://opensearch:9200}
       CG_OPENSEARCH_USERNAME: ${CG_OPENSEARCH_USERNAME:-}
       CG_OPENSEARCH_PASSWORD: ${CG_OPENSEARCH_PASSWORD:-}
       CG_OPENSEARCH_VERIFY_CERTS: ${CG_OPENSEARCH_VERIFY_CERTS:-false}
       CG_OPENSEARCH_CHUNK_INDEX: ${CG_OPENSEARCH_CHUNK_INDEX:-kb_chunk_index}
       CG_OPENSEARCH_DOC_INDEX: ${CG_OPENSEARCH_DOC_INDEX:-kb_doc_index}
-      CG_RAG_EMBEDDING_PROVIDER: ${CG_RAG_EMBEDDING_PROVIDER:-HASHING}
+      CG_RAG_EMBEDDING_PROVIDER: ${CG_RAG_EMBEDDING_PROVIDER}
+      CG_RAG_EMBEDDING_BASE_URL: ${CG_RAG_EMBEDDING_BASE_URL}
+      CG_RAG_EMBEDDING_API_KEY: ${CG_RAG_EMBEDDING_API_KEY}
       CG_RAG_EMBEDDING_DIMENSION: ${CG_RAG_EMBEDDING_DIMENSION:-256}
       CG_NEO4J_URI: ${CG_NEO4J_URI:-bolt://neo4j:7687}
       CG_NEO4J_USERNAME: ${CG_NEO4J_USERNAME:-neo4j}
       CG_NEO4J_PASSWORD: ${CG_NEO4J_PASSWORD:-cariesguard}
       CG_NEO4J_DATABASE: ${CG_NEO4J_DATABASE:-neo4j}
-      CG_LLM_PROVIDER_CODE: ${CG_LLM_PROVIDER_CODE:-OPENAI_COMPATIBLE}
-      CG_LLM_MODEL_NAME: ${CG_LLM_MODEL_NAME:-gpt-4o-mini}
-      CG_LLM_BASE_URL: ${CG_LLM_BASE_URL:-https://api.openai.com/v1}
-      CG_LLM_API_KEY: ${CG_LLM_API_KEY:-}
+      CG_LLM_PROVIDER_CODE: ${CG_LLM_PROVIDER_CODE}
+      CG_LLM_MODEL_NAME: ${CG_LLM_MODEL_NAME}
+      CG_LLM_BASE_URL: ${CG_LLM_BASE_URL}
+      CG_LLM_API_KEY: ${CG_LLM_API_KEY}
       # ── Phase 5: Model Runtime ──
-      CG_AI_RUNTIME_MODE: ${CG_AI_RUNTIME_MODE:-mock}
-      CG_MODEL_QUALITY_ENABLED: ${CG_MODEL_QUALITY_ENABLED:-false}
-      CG_MODEL_TOOTH_DETECT_ENABLED: ${CG_MODEL_TOOTH_DETECT_ENABLED:-false}
-      CG_MODEL_SEGMENTATION_ENABLED: ${CG_MODEL_SEGMENTATION_ENABLED:-false}
-      CG_MODEL_GRADING_ENABLED: ${CG_MODEL_GRADING_ENABLED:-false}
-      CG_MODEL_RISK_ENABLED: ${CG_MODEL_RISK_ENABLED:-false}
+      CG_AI_RUNTIME_MODE: ${CG_AI_RUNTIME_MODE}
+      CG_MODEL_QUALITY_ENABLED: ${CG_MODEL_QUALITY_ENABLED}
+      CG_MODEL_TOOTH_DETECT_ENABLED: ${CG_MODEL_TOOTH_DETECT_ENABLED}
+      CG_MODEL_SEGMENTATION_ENABLED: ${CG_MODEL_SEGMENTATION_ENABLED}
+      CG_MODEL_GRADING_ENABLED: ${CG_MODEL_GRADING_ENABLED}
+      CG_MODEL_RISK_ENABLED: ${CG_MODEL_RISK_ENABLED}
       CG_MODEL_DEVICE: ${CG_MODEL_DEVICE:-cpu}
       CG_MODEL_WEIGHTS_DIR: ${CG_MODEL_WEIGHTS_DIR:-/app/model-weights}
       CG_MODEL_CONFIDENCE_THRESHOLD: ${CG_MODEL_CONFIDENCE_THRESHOLD:-0.5}
@@ -303,6 +321,13 @@ services:
       TZ: Asia/Shanghai
     ports:
       - "${CARIES_BACKEND_PYTHON_HOST_PORT:-8001}:8001"
+    volumes:
+      - ./model-weights:/app/model-weights:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8001/ai/v1/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
     depends_on:
       mysql-init:
         condition: service_completed_successfully
@@ -315,9 +340,10 @@ services:
       neo4j:
         condition: service_healthy
       backend-java:
-        condition: service_started
+        condition: service_healthy
     networks:
       - caries-net
+
 
 networks:
   caries-net:

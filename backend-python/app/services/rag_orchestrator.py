@@ -71,6 +71,13 @@ class RagOrchestrator:
         context_text: str | None,
         include_debug: bool = False,
     ) -> dict[str, Any]:
+        # ── Fail-fast Mode Gate ──
+        if self.settings.ai_runtime_mode == "real":
+            if self.settings.llm_provider_code == "MOCK":
+                raise RuntimeError("CG_AI_RUNTIME_MODE='real' requires a real LLM provider")
+            if self.settings.rag_embedding_provider == "HASHING":
+                raise RuntimeError("CG_AI_RUNTIME_MODE='real' requires a real Embedding provider")
+
         started = time.perf_counter()
         kb = self.knowledge_repository.get_knowledge_base(kb_code=kb_code or self.settings.rag_default_kb_code)
         if kb is None:
@@ -98,6 +105,14 @@ class RagOrchestrator:
         lexical_hits = self.lexical_retriever.retrieve(kb["kb_code"], rewritten_query, self.settings.lexical_top_k)
         dense_hits = self.dense_retriever.retrieve(kb["kb_code"], rewritten_query, self.settings.dense_top_k)
         graph_hits = self.graph_retriever.retrieve(linked_entities, rewritten_query, self.settings.graph_top_k)
+        
+        # Channel hit summary for telemetry
+        channel_hits = {
+            "LEXICAL": len(lexical_hits),
+            "DENSE": len(dense_hits),
+            "GRAPH": len(graph_hits)
+        }
+
         self.rag_repository.create_retrieval_logs(request_log["id"], lexical_hits + dense_hits, org_id)
         self.rag_repository.create_graph_logs(request_log["id"], graph_hits)
         fused = self.fusion_service.fuse(lexical_hits, dense_hits, graph_hits, self.settings.fusion_top_k)
@@ -123,6 +138,8 @@ class RagOrchestrator:
             distinct_doc_count=distinct_doc_count,
             evidence_sufficient=evidence_sufficient,
         )
+        
+        llm_metadata = {}
         if refusal_reason is not None:
             answer_text = self._refusal_text(refusal_reason)
             llm_latency_ms = 0
@@ -149,6 +166,12 @@ class RagOrchestrator:
             llm_latency_ms = int((time.perf_counter() - llm_started) * 1000)
             answer_text = llm_result.answer_text
             llm_status = "SUCCESS"
+            llm_metadata = {
+                "provider": llm_result.provider,
+                "model": llm_result.model,
+                "usage": llm_result.usage,
+                "finishReason": llm_result.finish_reason
+            }
             self.rag_repository.create_llm_call_log(
                 request_id=request_log["id"],
                 model_name=self.settings.llm_model_name,
@@ -179,6 +202,7 @@ class RagOrchestrator:
             confidence_score=confidence,
             trace_id=trace_id,
         )
+        
         debug = None
         if include_debug:
             debug = RagDebugMeta(
@@ -189,8 +213,17 @@ class RagOrchestrator:
                 dense_hit_count=len(dense_hits),
                 graph_hit_count=len(graph_hits),
                 evidence_sufficient=evidence_sufficient,
-                rerank_provider=reranked[0].get("rerank_provider") if reranked else None,
-                rerank_model=reranked[0].get("rerank_model") if reranked else None,
+                rerank_provider=self.settings.rerank_provider,
+                rerank_model=self.settings.rerank_model_name,
+                channel_hit_summary=channel_hits,
+                provider_summary={
+                    "llm": self.settings.llm_provider_code,
+                    "embedding": self.settings.rag_embedding_provider,
+                    "vectorStore": self.settings.rag_vector_store_type
+                },
+                index_summary=self.settings.opensearch_chunk_index,
+                graph_used=len(graph_hits) > 0,
+                graph_fallback_used=intent_code == "GRAPH_PREFERRED" and len(graph_hits) == 0
             )
         answer = RagAnswer(
             session_no=session["session_no"],
@@ -210,10 +243,16 @@ class RagOrchestrator:
             case_context_summary=context_text,
             trace_id=trace_id,
             latency_ms=total_latency_ms,
+            retrieval_channel_summary=channel_hits,
+            evidence_sufficient=evidence_sufficient,
+            distinct_document_count=distinct_doc_count,
             debug=debug,
         )
         payload = dump_camel(answer)
         payload["answer"] = payload["answerText"]
+        # Add LLM telemetry to top level if available
+        if llm_metadata:
+            payload["llmTelemetry"] = llm_metadata
         return payload
 
     def _evidence_sufficient(self, evidence_bundle: list) -> bool:

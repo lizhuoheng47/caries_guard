@@ -43,7 +43,7 @@ def _fdi_code(arch: str, side: str, order_index: int) -> str:
     return "XX"
 
 
-class ToothDetectorAdapter(BaseModelAdapter):
+class ToothDetectorHeuristicAdapter(BaseModelAdapter):
     """Heuristic tooth-detection adapter for Phase 5A."""
 
     model_code = "tooth-detect-heuristic-v1"

@@ -227,18 +227,22 @@ class KnowledgeService:
         )
 
     def submit_review(self, doc_id: int, version_no: str, reviewer_id: int | None) -> None:
+        self._ensure_version_row(doc_id, version_no, reviewer_id)
         self.repository.submit_review(doc_id, version_no, reviewer_id)
 
     def approve(self, doc_id: int, version_no: str, reviewer_id: int | None, org_id: int | None, comment: str | None) -> None:
+        self._ensure_version_row(doc_id, version_no, reviewer_id)
         self.repository.record_review(doc_id, version_no, "APPROVE", comment, reviewer_id, org_id)
 
     def reject(self, doc_id: int, version_no: str, reviewer_id: int | None, org_id: int | None, comment: str | None) -> None:
+        self._ensure_version_row(doc_id, version_no, reviewer_id)
         self.repository.record_review(doc_id, version_no, "REJECT", comment, reviewer_id, org_id)
 
     def publish(self, doc_id: int, version_no: str, operator_id: int | None, org_id: int | None, comment: str | None) -> None:
         document = self.repository.get_document(doc_id)
         if document is None:
             raise ValueError(f"document {doc_id} not found")
+        self._ensure_version_row(doc_id, version_no, operator_id)
         version = self.repository.get_document_version(doc_id, version_no)
         if version is None:
             raise ValueError(f"document version {version_no} not found")
@@ -254,14 +258,49 @@ class KnowledgeService:
         self.repository.publish_version(doc_id, version_no, operator_id, org_id, "ROLLBACK", comment)
         self.publish(doc_id, version_no, operator_id, org_id, comment)
 
+    def delete_document(
+        self,
+        *,
+        doc_id: int,
+        operator_id: int | None,
+        org_id: int | None,
+        trace_id: str | None,
+    ) -> dict[str, Any]:
+        document = self.repository.get_document(doc_id)
+        if document is None:
+            raise ValueError(f"document {doc_id} not found")
+
+        self.repository.disable_document(doc_id, operator_id)
+        self.open_search_index_service.delete_document_chunks(doc_id)
+        self.graph_repository.delete_document_graph(doc_id)
+        self.graph_upsert_service.cleanup_document_graph(doc_id)
+        self.repository.create_graph_sync_log(
+            doc_id=doc_id,
+            version_no=document.get("current_version_no") or document.get("doc_version") or "UNKNOWN",
+            sync_status_code="DISABLED",
+            entity_count=0,
+            relation_count=0,
+            trace_id=trace_id,
+            error_message=None,
+            org_id=org_id,
+            created_by=operator_id,
+        )
+        return {
+            "docId": doc_id,
+            "docNo": document.get("doc_no"),
+            "status": "DELETED",
+        }
+
     def get_document_detail(self, doc_id: int) -> dict[str, Any]:
         document = self.repository.get_document(doc_id)
         if document is None:
             raise ValueError(f"document {doc_id} not found")
+        current_version_no = document.get("current_version_no") or document.get("doc_version")
+        if current_version_no:
+            self._ensure_version_row(doc_id, current_version_no, document.get("updated_by"))
         document["versions"] = self.repository.list_document_versions(doc_id)
         document["reviewRecords"] = self.repository.list_review_records(doc_id)
         document["publishRecords"] = self.repository.list_publish_records(doc_id)
-        current_version_no = document.get("current_version_no") or document.get("doc_version")
         document["currentVersion"] = self.repository.get_document_version(doc_id, current_version_no)
         document["embeddingProvider"] = self.open_search_index_service.embedding_provider.metadata.provider
         document["embeddingModel"] = self.open_search_index_service.embedding_provider.metadata.model
@@ -479,7 +518,7 @@ class KnowledgeService:
         )
         self.open_search_index_service.index_document_version(kb["kb_code"], document, version, stored_chunks)
         chunk_entities, relations, chunk_refs = self.entity_extraction_service.extract(stored_chunks)
-        entities, stored_relations = self.graph_upsert_service.sync_document_graph(
+        graph_sync = self.graph_upsert_service.sync_document_graph(
             doc_id=document["id"],
             doc_title=document["doc_title"],
             version_no=version_no,
@@ -488,13 +527,15 @@ class KnowledgeService:
             org_id=org_id,
             created_by=operator_id,
         )
+        entity_count = int(graph_sync.get("conceptCount", 0))
+        relation_count = int(graph_sync.get("relationCount", 0))
         self.repository.update_chunk_graph_refs(chunk_refs)
         self.repository.create_graph_sync_log(
             doc_id=document["id"],
             version_no=version_no,
             sync_status_code="SUCCESS",
-            entity_count=len(entities),
-            relation_count=len(stored_relations),
+            entity_count=entity_count,
+            relation_count=relation_count,
             trace_id=trace_id,
             error_message=None,
             org_id=org_id,
@@ -511,8 +552,8 @@ class KnowledgeService:
             "reviewStatusCode": "REVIEW_PENDING",
             "publishStatusCode": "DRAFT",
             "chunkCount": len(stored_chunks),
-            "entityCount": len(entities),
-            "relationCount": len(stored_relations),
+            "entityCount": entity_count,
+            "relationCount": relation_count,
         }
 
     def _rebuild_document_version(
@@ -560,7 +601,7 @@ class KnowledgeService:
             self.graph_upsert_service.cleanup_document_graph(document["id"])
         if request.rebuild_graph and self.settings.rag_rebuild_graph_enabled:
             chunk_entities, relations, chunk_refs = self.entity_extraction_service.extract(stored_chunks)
-            entities, stored_relations = self.graph_upsert_service.sync_document_graph(
+            graph_sync = self.graph_upsert_service.sync_document_graph(
                 doc_id=document["id"],
                 doc_title=document["doc_title"],
                 version_no=version["version_no"],
@@ -570,8 +611,8 @@ class KnowledgeService:
                 created_by=document.get("updated_by"),
             )
             self.repository.update_chunk_graph_refs(chunk_refs)
-            entity_count = len(entities)
-            relation_count = len(stored_relations)
+            entity_count = int(graph_sync.get("conceptCount", 0))
+            relation_count = int(graph_sync.get("relationCount", 0))
         return {
             "docId": document["id"],
             "docNo": document["doc_no"],
@@ -597,3 +638,24 @@ class KnowledgeService:
         major = int(match.group(1))
         minor = int(match.group(2) or 0) + 1
         return f"v{major}.{minor}"
+
+    def _ensure_version_row(self, doc_id: int, version_no: str, actor_id: int | None) -> dict[str, Any]:
+        existing = self.repository.get_document_version(doc_id, version_no)
+        if existing is not None:
+            return existing
+
+        document = self.repository.get_document(doc_id)
+        if document is None:
+            raise ValueError(f"document {doc_id} not found")
+
+        return self.repository.ensure_document_version_row(
+            doc_id=doc_id,
+            version_no=version_no,
+            parent_version_no=document.get("published_version_no"),
+            normalized_content=document.get("content_text"),
+            source_file_id=document.get("source_file_id"),
+            review_status_code=document.get("review_status_code"),
+            publish_status_code=document.get("publish_status_code"),
+            org_id=document.get("org_id"),
+            created_by=actor_id,
+        )

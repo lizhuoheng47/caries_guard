@@ -23,7 +23,7 @@ from app.infra.model.base_model import BaseModelAdapter, ImplType
 log = get_logger("cariesguard-ai.model.quality")
 
 
-class QualityModelAdapter(BaseModelAdapter):
+class QualityHeuristicAdapter(BaseModelAdapter):
     """Heuristic quality-check adapter for Phase 5A."""
 
     model_code = "quality-check-heuristic-v1"

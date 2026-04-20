@@ -9,6 +9,7 @@ import com.cariesguard.report.interfaces.command.RagKbRebuildCommand;
 import com.cariesguard.report.interfaces.command.RagKbUpdateCommand;
 import com.cariesguard.report.interfaces.command.RagVersionActionCommand;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -108,6 +109,12 @@ public class RagKbController {
     @RequirePermission("report:view")
     public ApiResponse<Object> rollback(@PathVariable("id") Long id, @Valid @RequestBody RagVersionActionCommand command) {
         return ApiResponse.success(ragKbAppService.rollback(id, command), TraceIdUtils.currentTraceId());
+    }
+
+    @DeleteMapping("/documents/{id}")
+    @RequirePermission("report:view")
+    public ApiResponse<Object> deleteDocument(@PathVariable("id") Long id) {
+        return ApiResponse.success(ragKbAppService.deleteDocument(id), TraceIdUtils.currentTraceId());
     }
 
     @PostMapping("/rebuild")

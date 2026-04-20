@@ -63,6 +63,19 @@ def _validate_vector_store_type(raw: str) -> str:
     return value
 
 
+def _require_non_empty(name: str, value: str) -> None:
+    if not value or value.strip() == "" or value.strip() == "...":
+        raise ValueError(f"Configuration {name} is required but missing or placeholder.")
+
+
+def _require_model_weights_if_enabled(weights_dir: str, model_name: str, enabled: bool, impl_type: str) -> None:
+    if not enabled or impl_type != "ML_MODEL":
+        return
+    path = os.path.join(weights_dir, model_name)
+    if not os.path.exists(path):
+        raise ValueError(f"Model {model_name} is enabled with ML_MODEL type, but weights are missing at {path}")
+
+
 @dataclass(frozen=True)
 class Settings:
     app_env: str = os.getenv("CG_APP_ENV", "dev")
@@ -201,14 +214,25 @@ class Settings:
     llm_retry_count: int = int_env("CG_LLM_RETRY_COUNT", 1)
     llm_temperature: float = float_env("CG_LLM_TEMPERATURE", 0.2)
     llm_enable_fallback_mock: bool = bool_env("CG_LLM_ENABLE_FALLBACK_MOCK", True)
+    qwen_vision_enabled: bool = bool_env("CG_QWEN_VISION_ENABLED", False)
+    qwen_vision_model: str = os.getenv("CG_QWEN_VISION_MODEL", "qwen3-vl-plus")
+    qwen_vision_base_url: str = os.getenv("CG_QWEN_VISION_BASE_URL", os.getenv("CG_LLM_BASE_URL", ""))
+    qwen_vision_api_key: str = os.getenv("CG_QWEN_VISION_API_KEY", os.getenv("CG_LLM_API_KEY", ""))
+    qwen_vision_timeout_seconds: int = int_env("CG_QWEN_VISION_TIMEOUT_SECONDS", int_env("CG_LLM_TIMEOUT_SECONDS", 60))
+    qwen_vision_temperature: float = float_env("CG_QWEN_VISION_TEMPERATURE", 0.1)
 
     # ── Phase 5: Model Runtime ──────────────────────────────────────────
     ai_runtime_mode: str = _validate_runtime_mode(os.getenv("CG_AI_RUNTIME_MODE", "mock"))
     model_quality_enabled: bool = bool_env("CG_MODEL_QUALITY_ENABLED", False)
+    model_quality_impl_type: str = os.getenv("CG_MODEL_QUALITY_IMPL_TYPE", "ML_MODEL").upper()
     model_tooth_detect_enabled: bool = bool_env("CG_MODEL_TOOTH_DETECT_ENABLED", False)
+    model_tooth_detect_impl_type: str = os.getenv("CG_MODEL_TOOTH_DETECT_IMPL_TYPE", "ML_MODEL").upper()
     model_segmentation_enabled: bool = bool_env("CG_MODEL_SEGMENTATION_ENABLED", False)
+    model_segmentation_impl_type: str = os.getenv("CG_MODEL_SEGMENTATION_IMPL_TYPE", "ML_MODEL").upper()
     model_grading_enabled: bool = bool_env("CG_MODEL_GRADING_ENABLED", False)
+    model_grading_impl_type: str = os.getenv("CG_MODEL_GRADING_IMPL_TYPE", "ML_MODEL").upper()
     model_risk_enabled: bool = bool_env("CG_MODEL_RISK_ENABLED", False)
+    model_risk_impl_type: str = os.getenv("CG_MODEL_RISK_IMPL_TYPE", "ML_MODEL").upper()
     model_device: str = os.getenv("CG_MODEL_DEVICE", "cpu")
     model_weights_dir: str = os.getenv("CG_MODEL_WEIGHTS_DIR", "/app/model-weights")
     model_confidence_threshold: float = float_env("CG_MODEL_CONFIDENCE_THRESHOLD", 0.5)
@@ -217,8 +241,64 @@ class Settings:
     uncertainty_review_threshold: float = float_env("CG_UNCERTAINTY_REVIEW_THRESHOLD", 0.35)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "ai_runtime_mode", _validate_runtime_mode(self.ai_runtime_mode))
+        mode = _validate_runtime_mode(self.ai_runtime_mode)
+        object.__setattr__(self, "ai_runtime_mode", mode)
         object.__setattr__(self, "rag_vector_store_type", _validate_vector_store_type(self.rag_vector_store_type))
+
+        # ── Fail-fast Validation ──
+        if mode == "real":
+            if self.llm_provider_code == "MOCK":
+                raise ValueError("CG_AI_RUNTIME_MODE='real' forbids CG_LLM_PROVIDER_CODE='MOCK'")
+            if self.rag_embedding_provider == "HASHING":
+                raise ValueError("CG_AI_RUNTIME_MODE='real' forbids CG_RAG_EMBEDDING_PROVIDER='HASHING'")
+            if self.qwen_vision_enabled:
+                _require_non_empty("CG_QWEN_VISION_BASE_URL", self.qwen_vision_base_url)
+                _require_non_empty("CG_QWEN_VISION_API_KEY", self.qwen_vision_api_key)
+                _require_non_empty("CG_QWEN_VISION_MODEL", self.qwen_vision_model)
+
+        if self.llm_provider_code != "MOCK":
+            _require_non_empty("CG_LLM_BASE_URL", self.llm_base_url)
+            _require_non_empty("CG_LLM_API_KEY", self.llm_api_key)
+
+        if self.rag_embedding_provider != "HASHING":
+            _require_non_empty("CG_RAG_EMBEDDING_BASE_URL", self.rag_embedding_base_url)
+            _require_non_empty("CG_RAG_EMBEDDING_API_KEY", self.rag_embedding_api_key)
+
+        if self.rag_vector_store_type == "OPENSEARCH":
+            if not self.opensearch_hosts:
+                raise ValueError("CG_RAG_VECTOR_STORE_TYPE='OPENSEARCH' requires CG_OPENSEARCH_HOSTS")
+
+        # Weights check: Only check if enabled AND impl_type is ML_MODEL
+        _require_model_weights_if_enabled(self.model_weights_dir, "quality", self.model_quality_enabled, self.model_quality_impl_type)
+        _require_model_weights_if_enabled(self.model_weights_dir, "tooth_detect", self.model_tooth_detect_enabled, self.model_tooth_detect_impl_type)
+        _require_model_weights_if_enabled(self.model_weights_dir, "segmentation", self.model_segmentation_enabled, self.model_segmentation_impl_type)
+        _require_model_weights_if_enabled(self.model_weights_dir, "grading", self.model_grading_enabled, self.model_grading_impl_type)
+        _require_model_weights_if_enabled(self.model_weights_dir, "risk", self.model_risk_enabled, self.model_risk_impl_type)
+
+        # Logging summary
+        print(f"[*] CariesGuard Runtime Mode: {mode.upper()}")
+        print(f"[*] LLM Provider: {self.llm_provider_code} (Model: {self.llm_model_name})")
+        if self.qwen_vision_enabled:
+            print(f"[*] Qwen Vision: ENABLED (Model: {self.qwen_vision_model})")
+        print(f"[*] Embedding: {self.rag_embedding_provider} (Store: {self.rag_vector_store_type})")
+        enabled_mods = [m for m, e, t in [
+            ("Quality", self.model_quality_enabled, self.model_quality_impl_type),
+            ("Detect", self.model_tooth_detect_enabled, self.model_tooth_detect_impl_type),
+            ("Segment", self.model_segmentation_enabled, self.model_segmentation_impl_type),
+            ("Grading", self.model_grading_enabled, self.model_grading_impl_type),
+            ("Risk", self.model_risk_enabled, self.model_risk_impl_type)
+        ] if e]
+        print(f"[*] Enabled Modules: {', '.join([f'{m}({self._get_impl_type(m)})' for m in enabled_mods]) if enabled_mods else 'None'}")
+
+    def _get_impl_type(self, module_name: str) -> str:
+        mapping = {
+            "Quality": self.model_quality_impl_type,
+            "Detect": self.model_tooth_detect_impl_type,
+            "Segment": self.model_segmentation_impl_type,
+            "Grading": self.model_grading_impl_type,
+            "Risk": self.model_risk_impl_type
+        }
+        return mapping.get(module_name, "UNKNOWN")
 
     def build_mysql_url(self) -> str:
         return (
