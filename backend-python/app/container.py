@@ -2,6 +2,7 @@ from functools import lru_cache
 from typing import Any
 
 from app.core.config import Settings
+from app.core.logging import get_logger
 from app.infra.graph.neo4j_client import create_neo4j_driver
 from app.infra.llm.llm_gateway_factory import create_llm_client
 from app.infra.model.model_registry import ModelRegistry
@@ -57,6 +58,8 @@ from app.services.rerank_service import RerankService
 from app.services.risk_service import RiskService
 from app.services.visual_asset_service import VisualAssetService
 
+log = get_logger("cariesguard-ai.container")
+
 
 class AppContainer:
     def __init__(self, settings: Settings) -> None:
@@ -96,6 +99,12 @@ class AppContainer:
             self.open_search_index_service = OpenSearchIndexService(settings, self.opensearch_client, self.embedding_provider)
             self.cypher_template_registry = CypherTemplateRegistry()
             self.graph_upsert_service = GraphUpsertService(settings, self.neo4j_driver, self.graph_repository)
+            try:
+                self.graph_upsert_service.ensure_schema()
+            except Exception as exc:
+                if settings.ai_runtime_mode == "real":
+                    raise
+                log.warning("neo4j schema bootstrap failed - continuing in non-real mode error=%s", exc)
             self.lexical_retriever = LexicalRetriever(self.open_search_index_service)
             self.dense_retriever = DenseRetriever(self.open_search_index_service)
             self.graph_retriever = GraphRetriever(settings, self.neo4j_driver, self.cypher_template_registry)

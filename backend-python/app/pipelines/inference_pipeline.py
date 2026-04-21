@@ -180,6 +180,11 @@ class InferencePipeline:
                 qwen_vision_result,
                 risk_assessment,
             )
+            patient_reminders = self._patient_reminders(
+                risk_assessment=risk_assessment,
+                qwen_vision_result=qwen_vision_result,
+                knowledge_guidance=knowledge_guidance,
+            )
             review_reason = self._review_reason(
                 grading_result.uncertainty_score,
                 grading_result.needs_review,
@@ -275,6 +280,12 @@ class InferencePipeline:
                 if knowledge_guidance is not None and knowledge_guidance.get("answer")
                 else getattr(risk_assessment, "followup_suggestion", None)
             ),
+            "patientAdvice": (
+                knowledge_guidance.get("answer")
+                if knowledge_guidance is not None and knowledge_guidance.get("answer")
+                else getattr(risk_assessment, "followup_suggestion", None)
+            ),
+            "patientReminders": patient_reminders,
             "citations": knowledge_guidance.get("citations") if knowledge_guidance is not None else [],
             "knowledgeAdvice": knowledge_guidance,
             "qwenVisionRawResult": qwen_vision_result.raw_result if qwen_vision_result is not None else None,
@@ -1397,3 +1408,72 @@ class InferencePipeline:
                 )
             )
         return refs
+
+    @staticmethod
+    def _patient_reminders(
+        *,
+        risk_assessment: Any,
+        qwen_vision_result: VisionAnalysisResult | None,
+        knowledge_guidance: dict[str, Any] | None,
+    ) -> list[dict[str, Any]]:
+        reminders: list[dict[str, Any]] = []
+        risk_level = str(
+            getattr(risk_assessment, "risk_level_code", None)
+            or getattr(risk_assessment, "overall_risk_level_code", None)
+            or ""
+        ).upper()
+        cycle_days = getattr(risk_assessment, "recommended_cycle_days", None)
+        if isinstance(cycle_days, int) and cycle_days > 0:
+            reminders.append(
+                {
+                    "code": "FOLLOW_UP",
+                    "priority": "HIGH" if cycle_days <= 30 else "MEDIUM",
+                    "message": f"Schedule the next dental follow-up within {cycle_days} days.",
+                }
+            )
+        if risk_level in {"HIGH", "VERY_HIGH", "SEVERE"}:
+            reminders.append(
+                {
+                    "code": "EARLY_VISIT",
+                    "priority": "HIGH",
+                    "message": "Current risk level is high. Seek in-clinic dental review as soon as possible.",
+                }
+            )
+        if qwen_vision_result is not None:
+            for item in qwen_vision_result.treatment_plan[:2]:
+                if not isinstance(item, dict):
+                    continue
+                detail = str(item.get("details") or item.get("title") or "").strip()
+                if not detail:
+                    continue
+                reminders.append(
+                    {
+                        "code": "TREATMENT_PLAN",
+                        "priority": str(item.get("priority") or "MEDIUM").upper(),
+                        "message": detail,
+                    }
+                )
+        if knowledge_guidance is not None:
+            answer = str(knowledge_guidance.get("answer") or "").strip()
+            if answer:
+                reminders.append(
+                    {
+                        "code": "KB_GUIDANCE",
+                        "priority": "MEDIUM",
+                        "message": answer[:240],
+                    }
+                )
+
+        seen: set[tuple[str, str]] = set()
+        deduplicated: list[dict[str, Any]] = []
+        for item in reminders:
+            code = str(item.get("code") or "").strip().upper()
+            message = str(item.get("message") or "").strip()
+            if not code or not message:
+                continue
+            key = (code, message)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduplicated.append(item)
+        return deduplicated

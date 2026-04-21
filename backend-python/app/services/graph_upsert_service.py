@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import Any
 
 from neo4j import Driver
 
 from app.core.config import Settings
+from app.core.logging import get_logger
 from app.repositories.graph_repository import GraphRepository
+
+log = get_logger("cariesguard-ai.graph-upsert")
 
 
 class GraphUpsertService:
@@ -13,6 +17,20 @@ class GraphUpsertService:
         self.settings = settings
         self.driver = driver
         self.graph_repository = graph_repository
+
+    def ensure_schema(self) -> None:
+        statements = [
+            "CREATE CONSTRAINT concept_id_unique IF NOT EXISTS FOR (n:Concept) REQUIRE n.conceptId IS UNIQUE",
+            "CREATE INDEX concept_name_idx IF NOT EXISTS FOR (n:Concept) ON (n.name)",
+            "CREATE INDEX alias_name_idx IF NOT EXISTS FOR (a:AliasTerm) ON (a.name)",
+            "CREATE INDEX evidence_chunk_id_idx IF NOT EXISTS FOR (c:EvidenceChunk) ON (c.chunkId)",
+            "CREATE INDEX evidence_chunk_doc_idx IF NOT EXISTS FOR (c:EvidenceChunk) ON (c.docId)",
+            "CREATE INDEX evidence_doc_id_idx IF NOT EXISTS FOR (d:EvidenceDocument) ON (d.docId)",
+        ]
+        with self.driver.session(database=self.settings.neo4j_database) as session:
+            for statement in statements:
+                session.run(statement)
+        log.info("neo4j schema ensured statements=%s", len(statements))
 
     def sync_document_graph(
         self,

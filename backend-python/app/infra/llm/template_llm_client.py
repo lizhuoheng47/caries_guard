@@ -5,8 +5,16 @@ from app.infra.llm.base_llm_client import LlmResult
 
 
 class TemplateLlmClient:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        provider_code: str = "MOCK",
+        model_name: str = "template-llm-v1",
+    ) -> None:
         self.settings = settings
+        self.provider_code = provider_code
+        self.model_name = model_name
 
     def generate(self, scene: str, query: str, evidence: list[dict], context_text: str | None = None) -> LlmResult:
         if self.settings.ai_runtime_mode in {"real", "competition"}:
@@ -26,7 +34,7 @@ class TemplateLlmClient:
                 "当前知识库没有检索到足够依据。建议补充已审核知识文档后再生成结论；"
                 "如涉及疼痛、肿胀、牙体缺损或高风险因素，应由口腔医生线下复核。"
             )
-            return LlmResult(answer_text=answer, prompt_text=prompt, provider="MOCK", model="template-llm-v1")
+            return LlmResult(answer_text=answer, prompt_text=prompt, provider=self.provider_code, model=self.model_name)
 
         citations = " ".join(f"[{index}]" for index in range(1, len(evidence) + 1))
         if scene == "PATIENT_EXPLAIN":
@@ -37,7 +45,15 @@ class TemplateLlmClient:
             advice = "该回答仅用于辅助复核，应结合影像、病史、检查和医生判断形成最终意见。"
         snippets = "；".join(item["chunk_text"].strip().replace("\n", " ")[:120] for item in evidence[:3])
         answer = f"{lead}{snippets}。{advice} 依据：{citations}"
-        return LlmResult(answer_text=answer, prompt_text=prompt, provider="MOCK", model="template-llm-v1")
+        return LlmResult(answer_text=answer, prompt_text=prompt, provider=self.provider_code, model=self.model_name)
+
+    def resolve_profile(self, scene: str) -> dict[str, str]:
+        return {
+            "providerCode": self.provider_code,
+            "modelName": self.model_name,
+            "baseUrl": "",
+            "apiKey": "",
+        }
 
     @staticmethod
     def _build_prompt(scene: str, query: str, evidence: list[dict], context_text: str | None) -> str:

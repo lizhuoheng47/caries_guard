@@ -7,6 +7,7 @@ _VALID_RUNTIME_MODES = {"mock", "hybrid", "real"}
 _VALID_VECTOR_STORE_TYPES = {"LOCAL_JSON", "OPENSEARCH"}
 _VALID_MODEL_IMPL_TYPES = {"MOCK", "HEURISTIC", "ML_MODEL"}
 _VALID_QUALITY_FAIL_STRATEGIES = {"CONTINUE", "FAIL_FAST"}
+_VALID_LLM_PROVIDER_CODES = {"MOCK", "OPENAI", "OPENAI_COMPATIBLE", "DASHSCOPE", "DEEPSEEK", "QWEN"}
 
 
 def first_non_empty(*values: str | None, default: str = "") -> str:
@@ -105,6 +106,26 @@ def _validate_quality_fail_strategy(raw: str) -> str:
             f"allowed values: {sorted(_VALID_QUALITY_FAIL_STRATEGIES)}"
         )
     return value
+
+
+def _validate_llm_provider_code(name: str, raw: str) -> str:
+    value = (raw or "").strip().upper()
+    if value not in _VALID_LLM_PROVIDER_CODES:
+        raise ValueError(
+            f"{name}={raw!r} is invalid; allowed values: {sorted(_VALID_LLM_PROVIDER_CODES)}"
+        )
+    return value
+
+
+def _is_blank_or_placeholder(value: str | None) -> bool:
+    return value is None or value.strip() == "" or value.strip() == "..."
+
+
+def _require_non_blank_if_present(name: str) -> None:
+    if name not in os.environ:
+        return
+    if _is_blank_or_placeholder(os.getenv(name)):
+        raise ValueError(f"Configuration {name} is explicitly set but blank or placeholder.")
 
 
 @dataclass(frozen=True)
@@ -274,6 +295,75 @@ class Settings:
     llm_retry_count: int = int_env("CG_LLM_RETRY_COUNT", 1)
     llm_temperature: float = float_env("CG_LLM_TEMPERATURE", 0.2)
     llm_enable_fallback_mock: bool = bool_env("CG_LLM_ENABLE_FALLBACK_MOCK", True)
+    llm_hedge_enabled: bool = bool_env("CG_LLM_HEDGE_ENABLED", False)
+    llm_hedge_delay_ms: int = int_env("CG_LLM_HEDGE_DELAY_MS", 250)
+    llm_hedge_provider_code: str = first_non_empty(
+        os.getenv("CG_LLM_HEDGE_PROVIDER_CODE"),
+        os.getenv("CG_LLM_PROVIDER_CODE"),
+        default="OPENAI_COMPATIBLE",
+    )
+    llm_hedge_model_name: str = first_non_empty(
+        os.getenv("CG_LLM_HEDGE_MODEL_NAME"),
+        os.getenv("CG_LLM_MODEL_NAME"),
+        default="gpt-4o-mini",
+    )
+    llm_hedge_base_url: str = first_non_empty(
+        os.getenv("CG_LLM_HEDGE_BASE_URL"),
+        os.getenv("CG_LLM_BASE_URL"),
+        os.getenv("DASHSCOPE_BASE_URL"),
+        default="https://api.openai.com/v1",
+    )
+    llm_hedge_api_key: str = first_non_empty(
+        os.getenv("CG_LLM_HEDGE_API_KEY"),
+        os.getenv("CG_LLM_API_KEY"),
+        os.getenv("DASHSCOPE_API_KEY"),
+        default="",
+    )
+    llm_scene_routing_enabled: bool = bool_env("CG_LLM_SCENE_ROUTING_ENABLED", False)
+    llm_doctor_provider_code: str = first_non_empty(
+        os.getenv("CG_LLM_DOCTOR_PROVIDER_CODE"),
+        os.getenv("CG_LLM_PROVIDER_CODE"),
+        default="OPENAI_COMPATIBLE",
+    )
+    llm_doctor_model_name: str = first_non_empty(
+        os.getenv("CG_LLM_DOCTOR_MODEL_NAME"),
+        os.getenv("CG_LLM_MODEL_NAME"),
+        default="gpt-4o-mini",
+    )
+    llm_doctor_base_url: str = first_non_empty(
+        os.getenv("CG_LLM_DOCTOR_BASE_URL"),
+        os.getenv("CG_LLM_BASE_URL"),
+        os.getenv("DASHSCOPE_BASE_URL"),
+        default="https://api.openai.com/v1",
+    )
+    llm_doctor_api_key: str = first_non_empty(
+        os.getenv("CG_LLM_DOCTOR_API_KEY"),
+        os.getenv("CG_LLM_API_KEY"),
+        os.getenv("DASHSCOPE_API_KEY"),
+        default="",
+    )
+    llm_patient_provider_code: str = first_non_empty(
+        os.getenv("CG_LLM_PATIENT_PROVIDER_CODE"),
+        os.getenv("CG_LLM_PROVIDER_CODE"),
+        default="OPENAI_COMPATIBLE",
+    )
+    llm_patient_model_name: str = first_non_empty(
+        os.getenv("CG_LLM_PATIENT_MODEL_NAME"),
+        os.getenv("CG_LLM_MODEL_NAME"),
+        default="gpt-4o-mini",
+    )
+    llm_patient_base_url: str = first_non_empty(
+        os.getenv("CG_LLM_PATIENT_BASE_URL"),
+        os.getenv("CG_LLM_BASE_URL"),
+        os.getenv("DASHSCOPE_BASE_URL"),
+        default="https://api.openai.com/v1",
+    )
+    llm_patient_api_key: str = first_non_empty(
+        os.getenv("CG_LLM_PATIENT_API_KEY"),
+        os.getenv("CG_LLM_API_KEY"),
+        os.getenv("DASHSCOPE_API_KEY"),
+        default="",
+    )
     qwen_vision_enabled: bool = bool_env("CG_QWEN_VISION_ENABLED", False)
     qwen_vision_model: str = os.getenv("CG_QWEN_VISION_MODEL", "qwen3-vl-plus")
     qwen_vision_base_url: str = first_non_empty(
@@ -325,14 +415,93 @@ class Settings:
         object.__setattr__(self, "model_grading_impl_type", _validate_model_impl_type("CG_MODEL_GRADING_IMPL_TYPE", self.model_grading_impl_type))
         object.__setattr__(self, "model_risk_impl_type", _validate_model_impl_type("CG_MODEL_RISK_IMPL_TYPE", self.model_risk_impl_type))
         object.__setattr__(self, "quality_fail_strategy", _validate_quality_fail_strategy(self.quality_fail_strategy))
+        object.__setattr__(self, "llm_provider_code", _validate_llm_provider_code("CG_LLM_PROVIDER_CODE", self.llm_provider_code))
+        object.__setattr__(
+            self, "llm_doctor_provider_code", _validate_llm_provider_code("CG_LLM_DOCTOR_PROVIDER_CODE", self.llm_doctor_provider_code)
+        )
+        object.__setattr__(
+            self, "llm_patient_provider_code", _validate_llm_provider_code("CG_LLM_PATIENT_PROVIDER_CODE", self.llm_patient_provider_code)
+        )
+        object.__setattr__(
+            self, "llm_hedge_provider_code", _validate_llm_provider_code("CG_LLM_HEDGE_PROVIDER_CODE", self.llm_hedge_provider_code)
+        )
+        object.__setattr__(self, "llm_model_name", (self.llm_model_name or "").strip())
+        object.__setattr__(self, "llm_doctor_model_name", (self.llm_doctor_model_name or "").strip())
+        object.__setattr__(self, "llm_patient_model_name", (self.llm_patient_model_name or "").strip())
+        object.__setattr__(self, "llm_hedge_model_name", (self.llm_hedge_model_name or "").strip())
+        object.__setattr__(self, "llm_base_url", (self.llm_base_url or "").strip())
+        object.__setattr__(self, "llm_doctor_base_url", (self.llm_doctor_base_url or "").strip())
+        object.__setattr__(self, "llm_patient_base_url", (self.llm_patient_base_url or "").strip())
+        object.__setattr__(self, "llm_hedge_base_url", (self.llm_hedge_base_url or "").strip())
+        object.__setattr__(self, "llm_api_key", (self.llm_api_key or "").strip())
+        object.__setattr__(self, "llm_doctor_api_key", (self.llm_doctor_api_key or "").strip())
+        object.__setattr__(self, "llm_patient_api_key", (self.llm_patient_api_key or "").strip())
+        object.__setattr__(self, "llm_hedge_api_key", (self.llm_hedge_api_key or "").strip())
+        object.__setattr__(self, "llm_hedge_delay_ms", max(0, int(self.llm_hedge_delay_ms)))
 
         # ── Fail-fast Validation ──
-        # RAG strict dependency validation is only required when analysis-to-KB
-        # enhancement is enabled. This keeps the pure imaging chain independent
-        # from LLM/embedding configuration.
-        rag_dependencies_required = self.analysis_kb_enhancement_enabled
+        # Strict dependency checks:
+        # - analysis_kb_enhancement_enabled always requires RAG runtime
+        # - real mode with RAG enabled requires real LLM/Embedding credentials
+        rag_dependencies_required = self.analysis_kb_enhancement_enabled or (mode == "real" and self.rag_runtime_enabled)
         if self.analysis_kb_enhancement_enabled and not self.rag_runtime_enabled:
             raise ValueError("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED=true requires CG_RAG_RUNTIME_ENABLED=true")
+
+        scene_env_names = [
+            "CG_LLM_DOCTOR_PROVIDER_CODE",
+            "CG_LLM_DOCTOR_MODEL_NAME",
+            "CG_LLM_DOCTOR_BASE_URL",
+            "CG_LLM_DOCTOR_API_KEY",
+            "CG_LLM_PATIENT_PROVIDER_CODE",
+            "CG_LLM_PATIENT_MODEL_NAME",
+            "CG_LLM_PATIENT_BASE_URL",
+            "CG_LLM_PATIENT_API_KEY",
+        ]
+        scene_override_set = any(
+            name in os.environ and not _is_blank_or_placeholder(os.getenv(name))
+            for name in scene_env_names
+        )
+        if scene_override_set and not self.llm_scene_routing_enabled:
+            raise ValueError(
+                "Scene LLM variables are set but CG_LLM_SCENE_ROUTING_ENABLED=false; "
+                "set CG_LLM_SCENE_ROUTING_ENABLED=true to make scene parameters effective."
+            )
+        if self.llm_scene_routing_enabled:
+            for name in scene_env_names:
+                _require_non_blank_if_present(name)
+
+        if self.rag_runtime_enabled and self.llm_provider_code != "MOCK":
+            _require_non_empty("CG_LLM_MODEL_NAME", self.llm_model_name)
+            _require_non_empty("CG_LLM_BASE_URL", self.llm_base_url)
+            _require_non_empty("CG_LLM_API_KEY", self.llm_api_key)
+            _require_non_blank_if_present("CG_LLM_MODEL_NAME")
+            _require_non_blank_if_present("CG_LLM_BASE_URL")
+            _require_non_blank_if_present("CG_LLM_API_KEY")
+
+        if self.llm_scene_routing_enabled and self.rag_runtime_enabled:
+            self._validate_scene_llm_profile(
+                profile_prefix="CG_LLM_DOCTOR",
+                provider_code=self.llm_doctor_provider_code,
+                model_name=self.llm_doctor_model_name,
+                base_url=self.llm_doctor_base_url,
+                api_key=self.llm_doctor_api_key,
+            )
+            self._validate_scene_llm_profile(
+                profile_prefix="CG_LLM_PATIENT",
+                provider_code=self.llm_patient_provider_code,
+                model_name=self.llm_patient_model_name,
+                base_url=self.llm_patient_base_url,
+                api_key=self.llm_patient_api_key,
+            )
+
+        if self.llm_hedge_enabled and self.rag_runtime_enabled:
+            self._validate_scene_llm_profile(
+                profile_prefix="CG_LLM_HEDGE",
+                provider_code=self.llm_hedge_provider_code,
+                model_name=self.llm_hedge_model_name,
+                base_url=self.llm_hedge_base_url,
+                api_key=self.llm_hedge_api_key,
+            )
 
         if mode == "real":
             if self.rag_runtime_enabled and self.llm_enable_fallback_mock:
@@ -344,15 +513,21 @@ class Settings:
                 _require_non_empty("CG_QWEN_VISION_BASE_URL", self.qwen_vision_base_url)
                 _require_non_empty("CG_QWEN_VISION_API_KEY", self.qwen_vision_api_key)
                 _require_non_empty("CG_QWEN_VISION_MODEL", self.qwen_vision_model)
-            if rag_dependencies_required:
-                if self.llm_provider_code == "MOCK":
-                    raise ValueError(
-                        "CG_AI_RUNTIME_MODE='real' with RAG enabled forbids CG_LLM_PROVIDER_CODE='MOCK'"
-                    )
-                if self.rag_embedding_provider == "HASHING":
-                    raise ValueError(
-                        "CG_AI_RUNTIME_MODE='real' with RAG enabled forbids CG_RAG_EMBEDDING_PROVIDER='HASHING'"
-                    )
+            if self.rag_runtime_enabled and self.llm_provider_code == "MOCK":
+                raise ValueError(
+                    "CG_AI_RUNTIME_MODE='real' with RAG enabled forbids CG_LLM_PROVIDER_CODE='MOCK'"
+                )
+            if self.rag_runtime_enabled and self.rag_embedding_provider == "HASHING":
+                raise ValueError(
+                    "CG_AI_RUNTIME_MODE='real' with RAG enabled forbids CG_RAG_EMBEDDING_PROVIDER='HASHING'"
+                )
+            if self.llm_scene_routing_enabled and self.rag_runtime_enabled:
+                if self.llm_doctor_provider_code == "MOCK":
+                    raise ValueError("CG_LLM_DOCTOR_PROVIDER_CODE='MOCK' is forbidden in real mode with RAG enabled")
+                if self.llm_patient_provider_code == "MOCK":
+                    raise ValueError("CG_LLM_PATIENT_PROVIDER_CODE='MOCK' is forbidden in real mode with RAG enabled")
+            if self.llm_hedge_enabled and self.rag_runtime_enabled and self.llm_hedge_provider_code == "MOCK":
+                raise ValueError("CG_LLM_HEDGE_PROVIDER_CODE='MOCK' is forbidden in real mode with RAG enabled")
 
         if rag_dependencies_required and self.llm_provider_code != "MOCK":
             _require_non_empty("CG_LLM_BASE_URL", self.llm_base_url)
@@ -386,6 +561,18 @@ class Settings:
         # Logging summary
         print(f"[*] CariesGuard Runtime Mode: {mode.upper()}")
         print(f"[*] LLM Provider: {self.llm_provider_code} (Model: {self.llm_model_name})")
+        if self.llm_scene_routing_enabled:
+            print(
+                "[*] LLM Scene Routing: ENABLED "
+                f"(DOCTOR={self.llm_doctor_provider_code}/{self.llm_doctor_model_name}, "
+                f"PATIENT={self.llm_patient_provider_code}/{self.llm_patient_model_name})"
+            )
+        if self.llm_hedge_enabled:
+            print(
+                "[*] LLM Hedge: ENABLED "
+                f"(delayMs={self.llm_hedge_delay_ms}, "
+                f"secondary={self.llm_hedge_provider_code}/{self.llm_hedge_model_name})"
+            )
         if self.qwen_vision_enabled:
             print(f"[*] Qwen Vision: ENABLED (Model: {self.qwen_vision_model})")
         if self.analysis_kb_enhancement_enabled:
@@ -412,6 +599,53 @@ class Settings:
             "Risk": self.model_risk_impl_type
         }
         return mapping.get(module_name, "UNKNOWN")
+
+    def _validate_scene_llm_profile(
+        self,
+        *,
+        profile_prefix: str,
+        provider_code: str,
+        model_name: str,
+        base_url: str,
+        api_key: str,
+    ) -> None:
+        _require_non_empty(f"{profile_prefix}_PROVIDER_CODE", provider_code)
+        _require_non_empty(f"{profile_prefix}_MODEL_NAME", model_name)
+        if provider_code == "MOCK":
+            return
+        _require_non_empty(f"{profile_prefix}_BASE_URL", base_url)
+        _require_non_empty(f"{profile_prefix}_API_KEY", api_key)
+
+    def get_llm_profile_for_scene(self, scene: str) -> dict[str, str]:
+        key = (scene or "").strip().upper()
+        if not self.llm_scene_routing_enabled:
+            return {
+                "providerCode": self.llm_provider_code,
+                "modelName": self.llm_model_name,
+                "baseUrl": self.llm_base_url,
+                "apiKey": self.llm_api_key,
+            }
+        if key == "PATIENT_EXPLAIN":
+            return {
+                "providerCode": self.llm_patient_provider_code,
+                "modelName": self.llm_patient_model_name,
+                "baseUrl": self.llm_patient_base_url,
+                "apiKey": self.llm_patient_api_key,
+            }
+        return {
+            "providerCode": self.llm_doctor_provider_code,
+            "modelName": self.llm_doctor_model_name,
+            "baseUrl": self.llm_doctor_base_url,
+            "apiKey": self.llm_doctor_api_key,
+        }
+
+    def get_llm_hedge_profile(self) -> dict[str, str]:
+        return {
+            "providerCode": self.llm_hedge_provider_code,
+            "modelName": self.llm_hedge_model_name,
+            "baseUrl": self.llm_hedge_base_url,
+            "apiKey": self.llm_hedge_api_key,
+        }
 
     def build_mysql_url(self) -> str:
         return (

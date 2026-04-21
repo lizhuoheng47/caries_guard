@@ -16,13 +16,25 @@ class OpenAiCompatibleLlmClient:
     _MAX_EVIDENCE_CHARS = 500
     _MAX_EVIDENCE_ITEMS = 4
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        provider_code: str | None = None,
+        model_name: str | None = None,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> None:
         self.settings = settings
+        self.provider_code = (provider_code or settings.llm_provider_code or "OPENAI_COMPATIBLE").strip().upper()
+        self.model_name = (model_name or settings.llm_model_name or "").strip()
+        self.base_url = (base_url or settings.llm_base_url or "").strip()
+        self.api_key = (api_key or settings.llm_api_key or "").strip()
 
     def generate(self, scene: str, query: str, evidence: list[dict], context_text: str | None = None) -> LlmResult:
         prompt = self._build_prompt(scene, query, evidence, context_text)
         payload = {
-            "model": self.settings.llm_model_name,
+            "model": self.model_name,
             "messages": [
                 {
                     "role": "system",
@@ -51,20 +63,20 @@ class OpenAiCompatibleLlmClient:
         return LlmResult(
             answer_text=str(answer).strip(),
             prompt_text=prompt,
-            provider=(self.settings.llm_provider_code or "OPENAI_COMPATIBLE"),
-            model=self.settings.llm_model_name,
+            provider=self.provider_code,
+            model=self.model_name,
             latency_ms=latency_ms,
             usage=usage,
             finish_reason=finish_reason,
         )
 
     def _post_with_retry(self, payload: dict[str, Any]) -> dict[str, Any]:
-        if not self.settings.llm_base_url:
+        if not self.base_url:
             raise RuntimeError("CG_LLM_BASE_URL is required for non-MOCK LLM provider")
-        url = self.settings.llm_base_url.rstrip("/") + "/chat/completions"
+        url = self.base_url.rstrip("/") + "/chat/completions"
         headers = {"Content-Type": "application/json"}
-        if self.settings.llm_api_key:
-            headers["Authorization"] = f"Bearer {self.settings.llm_api_key}"
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
             
         last_error: Exception | None = None
         for attempt in range(self.settings.llm_retry_count + 1):
@@ -98,6 +110,14 @@ class OpenAiCompatibleLlmClient:
                     continue
                     
         raise RuntimeError(f"LLM provider call failed after {self.settings.llm_retry_count} retries: {last_error}")
+
+    def resolve_profile(self, scene: str) -> dict[str, str]:
+        return {
+            "providerCode": self.provider_code,
+            "modelName": self.model_name,
+            "baseUrl": self.base_url,
+            "apiKey": self.api_key,
+        }
 
     @staticmethod
     def _build_prompt(scene: str, query: str, evidence: list[dict], context_text: str | None) -> str:

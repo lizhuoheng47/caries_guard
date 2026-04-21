@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import time
 from typing import Any
 
 from app.core.config import Settings
+from app.core.logging import get_logger
 from app.infra.llm.base_llm_client import BaseLlmClient
 from app.repositories.knowledge_repository import KnowledgeRepository
 from app.repositories.rag_repository import RagRepository
@@ -20,6 +22,8 @@ from app.services.lexical_retriever import LexicalRetriever
 from app.services.query_rewrite_service import QueryRewriteService
 from app.services.refusal_policy_service import RefusalPolicyService
 from app.services.rerank_service import RerankService
+
+log = get_logger("cariesguard-ai.rag.orchestrator")
 
 
 class RagOrchestrator:
@@ -93,10 +97,13 @@ class RagOrchestrator:
         rewritten_query = self.query_rewrite_service.rewrite(question)
         intent_code = self.intent_classifier_service.classify(rewritten_query)
         linked_entities = self.entity_linking_service.link(rewritten_query)
+        llm_profile = self._resolve_llm_profile(scene)
+        llm_provider_code = llm_profile["providerCode"]
+        llm_model_name = llm_profile["modelName"]
         session = self.rag_repository.create_rag_session(
             session_type_code=scene,
             knowledge_version=kb["knowledge_version"],
-            model_name=self.settings.llm_model_name,
+            model_name=llm_model_name,
             related_biz_no=related_biz_no,
             patient_uuid=patient_uuid,
             java_user_id=java_user_id,
@@ -110,16 +117,15 @@ class RagOrchestrator:
             top_k=answer_top_k,
             org_id=org_id,
         )
-        lexical_hits = self.lexical_retriever.retrieve(kb["kb_code"], rewritten_query, lexical_top_k)
-        dense_hits = self.dense_retriever.retrieve(kb["kb_code"], rewritten_query, dense_top_k)
-        graph_hits = self.graph_retriever.retrieve(linked_entities, rewritten_query, graph_top_k)
-        
-        # Channel hit summary for telemetry
-        channel_hits = {
-            "LEXICAL": len(lexical_hits),
-            "DENSE": len(dense_hits),
-            "GRAPH": len(graph_hits)
-        }
+        lexical_hits, dense_hits, graph_hits, retrieval_meta = self._retrieve_channels(
+            kb_code=kb["kb_code"],
+            rewritten_query=rewritten_query,
+            linked_entities=linked_entities,
+            lexical_top_k=lexical_top_k,
+            dense_top_k=dense_top_k,
+            graph_top_k=graph_top_k,
+        )
+        channel_hits = retrieval_meta["channelHits"]
 
         self.rag_repository.create_retrieval_logs(request_log["id"], lexical_hits + dense_hits, org_id)
         self.rag_repository.create_graph_logs(request_log["id"], graph_hits)
@@ -152,10 +158,16 @@ class RagOrchestrator:
             answer_text = self._refusal_text(refusal_reason)
             llm_latency_ms = 0
             llm_status = "SKIPPED"
+            llm_metadata = {
+                "provider": llm_provider_code,
+                "model": llm_model_name,
+                "usage": None,
+                "finishReason": "SKIPPED",
+            }
             self.rag_repository.create_llm_call_log(
                 request_id=request_log["id"],
-                model_name=self.settings.llm_model_name,
-                provider_code=self.settings.llm_provider_code,
+                model_name=llm_model_name,
+                provider_code=llm_provider_code,
                 prompt_text=rewritten_query,
                 completion_text=answer_text,
                 latency_ms=llm_latency_ms,
@@ -174,16 +186,18 @@ class RagOrchestrator:
             llm_latency_ms = int((time.perf_counter() - llm_started) * 1000)
             answer_text = llm_result.answer_text
             llm_status = "SUCCESS"
+            llm_provider_code = str(llm_result.provider or llm_provider_code)
+            llm_model_name = str(llm_result.model or llm_model_name)
             llm_metadata = {
-                "provider": llm_result.provider,
-                "model": llm_result.model,
+                "provider": llm_provider_code,
+                "model": llm_model_name,
                 "usage": llm_result.usage,
                 "finishReason": llm_result.finish_reason
             }
             self.rag_repository.create_llm_call_log(
                 request_id=request_log["id"],
-                model_name=self.settings.llm_model_name,
-                provider_code=self.settings.llm_provider_code,
+                model_name=llm_model_name,
+                provider_code=llm_provider_code,
                 prompt_text=llm_result.prompt_text,
                 completion_text=answer_text,
                 latency_ms=llm_latency_ms,
@@ -225,7 +239,8 @@ class RagOrchestrator:
                 rerank_model=self.settings.rerank_model_name,
                 channel_hit_summary=channel_hits,
                 provider_summary={
-                    "llm": self.settings.llm_provider_code,
+                    "llm": llm_provider_code,
+                    "llmModel": llm_model_name,
                     "embedding": self.settings.rag_embedding_provider,
                     "vectorStore": self.settings.rag_vector_store_type
                 },
@@ -243,7 +258,7 @@ class RagOrchestrator:
             graph_evidence=graph_evidence,
             knowledge_base_code=kb["kb_code"],
             knowledge_version=kb["knowledge_version"],
-            model_name=self.settings.llm_model_name,
+            model_name=llm_model_name,
             safety_flag="1" if refusal_reason or "NO_CITATION" in safety_flags else "0",
             safety_flags=safety_flags,
             refusal_reason=refusal_reason,
@@ -261,7 +276,30 @@ class RagOrchestrator:
         # Add LLM telemetry to top level if available
         if llm_metadata:
             payload["llmTelemetry"] = llm_metadata
+        payload["retrievalTelemetry"] = retrieval_meta
         return payload
+
+    def _resolve_llm_profile(self, scene: str) -> dict[str, str]:
+        resolver = getattr(self.llm_client, "resolve_profile", None)
+        if callable(resolver):
+            resolved = resolver(scene)
+            if isinstance(resolved, dict):
+                provider = str(resolved.get("providerCode") or self.settings.llm_provider_code)
+                model = str(resolved.get("modelName") or self.settings.llm_model_name)
+                base_url = str(resolved.get("baseUrl") or self.settings.llm_base_url)
+                api_key = str(resolved.get("apiKey") or self.settings.llm_api_key)
+                return {
+                    "providerCode": provider,
+                    "modelName": model,
+                    "baseUrl": base_url,
+                    "apiKey": api_key,
+                }
+        return {
+            "providerCode": self.settings.llm_provider_code,
+            "modelName": self.settings.llm_model_name,
+            "baseUrl": self.settings.llm_base_url,
+            "apiKey": self.settings.llm_api_key,
+        }
 
     def _resolve_answer_top_k(self, top_k: int | None) -> int:
         default_top_k = max(1, int(self.settings.answer_evidence_top_k))
@@ -269,6 +307,90 @@ class RagOrchestrator:
             return default_top_k
         requested = max(1, int(top_k))
         return min(requested, default_top_k, 20)
+
+    def _retrieve_channels(
+        self,
+        *,
+        kb_code: str,
+        rewritten_query: str,
+        linked_entities: list[dict[str, Any]],
+        lexical_top_k: int,
+        dense_top_k: int,
+        graph_top_k: int,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+        channel_hits: dict[str, int] = {"LEXICAL": 0, "DENSE": 0, "GRAPH": 0}
+        channel_latency_ms: dict[str, int] = {"LEXICAL": 0, "DENSE": 0, "GRAPH": 0}
+        channel_errors: dict[str, str] = {}
+        retrieval_started = time.perf_counter()
+        futures: dict[str, Any] = {}
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures["LEXICAL"] = executor.submit(
+                self._timed_retrieve_call,
+                self.lexical_retriever.retrieve,
+                kb_code,
+                rewritten_query,
+                lexical_top_k,
+            )
+            futures["DENSE"] = executor.submit(
+                self._timed_retrieve_call,
+                self.dense_retriever.retrieve,
+                kb_code,
+                rewritten_query,
+                dense_top_k,
+            )
+            futures["GRAPH"] = executor.submit(
+                self._timed_retrieve_call,
+                self.graph_retriever.retrieve,
+                linked_entities,
+                rewritten_query,
+                graph_top_k,
+            )
+
+            lexical_hits: list[dict[str, Any]] = []
+            dense_hits: list[dict[str, Any]] = []
+            graph_hits: list[dict[str, Any]] = []
+
+            for channel, future in futures.items():
+                try:
+                    hits, latency_ms = future.result()
+                    channel_latency_ms[channel] = latency_ms
+                    channel_hits[channel] = len(hits)
+                    if channel == "LEXICAL":
+                        lexical_hits = hits
+                    elif channel == "DENSE":
+                        dense_hits = hits
+                    else:
+                        graph_hits = hits
+                except Exception as exc:
+                    channel_errors[channel] = str(exc)
+                    if self.settings.ai_runtime_mode == "real":
+                        raise RuntimeError(f"{channel} retrieval failed: {exc}") from exc
+                    log.warning("rag retrieval channel failed channel=%s error=%s", channel, exc)
+
+        total_retrieval_ms = int((time.perf_counter() - retrieval_started) * 1000)
+        retrieval_meta = {
+            "channelHits": channel_hits,
+            "channelLatencyMs": channel_latency_ms,
+            "channelErrors": channel_errors,
+            "totalRetrievalMs": total_retrieval_ms,
+            "dataSources": self._data_source_summary(),
+        }
+        return lexical_hits, dense_hits, graph_hits, retrieval_meta
+
+    @staticmethod
+    def _timed_retrieve_call(retrieve_fn: Any, *args: Any) -> tuple[list[dict[str, Any]], int]:
+        started = time.perf_counter()
+        hits = retrieve_fn(*args)
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        return hits, latency_ms
+
+    def _data_source_summary(self) -> dict[str, str]:
+        return {
+            "knowledgeBase": "MYSQL(caries_ai)",
+            "lexicalDenseStore": self.settings.rag_vector_store_type,
+            "graphStore": "NEO4J",
+            "llmProvider": self.settings.llm_provider_code,
+        }
 
     def _evidence_sufficient(self, evidence_bundle: list) -> bool:
         if len(evidence_bundle) < self.settings.rag_evidence_min_count:

@@ -181,10 +181,26 @@ if ([int]$rebuildResponse.data.chunkCount -lt 1) {
     throw "knowledge rebuild produced no chunks"
 }
 
-$vectorPath = $rebuildResponse.data.vectorStorePath
-& docker exec caries-backend-python test -f $vectorPath
-if ($LASTEXITCODE -ne 0) {
-    throw "Vector index file was not found in backend-python: $vectorPath"
+$vectorPath = $null
+$rebuildData = $rebuildResponse.data
+$hasVectorStorePath = $rebuildData.PSObject.Properties.Name -contains "vectorStorePath"
+if ($hasVectorStorePath) {
+    $candidatePath = [string]$rebuildData.vectorStorePath
+    if (-not [string]::IsNullOrWhiteSpace($candidatePath)) {
+        $vectorPath = $candidatePath
+        & docker exec caries-backend-python test -f $vectorPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Vector index file was not found in backend-python: $vectorPath"
+        }
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($vectorPath)) {
+    Write-Host "knowledge rebuild response has no vectorStorePath; skipping local file assertion."
+    $hasDocuments = $rebuildData.PSObject.Properties.Name -contains "documents"
+    if ((-not $hasDocuments) -or $null -eq $rebuildData.documents -or [int]$rebuildData.documents.Count -lt 1) {
+        throw "knowledge rebuild response missing documents metadata"
+    }
 }
 
 Save-Text "knowledge-sql.txt" (Invoke-MysqlQuery $AiDatabase @"
