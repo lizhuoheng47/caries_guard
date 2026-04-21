@@ -62,6 +62,7 @@ class RagOrchestrator:
         *,
         scene: str,
         question: str,
+        top_k: int | None,
         kb_code: str | None,
         related_biz_no: str | None,
         patient_uuid: str | None,
@@ -79,6 +80,13 @@ class RagOrchestrator:
                 raise RuntimeError("CG_AI_RUNTIME_MODE='real' requires a real Embedding provider")
 
         started = time.perf_counter()
+        answer_top_k = self._resolve_answer_top_k(top_k)
+        retrieval_top_k = max(answer_top_k, answer_top_k * 2)
+        lexical_top_k = min(self.settings.lexical_top_k, retrieval_top_k)
+        dense_top_k = min(self.settings.dense_top_k, retrieval_top_k)
+        graph_top_k = min(self.settings.graph_top_k, retrieval_top_k)
+        fusion_top_k = min(self.settings.fusion_top_k, retrieval_top_k)
+        rerank_top_k = min(self.settings.rerank_top_k, retrieval_top_k)
         kb = self.knowledge_repository.get_knowledge_base(kb_code=kb_code or self.settings.rag_default_kb_code)
         if kb is None:
             raise ValueError(f"knowledge base {kb_code or self.settings.rag_default_kb_code} not found")
@@ -99,12 +107,12 @@ class RagOrchestrator:
             request_type_code=scene,
             user_query=question,
             rewritten_query=rewritten_query,
-            top_k=self.settings.answer_evidence_top_k,
+            top_k=answer_top_k,
             org_id=org_id,
         )
-        lexical_hits = self.lexical_retriever.retrieve(kb["kb_code"], rewritten_query, self.settings.lexical_top_k)
-        dense_hits = self.dense_retriever.retrieve(kb["kb_code"], rewritten_query, self.settings.dense_top_k)
-        graph_hits = self.graph_retriever.retrieve(linked_entities, rewritten_query, self.settings.graph_top_k)
+        lexical_hits = self.lexical_retriever.retrieve(kb["kb_code"], rewritten_query, lexical_top_k)
+        dense_hits = self.dense_retriever.retrieve(kb["kb_code"], rewritten_query, dense_top_k)
+        graph_hits = self.graph_retriever.retrieve(linked_entities, rewritten_query, graph_top_k)
         
         # Channel hit summary for telemetry
         channel_hits = {
@@ -115,9 +123,9 @@ class RagOrchestrator:
 
         self.rag_repository.create_retrieval_logs(request_log["id"], lexical_hits + dense_hits, org_id)
         self.rag_repository.create_graph_logs(request_log["id"], graph_hits)
-        fused = self.fusion_service.fuse(lexical_hits, dense_hits, graph_hits, self.settings.fusion_top_k)
+        fused = self.fusion_service.fuse(lexical_hits, dense_hits, graph_hits, fusion_top_k)
         self.rag_repository.create_fusion_logs(request_log["id"], fused)
-        reranked = self.rerank_service.rerank(rewritten_query, fused, self.settings.rerank_top_k)
+        reranked = self.rerank_service.rerank(rewritten_query, fused, rerank_top_k)
         self.rag_repository.create_rerank_logs(request_log["id"], reranked)
 
         evidence_bundle = self.citation_assembler.evidence(reranked)
@@ -128,7 +136,7 @@ class RagOrchestrator:
                 "channel": item.channel,
                 "evidence_type": item.evidence_type,
             }
-            for item in evidence_bundle[: self.settings.answer_evidence_top_k]
+            for item in evidence_bundle[: answer_top_k]
         ]
         distinct_doc_count = len({item.doc_id for item in evidence_bundle if item.doc_id is not None})
         evidence_sufficient = self._evidence_sufficient(evidence_bundle)
@@ -182,9 +190,9 @@ class RagOrchestrator:
                 status_code=llm_status,
                 org_id=org_id,
             )
-        citations = self.citation_assembler.citations(kb, reranked[: self.settings.answer_evidence_top_k])
-        retrieved_chunks = self.citation_assembler.retrieved_chunks(reranked[: self.settings.answer_evidence_top_k])
-        graph_evidence = self.citation_assembler.graph_evidence(reranked[: self.settings.answer_evidence_top_k])
+        citations = self.citation_assembler.citations(kb, reranked[: answer_top_k])
+        retrieved_chunks = self.citation_assembler.retrieved_chunks(reranked[: answer_top_k])
+        graph_evidence = self.citation_assembler.graph_evidence(reranked[: answer_top_k])
         safety_flags = self.answer_validator_service.validate(
             answer_text,
             [dump_camel(item) for item in citations],
@@ -230,7 +238,7 @@ class RagOrchestrator:
             request_no=request_log["request_no"],
             answer_text=answer_text,
             citations=citations,
-            evidence=evidence_bundle[: self.settings.answer_evidence_top_k],
+            evidence=evidence_bundle[: answer_top_k],
             retrieved_chunks=retrieved_chunks,
             graph_evidence=graph_evidence,
             knowledge_base_code=kb["kb_code"],
@@ -254,6 +262,13 @@ class RagOrchestrator:
         if llm_metadata:
             payload["llmTelemetry"] = llm_metadata
         return payload
+
+    def _resolve_answer_top_k(self, top_k: int | None) -> int:
+        default_top_k = max(1, int(self.settings.answer_evidence_top_k))
+        if top_k is None:
+            return default_top_k
+        requested = max(1, int(top_k))
+        return min(requested, default_top_k, 20)
 
     def _evidence_sufficient(self, evidence_bundle: list) -> bool:
         if len(evidence_bundle) < self.settings.rag_evidence_min_count:

@@ -76,9 +76,14 @@ function normalizeApiError(error: unknown): ApiClientError {
 }
 
 // The base request instance
+const resolveApiTimeout = (): number => {
+  const parsed = Number(import.meta.env.VITE_API_TIMEOUT_MS || '90000');
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 90000;
+};
+
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
-  timeout: 30000,
+  timeout: resolveApiTimeout(),
 });
 
 request.interceptors.request.use(

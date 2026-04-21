@@ -335,6 +335,11 @@ class Settings:
             raise ValueError("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED=true requires CG_RAG_RUNTIME_ENABLED=true")
 
         if mode == "real":
+            if self.rag_runtime_enabled and self.llm_enable_fallback_mock:
+                raise ValueError(
+                    "CG_LLM_ENABLE_FALLBACK_MOCK=true is forbidden when "
+                    "CG_AI_RUNTIME_MODE='real' and CG_RAG_RUNTIME_ENABLED=true"
+                )
             if self.qwen_vision_enabled:
                 _require_non_empty("CG_QWEN_VISION_BASE_URL", self.qwen_vision_base_url)
                 _require_non_empty("CG_QWEN_VISION_API_KEY", self.qwen_vision_api_key)

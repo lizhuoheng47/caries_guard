@@ -35,7 +35,9 @@ def test_real_mode_fail_fast_llm_mock(mock_deps):
     with pytest.raises(ValueError, match="forbids CG_LLM_PROVIDER_CODE='MOCK'"):
         Settings(
             ai_runtime_mode="real",
+            analysis_kb_enhancement_enabled=True,
             llm_provider_code="MOCK",
+            llm_enable_fallback_mock=False,
             rag_embedding_provider="OPENAI_COMPATIBLE",
             llm_base_url="http://fake",
             llm_api_key="key",
@@ -48,7 +50,9 @@ def test_real_mode_fail_fast_embedding_mock(mock_deps):
     with pytest.raises(ValueError, match="forbids CG_RAG_EMBEDDING_PROVIDER='HASHING'"):
         Settings(
             ai_runtime_mode="real",
+            analysis_kb_enhancement_enabled=True,
             llm_provider_code="OPENAI_COMPATIBLE",
+            llm_enable_fallback_mock=False,
             rag_embedding_provider="HASHING",
             llm_base_url="http://fake",
             llm_api_key="key",

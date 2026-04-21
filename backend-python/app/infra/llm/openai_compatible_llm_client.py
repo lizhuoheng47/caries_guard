@@ -11,6 +11,10 @@ from app.infra.llm.base_llm_client import LlmResult
 
 class OpenAiCompatibleLlmClient:
     """Minimal OpenAI-compatible chat completions adapter."""
+    _MAX_QUERY_CHARS = 300
+    _MAX_CONTEXT_CHARS = 800
+    _MAX_EVIDENCE_CHARS = 500
+    _MAX_EVIDENCE_ITEMS = 4
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -97,13 +101,28 @@ class OpenAiCompatibleLlmClient:
 
     @staticmethod
     def _build_prompt(scene: str, query: str, evidence: list[dict], context_text: str | None) -> str:
+        query_text = OpenAiCompatibleLlmClient._trim(query, OpenAiCompatibleLlmClient._MAX_QUERY_CHARS)
+        context = OpenAiCompatibleLlmClient._trim(context_text, OpenAiCompatibleLlmClient._MAX_CONTEXT_CHARS)
         evidence_text = "\n".join(
-            f"[{index}] {item.get('doc_title') or item.get('doc_no') or 'document'}: {item['chunk_text']}"
-            for index, item in enumerate(evidence, start=1)
+            (
+                f"[{index}] "
+                f"{OpenAiCompatibleLlmClient._trim(item.get('doc_title') or item.get('doc_no') or 'document', 80)}: "
+                f"{OpenAiCompatibleLlmClient._trim(item.get('chunk_text'), OpenAiCompatibleLlmClient._MAX_EVIDENCE_CHARS)}"
+            )
+            for index, item in enumerate(evidence[: OpenAiCompatibleLlmClient._MAX_EVIDENCE_ITEMS], start=1)
         )
         return (
             f"Scene: {scene}\n"
-            f"Question: {query}\n"
-            f"Case context: {context_text or '{}'}\n"
+            f"Question: {query_text}\n"
+            f"Case context: {context or '{}'}\n"
             f"Evidence:\n{evidence_text or 'NONE'}"
         )
+
+    @staticmethod
+    def _trim(value: str | None, max_chars: int) -> str:
+        if not value:
+            return ""
+        compact = " ".join(str(value).split())
+        if len(compact) <= max_chars:
+            return compact
+        return compact[: max_chars - 3] + "..."

@@ -26,9 +26,7 @@ class EmbeddingSimilarityRerankProvider(BaseRerankProvider):
         if not candidates:
             return []
         query_vector = self.embedding_provider.embed(query)
-        candidate_vectors = self.embedding_provider.embed_many(
-            [candidate.get("chunk_text") or candidate.get("evidence_text") or "" for candidate in candidates]
-        )
+        candidate_vectors = self._embed_candidate_texts(candidates)
         query_tokens = self._tokens(query)
         scores: list[float] = []
         for candidate, vector in zip(candidates, candidate_vectors):
@@ -43,6 +41,15 @@ class EmbeddingSimilarityRerankProvider(BaseRerankProvider):
             )
             scores.append(round(final_score, 6))
         return scores
+
+    def _embed_candidate_texts(self, candidates: list[dict]) -> list[list[float]]:
+        texts = [candidate.get("chunk_text") or candidate.get("evidence_text") or "" for candidate in candidates]
+        batch_size = max(1, self.settings.rag_embedding_batch_size)
+        vectors: list[list[float]] = []
+        for offset in range(0, len(texts), batch_size):
+            batch = texts[offset : offset + batch_size]
+            vectors.extend(self.embedding_provider.embed_many(batch))
+        return vectors
 
     @staticmethod
     def _cosine_similarity(left: list[float], right: list[float]) -> float:

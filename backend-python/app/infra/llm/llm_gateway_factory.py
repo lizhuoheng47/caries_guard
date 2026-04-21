@@ -24,7 +24,7 @@ def create_llm_client(settings: Settings) -> BaseLlmClient:
         return TemplateLlmClient(settings)
     if provider in {"OPENAI", "OPENAI_COMPATIBLE", "DASHSCOPE", "DEEPSEEK", "QWEN"}:
         primary = OpenAiCompatibleLlmClient(settings)
-        if settings.llm_enable_fallback_mock:
+        if settings.llm_enable_fallback_mock and settings.ai_runtime_mode != "real":
             return FallbackLlmClient(primary, TemplateLlmClient(settings))
         return primary
     raise ValueError(f"Unsupported CG_LLM_PROVIDER_CODE={settings.llm_provider_code}")

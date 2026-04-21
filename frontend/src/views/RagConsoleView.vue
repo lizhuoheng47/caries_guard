@@ -657,14 +657,14 @@ const sendMessage = async (preset?: string) => {
       mode.value === 'doctor'
         ? await ragApi.doctorQa({
             question: text,
-            topK: 4,
+            topK: 3,
             taskNo: selectedDetail.value.task.no,
             relatedBizNo: selectedDetail.value.caseInfo.no,
             clinicalContext: buildDoctorContext(selectedDetail.value),
           })
         : await ragApi.patientExplanation({
             question: text,
-            topK: 4,
+            topK: 3,
             taskNo: selectedDetail.value.task.no,
             relatedBizNo: selectedDetail.value.caseInfo.no,
             caseSummary: buildPatientCaseSummary(selectedDetail.value),

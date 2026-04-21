@@ -21,6 +21,7 @@ class RagService:
         return self.rag_orchestrator.answer(
             scene="PATIENT_EXPLAIN",
             question=query,
+            top_k=request.top_k,
             kb_code=request.kb_code,
             related_biz_no=request.related_biz_no,
             patient_uuid=request.patient_uuid,
@@ -35,6 +36,7 @@ class RagService:
         return self.rag_orchestrator.answer(
             scene="DOCTOR_QA",
             question=request.question,
+            top_k=request.top_k,
             kb_code=request.kb_code,
             related_biz_no=request.related_biz_no,
             patient_uuid=request.patient_uuid,
@@ -51,6 +53,7 @@ class RagService:
         return self.rag_orchestrator.answer(
             scene=scene,
             question=request.question,
+            top_k=request.top_k,
             kb_code=request.kb_code,
             related_biz_no=request.related_biz_no,
             patient_uuid=request.patient_uuid,
