@@ -1,6 +1,5 @@
-"""Tests for SegmentationPipeline routing and fallback rules."""
-
 from pathlib import Path
+import importlib.util
 
 import numpy as np
 import pytest
@@ -8,6 +7,7 @@ from PIL import Image
 
 from app.core.config import Settings
 from app.core.exceptions import BusinessException
+from app.infra.model.model_assets import ModelAssets
 from app.infra.model.model_registry import ModelRegistry
 from app.pipelines.segmentation_pipeline import SegmentationPipeline
 from app.schemas.callback import ToothDetection
@@ -15,36 +15,44 @@ from app.schemas.request import ImageInput
 
 
 def _settings(**overrides) -> Settings:
+    repo_root = Path(__file__).resolve().parents[3]
     values = {
-        "ai_runtime_mode": "mock",
+        "ai_runtime_mode": "hybrid",
+        "rag_runtime_enabled": False,
+        "analysis_kb_enhancement_enabled": False,
+        "model_quality_enabled": False,
+        "model_tooth_detect_enabled": False,
         "model_segmentation_enabled": False,
+        "model_grading_enabled": False,
+        "model_risk_enabled": False,
+        "model_quality_impl_type": "HEURISTIC",
+        "model_tooth_detect_impl_type": "HEURISTIC",
+        "model_segmentation_impl_type": "HEURISTIC",
+        "model_grading_impl_type": "HEURISTIC",
+        "model_risk_impl_type": "HEURISTIC",
+        "model_weights_dir": str(repo_root / "model-weights"),
+        "quality_model_param_path": str(repo_root / "model-weights" / "quality" / "quality_model_params.json"),
+        "quality_model_weights_path": str(repo_root / "model-weights" / "quality" / "quality_model_params.json"),
         "model_confidence_threshold": 0.3,
         "segmentation_force_fail": False,
     }
-    mapping = {
-        "CG_AI_RUNTIME_MODE": "ai_runtime_mode",
-        "CG_MODEL_SEGMENTATION_ENABLED": "model_segmentation_enabled",
-        "CG_MODEL_CONFIDENCE_THRESHOLD": "model_confidence_threshold",
-        "CG_SEGMENTATION_FORCE_FAIL": "segmentation_force_fail",
-    }
-    for key, value in overrides.items():
-        target = mapping.get(key, key)
-        if target in {"model_segmentation_enabled", "segmentation_force_fail"}:
-            values[target] = str(value).lower() == "true"
-        elif target == "model_confidence_threshold":
-            values[target] = float(value)
-        else:
-            values[target] = value
+    values.update(overrides)
     return Settings(**values)
+
+
+def _pipeline(settings: Settings) -> tuple[ModelAssets, SegmentationPipeline]:
+    assets = ModelAssets(settings)
+    registry = ModelRegistry(settings, assets)
+    registry.startup()
+    return assets, SegmentationPipeline(registry, settings, assets)
 
 
 @pytest.fixture()
 def sample_image(tmp_path: Path) -> Path:
     arr = np.random.randint(70, 210, (256, 512), dtype=np.uint8)
     arr[96:132, 170:215] = 30
-    img = Image.fromarray(arr, mode="L")
     path = tmp_path / "image.png"
-    img.save(path)
+    Image.fromarray(arr, mode="L").save(path)
     return path
 
 
@@ -56,89 +64,37 @@ def _detections() -> list[ToothDetection]:
     return [ToothDetection(image_id=100, tooth_code="16", bbox=[120, 70, 240, 170], detection_score=0.9)]
 
 
-class TestMockMode:
-    def test_generates_mock_assets(self, sample_image: Path, tmp_path: Path):
-        settings = _settings(CG_AI_RUNTIME_MODE="mock")
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = SegmentationPipeline(registry, settings)
+def test_disabled_segmentation_module_fails_explicitly(tmp_path: Path) -> None:
+    _, pipeline = _pipeline(_settings(ai_runtime_mode="mock"))
 
-        result = pipeline.segment(_image(), sample_image, _detections(), tmp_path / "visual")
+    with pytest.raises(BusinessException) as exc_info:
+        pipeline.segment(_image(), None, _detections(), tmp_path / "visual")
 
-        assert result.segmentation_mode == "mock"
-        assert result.segmentation_impl_type == "MOCK"
-        assert result.mask_path.exists()
-        assert result.overlay_path.exists()
-        assert result.heatmap_path.exists()
-        assert result.mask_path.stat().st_size > 0
+    assert exc_info.value.code == "M5005"
+    assert pipeline.get_last_impl_type() == "DISABLED"
 
 
-class TestHybridMode:
-    def test_real_path_when_enabled(self, sample_image: Path, tmp_path: Path):
-        settings = _settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_SEGMENTATION_ENABLED="true",
-        )
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = SegmentationPipeline(registry, settings)
+def test_enabled_segmentation_module_renders_real_assets(sample_image: Path, tmp_path: Path) -> None:
+    if importlib.util.find_spec("cv2") is None:
+        pytest.skip("opencv-python-headless is not installed in this environment")
+    assets, pipeline = _pipeline(_settings(model_segmentation_enabled=True))
 
-        result = pipeline.segment(_image(), sample_image, _detections(), tmp_path / "visual")
+    result = pipeline.segment(_image(), sample_image, _detections(), tmp_path / "visual")
 
-        assert result.segmentation_mode == "real"
-        assert result.segmentation_impl_type == "HEURISTIC"
-        assert result.regions[0]["toothCode"] == "16"
-        assert result.mask_path.exists()
-        assert result.overlay_path.exists()
-        assert result.heatmap_path.exists()
-
-    def test_fallback_to_mock_on_error(self, tmp_path: Path):
-        settings = _settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_SEGMENTATION_ENABLED="true",
-        )
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = SegmentationPipeline(registry, settings)
-
-        result = pipeline.segment(_image(), tmp_path / "missing.png", _detections(), tmp_path / "visual")
-
-        assert result.segmentation_mode == "mock"
-        assert result.segmentation_impl_type == "MOCK"
-        assert result.mask_path.exists()
+    assert result.segmentation_mode == "real"
+    assert result.segmentation_impl_type == "HEURISTIC"
+    assert result.regions
+    assert result.mask_path.exists()
+    assert result.overlay_path.exists()
+    assert result.heatmap_path.exists()
+    assert result.raw_result["manifestPath"] == str(assets.segmentation_manifest.manifest_path)
+    assert result.raw_result["classMapPath"] == str(assets.class_map_path)
 
 
-class TestRealMode:
-    def test_raises_on_missing_image(self, tmp_path: Path):
-        settings = _settings(CG_AI_RUNTIME_MODE="real")
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = SegmentationPipeline(registry, settings)
+def test_force_fail_raises_segmentation_business_error(sample_image: Path, tmp_path: Path) -> None:
+    _, pipeline = _pipeline(_settings(ai_runtime_mode="real", model_segmentation_enabled=True, segmentation_force_fail=True))
 
-        with pytest.raises(BusinessException) as exc_info:
-            pipeline.segment(_image(), tmp_path / "missing.png", _detections(), tmp_path / "visual")
-        assert exc_info.value.code == "M5006"
+    with pytest.raises(BusinessException) as exc_info:
+        pipeline.segment(_image(), sample_image, _detections(), tmp_path / "visual")
 
-    def test_real_success(self, sample_image: Path, tmp_path: Path):
-        settings = _settings(CG_AI_RUNTIME_MODE="real")
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = SegmentationPipeline(registry, settings)
-
-        result = pipeline.segment(_image(), sample_image, _detections(), tmp_path / "visual")
-
-        assert result.segmentation_mode == "real"
-        assert result.segmentation_impl_type == "HEURISTIC"
-
-    def test_force_fail_raises_in_real_mode(self, sample_image: Path, tmp_path: Path):
-        settings = _settings(
-            CG_AI_RUNTIME_MODE="real",
-            CG_SEGMENTATION_FORCE_FAIL="true",
-        )
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = SegmentationPipeline(registry, settings)
-
-        with pytest.raises(BusinessException) as exc_info:
-            pipeline.segment(_image(), sample_image, _detections(), tmp_path / "visual")
-        assert exc_info.value.code == "M5006"
+    assert exc_info.value.code == "M5008"

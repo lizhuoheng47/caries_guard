@@ -10,8 +10,11 @@ def _pipeline(mode: str) -> InferencePipeline:
         visual_asset_service=None,
         risk_service=None,
         model_registry=None,
+        model_assets=None,
         quality_pipeline=None,
         detection_pipeline=None,
+        segmentation_pipeline=None,
+        grading_pipeline=None,
     )
 
 

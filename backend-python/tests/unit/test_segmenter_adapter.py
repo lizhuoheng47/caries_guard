@@ -6,8 +6,12 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from app.core.exceptions import ModelRuntimeException
 from app.infra.model.base_model import ImplType
 from app.infra.model.lesion_segmenter import LesionSegmenterAdapter
+from app.infra.model.lesion_segmenter_onnx import LesionSegmenterOnnxAdapter
+from app.infra.model.model_assets import ModelAssets
+from app.infra.model.model_router import ModelRouter
 from app.schemas.callback import ToothDetection
 
 
@@ -59,5 +63,30 @@ def test_infer_without_detections_uses_fallback_region(sample_image: Path):
     result = adapter.infer(sample_image, [])
 
     assert len(result["regions"]) == 1
-    assert result["regions"][0]["toothCode"] == "16"
+    assert result["regions"][0]["toothCode"] == "UNKNOWN"
     assert int(np.sum(result["maskArray"] > 0)) > 0
+
+
+class _AssetSettings:
+    model_segmentation_manifest_path = "assets/models/manifests/segmentation_v1.yaml"
+    model_grading_manifest_path = "assets/models/manifests/grading_v1.yaml"
+
+
+class _RouterSettings:
+    ai_runtime_mode = "real"
+    model_segmentation_impl_type = "ML_MODEL"
+
+
+def test_router_maps_segmentation_ml_model_adapter():
+    impl_type = ModelRouter.resolve_impl_type(_RouterSettings(), "segmentation")
+    assert impl_type == ImplType.ML_MODEL
+    assert ModelRouter.get_adapter_class("segmentation", impl_type) is LesionSegmenterOnnxAdapter
+
+
+def test_onnx_adapter_fails_explicitly_when_checkpoint_missing():
+    assets = ModelAssets(_AssetSettings())
+    adapter = LesionSegmenterOnnxAdapter(model_assets=assets)
+
+    with pytest.raises(ModelRuntimeException, match="segmentation checkpoint does not exist") as exc_info:
+        adapter.load()
+    assert exc_info.value.code == "M5006"

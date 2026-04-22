@@ -83,6 +83,7 @@ class MetadataRepository:
                 id BIGINT PRIMARY KEY AUTO_INCREMENT,
                 job_no VARCHAR(64) NOT NULL UNIQUE,
                 java_task_no VARCHAR(64) NOT NULL,
+                trace_id VARCHAR(128),
                 case_no VARCHAR(64),
                 patient_uuid VARCHAR(128),
                 infer_type_code VARCHAR(32) NOT NULL DEFAULT 'ANALYZE',
@@ -508,6 +509,7 @@ class MetadataRepository:
     def _index_statements() -> list[str]:
         return [
             "CREATE INDEX idx_ai_infer_job_java_task_no ON ai_infer_job(java_task_no)",
+            "CREATE INDEX idx_ai_infer_job_trace_id ON ai_infer_job(trace_id)",
             "CREATE INDEX idx_ai_infer_job_case_status ON ai_infer_job(case_no, status_code)",
             "CREATE INDEX idx_ai_infer_job_image_job ON ai_infer_job_image(job_id, image_id)",
             "CREATE INDEX idx_ai_infer_artifact_job ON ai_infer_artifact(job_id, artifact_type_code)",

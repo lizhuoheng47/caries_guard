@@ -1,163 +1,68 @@
-"""Integration-level tests for Phase 5B segmentation visual assets."""
-
-from pathlib import Path
-from typing import Any, cast
-from unittest.mock import MagicMock
-
-import numpy as np
-from PIL import Image
+from types import SimpleNamespace
 
 from app.core.config import Settings
-from app.infra.model.model_registry import ModelRegistry
-from app.pipelines.detection_pipeline import DetectionPipeline
-from app.pipelines.grading_pipeline import GradingPipeline
+from app.core.exceptions import AnalysisRuntimeException
+from app.infra.model.model_assets import ModelAssets
 from app.pipelines.inference_pipeline import InferencePipeline
-from app.pipelines.quality_pipeline import QualityPipeline
-from app.pipelines.segmentation_pipeline import SegmentationPipeline
-from app.services.image_fetch_service import FetchedImage, ImageFetchService
-from app.services.risk_service import RiskService
-from app.services.visual_asset_service import VisualAssetService
+from app.services.analysis_asset_service import AnalysisAssetService
 
 
-class FakeStorage:
-    def upload_file(self, bucket_name: str, object_key: str, local_path: Path, content_type: str):
-        class Uploaded:
-            size = Path(local_path).stat().st_size
-            file_name = Path(local_path).name
+class _FakeRegistry:
+    def is_module_loaded(self, _module: str) -> bool:
+        return False
 
-        uploaded = Uploaded()
-        uploaded.bucket_name = bucket_name
-        uploaded.object_key = object_key
-        uploaded.content_type = content_type
-        return uploaded
+    def get_module_error(self, module: str) -> str | None:
+        if module == "segmentation":
+            return "M5006: segmentation checkpoint does not exist"
+        return None
 
 
-def _settings(tmp_path: Path, **overrides) -> Settings:
-    values = {
-        "ai_runtime_mode": "hybrid",
-        "rag_runtime_enabled": False,
-        "analysis_kb_enhancement_enabled": False,
-        "model_quality_enabled": False,
-        "model_tooth_detect_enabled": True,
-        "model_segmentation_enabled": True,
-        "model_grading_enabled": True,
-        "model_confidence_threshold": 0.3,
-        "download_images": True,
-        "temp_dir": str(tmp_path / "work"),
-    }
-    mapping = {
-        "CG_AI_RUNTIME_MODE": "ai_runtime_mode",
-        "CG_MODEL_QUALITY_ENABLED": "model_quality_enabled",
-        "CG_MODEL_TOOTH_DETECT_ENABLED": "model_tooth_detect_enabled",
-        "CG_MODEL_SEGMENTATION_ENABLED": "model_segmentation_enabled",
-        "CG_MODEL_GRADING_ENABLED": "model_grading_enabled",
-        "CG_MODEL_CONFIDENCE_THRESHOLD": "model_confidence_threshold",
-        "CG_AI_DOWNLOAD_IMAGES": "download_images",
-        "CG_TEMP_DIR": "temp_dir",
-    }
-    for key, value in overrides.items():
-        target = mapping.get(key, key)
-        if target in {
-            "model_quality_enabled",
-            "model_tooth_detect_enabled",
-            "model_segmentation_enabled",
-            "model_grading_enabled",
-            "download_images",
-        }:
-            values[target] = str(value).lower() == "true"
-        elif target == "model_confidence_threshold":
-            values[target] = float(value)
-        else:
-            values[target] = value
-    return Settings(**values)
+class _FakeStage:
+    def __init__(self, impl_type: str) -> None:
+        self._impl_type = impl_type
+
+    def get_last_impl_type(self) -> str:
+        return self._impl_type
 
 
-def _task_payload() -> dict:
-    return {
-        "taskNo": "TASK-P5B-001",
-        "traceId": "trace-p5b",
-        "caseNo": "CASE-P5B-001",
-        "orgId": 1,
-        "images": [
-            {
-                "imageId": 100,
-                "imageTypeCode": "BITEWING",
-                "bucketName": "caries-image",
-                "objectKey": "test/img.jpg",
-            }
-        ],
-    }
-
-
-def _sample_image(tmp_path: Path) -> Path:
-    arr = np.random.randint(70, 210, (256, 512), dtype=np.uint8)
-    arr[96:132, 170:215] = 30
-    img = Image.fromarray(cast(Any, arr), mode="L")
-    path = tmp_path / "image.png"
-    img.save(path)
-    return path
-
-
-def test_phase5b_pipeline_uploads_segmentation_visual_assets(tmp_path: Path):
-    settings = _settings(tmp_path)
-    registry = ModelRegistry(settings)
-    registry.startup()
-    quality_pipeline = QualityPipeline(registry, settings)
-    detection_pipeline = DetectionPipeline(registry, settings)
-    segmentation_pipeline = SegmentationPipeline(registry, settings)
-    grading_pipeline = GradingPipeline(registry, settings)
-
-    image_path = _sample_image(tmp_path)
-    mock_fetch = MagicMock(spec=ImageFetchService)
-    mock_fetch.download.return_value = FetchedImage(
-        image_id=100,
-        image_type_code="BITEWING",
-        path=image_path,
-        size_bytes=image_path.stat().st_size,
-        source="test",
+def test_failure_payload_exposes_segmentation_manifest_paths() -> None:
+    settings = Settings(
+        ai_runtime_mode="real",
+        rag_runtime_enabled=False,
+        analysis_kb_enhancement_enabled=False,
+        model_quality_enabled=True,
+        model_tooth_detect_enabled=True,
+        model_segmentation_enabled=True,
+        model_grading_enabled=True,
+        model_risk_enabled=False,
+        model_quality_impl_type="HEURISTIC",
+        model_tooth_detect_impl_type="HEURISTIC",
+        model_segmentation_impl_type="HEURISTIC",
+        model_grading_impl_type="HEURISTIC",
+        model_risk_impl_type="HEURISTIC",
+        strict_model_startup_validation=False,
     )
-
+    model_assets = ModelAssets(settings)
     pipeline = InferencePipeline(
         settings=settings,
-        image_fetch_service=mock_fetch,
-        visual_asset_service=VisualAssetService(settings, cast(Any, FakeStorage())),
-        risk_service=RiskService(settings),
-        model_registry=registry,
-        quality_pipeline=quality_pipeline,
-        detection_pipeline=detection_pipeline,
-        segmentation_pipeline=segmentation_pipeline,
-        grading_pipeline=grading_pipeline,
+        image_fetch_service=SimpleNamespace(),
+        visual_asset_service=None,
+        model_registry=_FakeRegistry(),
+        model_assets=model_assets,
+        quality_pipeline=_FakeStage("HEURISTIC"),
+        detection_pipeline=_FakeStage("HEURISTIC"),
+        segmentation_pipeline=_FakeStage("HEURISTIC"),
+        grading_pipeline=_FakeStage("HEURISTIC"),
+        risk_service=SimpleNamespace(),
+        analysis_asset_service=AnalysisAssetService(settings, model_assets),
     )
 
-    result = pipeline.run(_task_payload())
-    raw = result["rawResultJson"]
-    visual_assets = result["visualAssets"]
+    payload = pipeline.build_failure_payload(
+        {"taskNo": "TASK-FAIL-SEG"},
+        AnalysisRuntimeException("M5101", "real inference assets are not ready"),
+    )
 
-    assert raw["pipelineVersion"] == "phase5d-1"
-    assert raw["segmentationMode"] == "real"
-    assert raw["segmentationImplType"] == "HEURISTIC"
-    assert raw["gradingMode"] == "real"
-    assert raw["gradingImplType"] == "HEURISTIC"
-    assert raw["uncertaintyMode"] == "real"
-    assert raw["uncertaintyImplType"] == "COMPOSITE_HEURISTIC"
-    assert raw["gradingLabel"] in {"C0", "C1", "C2", "C3"}
-    assert raw["uncertaintyScore"] == result["uncertaintyScore"]
-    assert isinstance(raw["uncertaintyReasons"], list)
-    assert raw["needsReview"] == (raw["uncertaintyScore"] >= settings.uncertainty_review_threshold)
-    assert raw["riskMode"] == "mock"
-    assert raw["riskImplType"] == "MOCK"
-    assert raw["riskRawResult"]["gradingLabel"] == raw["gradingLabel"]
-    assert raw["riskLevel"] in {"LOW", "MEDIUM", "HIGH"}
-    assert raw["knowledgeVersion"] == settings.rag_knowledge_version
-    assert isinstance(raw["evidenceRefs"], list)
-    assert len(raw["segmentationRegions"]) >= 1
-    assert len(raw["lesionResults"]) >= 1
-    assert len(raw["toothResults"]) >= 1
-    assert len(raw["imageResults"]) >= 1
-    assert [item["assetTypeCode"] for item in visual_assets] == ["MASK", "OVERLAY", "HEATMAP"]
-    for item in visual_assets:
-        assert item["bucketName"] == "caries-visual"
-        assert item["objectKey"].startswith("org/1/case/CASE-P5B-001/analysis/TASK-P5B-001/")
-        assert item["contentType"] == "image/png"
-        assert item["fileSizeBytes"] > 0
-        assert item["md5"]
+    module_status = payload["rawResultJson"]["moduleStatus"]["segmentation"]
+    assert module_status["manifestPath"] == str(model_assets.segmentation_manifest.manifest_path)
+    assert module_status["checkpointPath"] == str(model_assets.segmentation_manifest.checkpoint_path)
+    assert payload["rawResultJson"]["segmentationImplType"] == "HEURISTIC"

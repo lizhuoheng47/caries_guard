@@ -1,11 +1,3 @@
-"""Grading model adapter - HEURISTIC implementation.
-
-The adapter produces a traceable lesion grade from image statistics plus
-segmentation regions. It is a real algorithmic placeholder, not a hard-coded
-label. A trained classifier can replace the infer body while keeping the
-public output contract stable.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -21,7 +13,7 @@ log = get_logger("cariesguard-ai.model.grading")
 
 
 class GradingHeuristicAdapter(BaseModelAdapter):
-    """Heuristic caries grading adapter for Phase 5C."""
+    """Heuristic grading adapter without fixed fallback labels or boxes."""
 
     model_code = "caries-grading-heuristic-v1"
     model_type_code = "GRADING"
@@ -49,17 +41,20 @@ class GradingHeuristicAdapter(BaseModelAdapter):
         segmentation_regions: list[dict[str, Any]] | None = None,
         tooth_detections: list[Any] | None = None,
     ) -> dict[str, Any]:
-        """Grade lesion severity for *image_path*.
-
-        Returns a dict with gradingLabel, confidenceScore, uncertaintyScore,
-        implType, and rawResult. The caller applies business review thresholds.
-        """
         img = Image.open(image_path).convert("L")
         arr = np.asarray(img, dtype=np.float64)
         height, width = arr.shape
         regions = self._normalise_regions(segmentation_regions, width, height)
         if not regions:
-            regions = [self._fallback_region(width, height, tooth_detections)]
+            fallback_region = self._region_from_tooth_detections(width, height, tooth_detections)
+            if fallback_region is not None:
+                regions = [fallback_region]
+        if not regions:
+            image_region = self._image_driven_region(arr, width, height)
+            if image_region is not None:
+                regions = [image_region]
+        if not regions:
+            raise RuntimeError("grading requires at least one candidate region")
 
         candidates = [self._score_region(arr, region) for region in regions]
         best = max(candidates, key=lambda item: item["severityScore"])
@@ -91,11 +86,11 @@ class GradingHeuristicAdapter(BaseModelAdapter):
 
     def _score_region(self, arr: np.ndarray, region: dict[str, Any]) -> dict[str, Any]:
         height, width = arr.shape
-        bbox = self._clamp_box([int(v) for v in region["bbox"]], width, height)
+        bbox = self._clamp_box([int(value) for value in region["bbox"]], width, height)
         x1, y1, x2, y2 = bbox
         roi = arr[y1:y2, x1:x2]
         if roi.size == 0:
-            roi = arr
+            raise RuntimeError("empty grading ROI")
 
         image_mean = float(np.mean(arr)) if arr.size else 0.0
         roi_mean = float(np.mean(roi)) if roi.size else image_mean
@@ -110,17 +105,13 @@ class GradingHeuristicAdapter(BaseModelAdapter):
         segmentation_score = float(region.get("score") or region.get("segmentationScore") or 0.5)
         segmentation_score = max(0.0, min(1.0, segmentation_score))
 
-        severity_score = (
-            contrast_score * 0.55
-            + area_score * 0.25
-            + segmentation_score * 0.20
-        )
+        severity_score = contrast_score * 0.55 + area_score * 0.25 + segmentation_score * 0.20
         severity_score = round(max(0.0, min(1.0, severity_score)), 4)
-        boundary_distance = min(abs(severity_score - item) for item in self._GRADE_THRESHOLDS)
+        boundary_distance = min(abs(severity_score - threshold) for threshold in self._GRADE_THRESHOLDS)
 
         return {
             "regionIndex": int(region.get("regionIndex") or region.get("region_index") or 0),
-            "toothCode": str(region.get("toothCode") or region.get("tooth_code") or "16"),
+            "toothCode": str(region.get("toothCode") or region.get("tooth_code") or "UNKNOWN"),
             "bbox": bbox,
             "severityScore": severity_score,
             "contrastScore": contrast_score,
@@ -168,7 +159,7 @@ class GradingHeuristicAdapter(BaseModelAdapter):
             bbox = region.get("bbox")
             if not bbox or len(bbox) != 4:
                 continue
-            box = cls._clamp_box([int(v) for v in bbox], width, height)
+            box = cls._clamp_box([int(value) for value in bbox], width, height)
             if box[2] <= box[0] or box[3] <= box[1]:
                 continue
             item = dict(region)
@@ -177,38 +168,55 @@ class GradingHeuristicAdapter(BaseModelAdapter):
             normalised.append(item)
         return normalised
 
-    @staticmethod
-    def _fallback_region(
+    @classmethod
+    def _region_from_tooth_detections(
+        cls,
         width: int,
         height: int,
         tooth_detections: list[Any] | None,
-    ) -> dict[str, Any]:
-        for det in tooth_detections or []:
-            bbox = getattr(det, "bbox", None)
-            tooth_code = getattr(det, "tooth_code", None) or getattr(det, "toothCode", None)
-            score = getattr(det, "detection_score", None) or getattr(det, "score", None)
-            if isinstance(det, dict):
-                bbox = det.get("bbox")
-                tooth_code = det.get("toothCode") or det.get("tooth_code")
-                score = det.get("score") or det.get("detectionScore")
+    ) -> dict[str, Any] | None:
+        for detection in tooth_detections or []:
+            bbox = getattr(detection, "bbox", None)
+            tooth_code = getattr(detection, "tooth_code", None) or getattr(detection, "toothCode", None)
+            score = getattr(detection, "detection_score", None) or getattr(detection, "score", None)
+            if isinstance(detection, dict):
+                bbox = detection.get("bbox")
+                tooth_code = detection.get("toothCode") or detection.get("tooth_code")
+                score = detection.get("score") or detection.get("detectionScore")
             if bbox and len(bbox) == 4:
                 return {
-                    "bbox": GradingModelAdapter._clamp_box([int(v) for v in bbox], width, height),
-                    "toothCode": tooth_code or "16",
+                    "bbox": cls._clamp_box([int(value) for value in bbox], width, height),
+                    "toothCode": tooth_code or "UNKNOWN",
                     "score": score or 0.5,
                     "regionIndex": 0,
                 }
-        return {
-            "bbox": [
-                max(0, int(width * 0.35)),
-                max(0, int(height * 0.35)),
-                min(width - 1, int(width * 0.55)),
-                min(height - 1, int(height * 0.65)),
-            ],
-            "toothCode": "16",
-            "score": 0.5,
-            "regionIndex": 0,
-        }
+        return None
+
+    @classmethod
+    def _image_driven_region(
+        cls,
+        arr: np.ndarray,
+        width: int,
+        height: int,
+    ) -> dict[str, Any] | None:
+        if arr.size == 0:
+            return None
+        threshold = float(np.percentile(arr, 12))
+        dark_y, dark_x = np.where(arr <= threshold)
+        if dark_x.size == 0 or dark_y.size == 0:
+            return None
+        center_x = int(np.mean(dark_x))
+        center_y = int(np.mean(dark_y))
+        span_x = max(12, int(np.std(dark_x) * 1.5))
+        span_y = max(12, int(np.std(dark_y) * 1.5))
+        bbox = cls._clamp_box(
+            [center_x - span_x, center_y - span_y, center_x + span_x, center_y + span_y],
+            width,
+            height,
+        )
+        if bbox[2] <= bbox[0] or bbox[3] <= bbox[1]:
+            return None
+        return {"bbox": bbox, "toothCode": "UNKNOWN", "score": 0.4, "regionIndex": 0}
 
     @staticmethod
     def _clamp_box(box: list[int], width: int, height: int) -> list[int]:

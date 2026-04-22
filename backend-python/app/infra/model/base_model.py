@@ -37,6 +37,8 @@ class BaseModelAdapter(ABC):
     model_code: str
     model_type_code: str
     impl_type: ImplType
+    dataset_version: str | None = None
+    manifest_path: str | None = None
 
     @abstractmethod
     def load(self) -> None:
@@ -50,11 +52,25 @@ class BaseModelAdapter(ABC):
     def unload(self) -> None:
         """Release resources held by the adapter."""
 
+    def bind_manifest(self, manifest: object) -> None:
+        model_code = getattr(manifest, "model_code", None)
+        if isinstance(model_code, str) and model_code.strip():
+            self.model_code = model_code.strip()
+
+        dataset_version = getattr(manifest, "dataset_version", None)
+        value = str(dataset_version or "").strip()
+        self.dataset_version = value or None
+
+        manifest_path = getattr(manifest, "manifest_path", None)
+        self.manifest_path = str(manifest_path) if manifest_path is not None else None
+
     def info(self) -> dict:
         """Return a lightweight descriptor for health-check / debug."""
         return {
             "modelCode": self.model_code,
             "modelTypeCode": self.model_type_code,
             "implType": self.impl_type.value,
+            "datasetVersion": self.dataset_version,
+            "manifestPath": self.manifest_path,
             "loaded": self.is_loaded(),
         }

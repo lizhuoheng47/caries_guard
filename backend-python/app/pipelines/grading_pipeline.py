@@ -1,11 +1,3 @@
-"""Caries grading sub-pipeline with mode-aware routing and fallback.
-
-Fallback rules:
-- mock: always return mock grading.
-- hybrid: attempt real adapter; on failure, fallback to mock and record fallback.
-- real: attempt real adapter; on failure, raise BusinessException.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -14,13 +6,11 @@ from typing import Any
 
 from app.core.config import Settings
 from app.core.exceptions import BusinessException
-from app.core.logging import get_logger
 from app.infra.model.base_model import ImplType
+from app.infra.model.model_assets import ModelAssets
 from app.infra.model.model_registry import ModelRegistry
 from app.schemas.callback import ToothDetection
 from app.schemas.request import ImageInput
-
-log = get_logger("cariesguard-ai.pipeline.grading")
 
 
 @dataclass(frozen=True)
@@ -35,13 +25,13 @@ class GradingResult:
 
 
 class GradingPipeline:
-    """Grading pipeline with mock / heuristic routing."""
+    """Grading pipeline with class labels sourced from the external class map."""
 
-    _VALID_GRADING_LABELS = {"C0", "C1", "C2", "C3"}
-
-    def __init__(self, registry: ModelRegistry, settings: Settings) -> None:
+    def __init__(self, registry: ModelRegistry, settings: Settings, model_assets: ModelAssets) -> None:
         self._registry = registry
         self._settings = settings
+        self._model_assets = model_assets
+        self._review_threshold = model_assets.uncertainty_review_threshold(settings.uncertainty_review_threshold)
 
     def grade(
         self,
@@ -51,49 +41,26 @@ class GradingPipeline:
         tooth_detections: list[ToothDetection] | None = None,
         quality_results: list[Any] | None = None,
     ) -> GradingResult:
-        """Run grading and apply the uncertainty review business rule."""
-        mode = self._registry.get_runtime_mode()
-
         if not self._registry.is_module_real("grading"):
-            return self._mock_result(image)
+            raise BusinessException("M5007", "grading module is disabled")
 
         adapter = self._registry.get_grading_model()
-        if adapter is None or image_path is None:
-            if mode == "real":
-                raise BusinessException(
-                    "M5007",
-                    "grading adapter or image not available in real mode",
-                )
-            log.warning("grading adapter/image unavailable - fallback to mock (hybrid)")
-            return self._mock_result(image, fallback_reason="adapter_or_image_unavailable")
+        if adapter is None:
+            raise BusinessException("M5008", "grading adapter is unavailable")
+        if image_path is None:
+            raise BusinessException("M5009", "grading image is unavailable")
 
         try:
             if self._settings.grading_force_fail:
                 raise RuntimeError("forced grading failure")
-            model_adapter: Any = adapter
-            result = model_adapter.infer(image_path, segmentation_regions or [], tooth_detections or [])
-            return self._real_result(
-                result,
-                segmentation_regions or [],
-                tooth_detections or [],
-                quality_results or [],
-            )
-        except BusinessException as exc:
-            if mode == "real":
-                raise
-            log.warning("grading business validation failed - fallback to mock (hybrid) error=%s", exc)
-            return self._mock_result(image, fallback_reason=str(exc))
+            result = adapter.infer(image_path, segmentation_regions or [], tooth_detections or [])
         except Exception as exc:
-            if mode == "real":
-                raise BusinessException("M5008", f"grading failed: {exc}") from exc
-            log.warning("grading failed - fallback to mock (hybrid) error=%s", exc)
-            return self._mock_result(image, fallback_reason=str(exc))
+            raise BusinessException("M5010", f"grading failed: {exc}") from exc
+        return self._real_result(result, segmentation_regions or [], tooth_detections or [], quality_results or [])
 
     def get_last_impl_type(self) -> str:
         adapter = self._registry.get_grading_model()
-        if adapter is not None and self._registry.is_module_real("grading"):
-            return adapter.impl_type.value
-        return ImplType.MOCK.value
+        return adapter.impl_type.value if adapter is not None else "DISABLED"
 
     def _real_result(
         self,
@@ -113,9 +80,7 @@ class GradingPipeline:
             default_confidence=confidence_score,
         )
         class_margin = self._score(
-            raw.get("classMargin")
-            if "classMargin" in raw
-            else raw.get("boundaryDistance"),
+            raw.get("classMargin") if "classMargin" in raw else raw.get("boundaryDistance"),
             0.0,
         )
         uncertainty_reasons = self._uncertainty_reasons(
@@ -126,11 +91,10 @@ class GradingPipeline:
             tooth_detections=tooth_detections,
             lesion_grades=lesion_grades,
         )
-        uncertainty_score = base_uncertainty
-        needs_review = self._needs_review(uncertainty_score)
+        needs_review = self._needs_review(base_uncertainty)
         raw.update(
             {
-                "reviewThreshold": self._settings.uncertainty_review_threshold,
+                "reviewThreshold": self._review_threshold,
                 "needsReview": needs_review,
                 "uncertaintyMode": "real",
                 "uncertaintyImplType": str(result.get("implType") or ImplType.HEURISTIC.value),
@@ -142,65 +106,27 @@ class GradingPipeline:
                     "highestSeverity": grading_label,
                     "lesionCount": len(lesion_grades),
                     "confidenceScore": confidence_score,
-                    "uncertaintyScore": uncertainty_score,
+                    "uncertaintyScore": base_uncertainty,
                     "needsReview": needs_review,
                 },
+                "classMapPath": str(self._model_assets.class_map_path),
+                "preprocessPath": str(self._model_assets.preprocess_path),
+                "manifestPath": str(self._model_assets.grading_manifest.manifest_path),
+                "postprocessPath": str(self._model_assets.postprocess_path),
             }
-        )
-        log.info(
-            "grading completed mode=real implType=%s label=%s uncertainty=%s threshold=%s needsReview=%s",
-            result.get("implType") or ImplType.HEURISTIC.value,
-            grading_label,
-            uncertainty_score,
-            self._settings.uncertainty_review_threshold,
-            needs_review,
         )
         return GradingResult(
             grading_mode="real",
             grading_impl_type=str(result.get("implType") or ImplType.HEURISTIC.value),
             grading_label=grading_label,
             confidence_score=confidence_score,
-            uncertainty_score=uncertainty_score,
+            uncertainty_score=base_uncertainty,
             needs_review=needs_review,
             raw_result=raw,
         )
 
-    def _mock_result(
-        self,
-        image: ImageInput | None,
-        fallback_reason: str | None = None,
-    ) -> GradingResult:
-        uncertainty_score = 0.1
-        needs_review = self._needs_review(uncertainty_score)
-        raw_result: dict[str, Any] = {
-            "source": "mock",
-            "imageId": image.image_id if image else None,
-            "reviewThreshold": self._settings.uncertainty_review_threshold,
-            "needsReview": needs_review,
-            "uncertaintyMode": "mock",
-            "uncertaintyImplType": "MOCK",
-            "uncertaintyReasons": [],
-        }
-        if fallback_reason:
-            raw_result["fallbackReason"] = fallback_reason
-        log.info(
-            "grading completed mode=mock implType=MOCK label=C1 uncertainty=%s threshold=%s needsReview=%s",
-            uncertainty_score,
-            self._settings.uncertainty_review_threshold,
-            needs_review,
-        )
-        return GradingResult(
-            grading_mode="mock",
-            grading_impl_type=ImplType.MOCK.value,
-            grading_label="C1",
-            confidence_score=0.9,
-            uncertainty_score=uncertainty_score,
-            needs_review=needs_review,
-            raw_result=raw_result,
-        )
-
     def _needs_review(self, uncertainty_score: float) -> bool:
-        return uncertainty_score >= self._settings.uncertainty_review_threshold
+        return uncertainty_score >= self._review_threshold
 
     @staticmethod
     def _score(value: Any, default: float) -> float:
@@ -210,8 +136,26 @@ class GradingPipeline:
             score = default
         return round(max(0.0, min(1.0, score)), 4)
 
+    def _normalize_grading_label(self, value: Any) -> str:
+        try:
+            return self._model_assets.normalize_grading_label(value)
+        except ValueError as exc:
+            raise BusinessException("M5024", str(exc)) from exc
+
+    def _normalize_severity_code(self, value: Any, default: str) -> str:
+        if self._model_assets.is_valid_grading_label(value):
+            return self._model_assets.normalize_grading_label(value)
+        return default
+
     @staticmethod
+    def _safe_float(value: Any, default: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(default)
+
     def _build_lesion_grades(
+        self,
         segmentation_regions: list[dict[str, Any]],
         candidates: Any,
         *,
@@ -234,17 +178,17 @@ class GradingPipeline:
         lesion_grades: list[dict[str, Any]] = []
         for index, region in enumerate(segmentation_regions):
             candidate = by_region.get(index)
-            boundary_distance = GradingPipeline._safe_float(
+            boundary_distance = self._safe_float(
                 candidate.get("boundaryDistance") if isinstance(candidate, dict) else None,
                 max(0.0, min(1.0, 1.0 - default_confidence)),
             )
-            severity_code = GradingPipeline._normalize_severity_code(
+            severity_code = self._normalize_severity_code(
                 candidate.get("severityLabel") if isinstance(candidate, dict) else None,
                 default_severity,
             )
-            severity_score = GradingPipeline._safe_float(
+            severity_score = self._safe_float(
                 candidate.get("severityScore") if isinstance(candidate, dict) else None,
-                GradingPipeline._safe_float(region.get("score"), 0.0),
+                self._safe_float(region.get("score"), 0.0),
             )
             confidence_score = round(max(0.0, min(1.0, 1.0 - boundary_distance)), 4)
             if candidate is None:
@@ -256,7 +200,7 @@ class GradingPipeline:
                         region.get("toothCode")
                         or region.get("tooth_code")
                         or (candidate.get("toothCode") if isinstance(candidate, dict) else None)
-                        or "16"
+                        or "UNKNOWN"
                     ),
                     "severityCode": severity_code,
                     "severityScore": severity_score,
@@ -271,36 +215,11 @@ class GradingPipeline:
             )
         return lesion_grades
 
-    def _normalize_grading_label(self, value: Any) -> str:
-        text = str(value or "").strip().upper()
-        if text in self._VALID_GRADING_LABELS:
-            return text
-        raise BusinessException(
-            "M5024",
-            f"grading result missing or invalid gradingLabel: {value!r}",
-        )
-
-    @classmethod
-    def _normalize_severity_code(cls, value: Any, default: str) -> str:
-        text = str(value or "").strip().upper()
-        if text in cls._VALID_GRADING_LABELS:
-            return text
-        return default
-
-    @staticmethod
-    def _safe_float(value: Any, default: float) -> float:
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return float(default)
-
-    @staticmethod
-    def _tooth_aggregation(lesion_grades: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        order = {"C0": 0, "C1": 1, "C2": 2, "C3": 3}
+    def _tooth_aggregation(self, lesion_grades: list[dict[str, Any]]) -> list[dict[str, Any]]:
         grouped: dict[str, dict[str, Any]] = {}
         for lesion in lesion_grades:
             tooth = str(lesion.get("toothCode") or "UNKNOWN")
-            severity = str(lesion.get("severityCode") or "C0")
+            severity = str(lesion.get("severityCode") or self._model_assets.grading_labels()[0])
             current = grouped.get(tooth)
             if current is None:
                 grouped[tooth] = {
@@ -311,7 +230,7 @@ class GradingPipeline:
                 }
                 continue
             current["lesionCount"] += 1
-            if order.get(severity, 0) > order.get(str(current["highestSeverity"]), 0):
+            if self._model_assets.severity_rank(severity) > self._model_assets.severity_rank(current["highestSeverity"]):
                 current["highestSeverity"] = severity
             current["maxSeverityScore"] = max(float(current["maxSeverityScore"]), float(lesion.get("severityScore") or 0.0))
         return list(grouped.values())
@@ -327,7 +246,7 @@ class GradingPipeline:
         lesion_grades: list[dict[str, Any]],
     ) -> list[str]:
         reasons: list[str] = []
-        if uncertainty_score >= self._settings.uncertainty_review_threshold:
+        if uncertainty_score >= self._review_threshold:
             reasons.append("HIGH_UNCERTAINTY")
         if confidence_score < 0.6:
             reasons.append("LOW_CONFIDENCE")

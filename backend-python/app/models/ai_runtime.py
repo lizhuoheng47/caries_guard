@@ -13,12 +13,14 @@ class AiInferJob(Base, AuditMixin, StatusMixin, SoftDeleteMixin, RemarkMixin, Ti
     __tablename__ = "ai_infer_job"
     __table_args__ = (
         Index("idx_ai_infer_job_java_task_no", "java_task_no"),
+        Index("idx_ai_infer_job_trace_id", "trace_id"),
         Index("idx_ai_infer_job_case_status", "case_no", "status_code"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     job_no: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     java_task_no: Mapped[str] = mapped_column(String(64), nullable=False)
+    trace_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     case_no: Mapped[str | None] = mapped_column(String(64), nullable=True)
     patient_uuid: Mapped[str | None] = mapped_column(String(128), nullable=True)
     infer_type_code: Mapped[str] = mapped_column(

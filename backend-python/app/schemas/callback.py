@@ -1,20 +1,22 @@
 from typing import Any
 
+from pydantic import Field
+
 from app.schemas.base import CamelModel
 from app.schemas.risk_assessment import RiskFactor
 
 
 class Summary(CamelModel):
-    overall_highest_severity: str = "C1"
-    uncertainty_score: float = 0.1
+    overall_highest_severity: str | None = None
+    uncertainty_score: float = 0.0
     review_suggested_flag: str = "0"
     teeth_count: int | None = None
 
 
 class ContractSummary(CamelModel):
-    overall_highest_severity: str = "C1"
-    suspicious_tooth_count: int = 1
-    overall_uncertainty_score: float = 0.1
+    overall_highest_severity: str | None = None
+    suspicious_tooth_count: int = 0
+    overall_uncertainty_score: float = 0.0
     lesion_area_ratio: float = 0.0
     review_recommended_flag: str = "0"
     high_risk_flag: str = "0"
@@ -30,21 +32,21 @@ class QualityCheckResult(CamelModel):
     exposure_score: int | None = None
     integrity_score: int | None = None
     occlusion_score: int | None = None
-    issue_codes: list[str] = []
-    quality_issues: list[str] = []
+    issue_codes: list[str] = Field(default_factory=list)
+    quality_issues: list[str] = Field(default_factory=list)
     retake_suggested: bool | None = None
     impl_type: str | None = None
     model_version: str | None = None
     inference_millis: int | None = None
     raw_result: dict[str, Any] | None = None
-    suggestion_text: str = "quality passed"
+    suggestion_text: str | None = None
 
 
 class ToothDetection(CamelModel):
     image_id: int | None = None
-    tooth_code: str = "16"
-    bbox: list[int] = [64, 64, 180, 180]
-    detection_score: float = 0.95
+    tooth_code: str | None = None
+    bbox: list[int] | None = None
+    detection_score: float | None = None
 
 
 class AssetRef(CamelModel):
@@ -69,10 +71,10 @@ class VisualAsset(CamelModel):
 
 class LesionResult(CamelModel):
     image_id: int | None = None
-    tooth_code: str = "16"
-    severity_code: str = "C1"
+    tooth_code: str | None = None
+    severity_code: str | None = None
     confidence_score: float | None = None
-    uncertainty_score: float = 0.1
+    uncertainty_score: float = 0.0
     lesion_area_px: int | None = None
     lesion_area_ratio: float | None = None
     bbox: list[int] | None = None
@@ -98,7 +100,7 @@ class EvidenceRef(CamelModel):
 
 class RiskAssessment(CamelModel):
     overall_risk_level_code: str = "LOW"
-    assessment_report_json: dict[str, Any] = {}
+    assessment_report_json: dict[str, Any] = Field(default_factory=dict)
     recommended_cycle_days: int = 180
     risk_level_code: str | None = None
     risk_score: int | float | None = None
@@ -119,7 +121,7 @@ class AnalysisCallbackPayload(CamelModel):
     model_version: str | None = None
     summary: Summary | None = None
     raw_result_json: dict[str, Any] | None = None
-    visual_assets: list[VisualAsset] = []
+    visual_assets: list[VisualAsset] = Field(default_factory=list)
     risk_assessment: RiskAssessment | None = None
     error_code: str | None = None
     error_message: str | None = None
@@ -130,10 +132,10 @@ class AnalysisCallbackPayload(CamelModel):
     needs_review: bool | None = None
     uncertainty_score: float | None = None
     risk_level: str | None = None
-    risk_factors: list[RiskFactor] = []
+    risk_factors: list[RiskFactor] = Field(default_factory=list)
     review_reason: str | None = None
     knowledge_version: str | None = None
-    evidence_refs: list[EvidenceRef] = []
+    evidence_refs: list[EvidenceRef] = Field(default_factory=list)
     doctor_review_required_reason: str | None = None
 
 
@@ -145,7 +147,7 @@ class FailureCallbackPayload(CamelModel):
     model_version: str | None = None
     summary: None = None
     raw_result_json: dict[str, Any] | None = None
-    visual_assets: list[VisualAsset] = []
+    visual_assets: list[VisualAsset] = Field(default_factory=list)
     risk_assessment: None = None
     error_code: str | None = None
     error_message: str

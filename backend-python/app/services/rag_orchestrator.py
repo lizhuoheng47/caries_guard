@@ -212,6 +212,10 @@ class RagOrchestrator:
             [dump_camel(item) for item in citations],
             [dump_camel(item) for item in evidence_bundle],
         )
+        if refusal_reason and refusal_reason not in safety_flags:
+            safety_flags.append(refusal_reason)
+        if context_text and "[REDACTED_" in context_text and "SENSITIVE_INPUT_REDACTED" not in safety_flags:
+            safety_flags.append("SENSITIVE_INPUT_REDACTED")
         total_latency_ms = int((time.perf_counter() - started) * 1000)
         confidence = self._confidence(reranked, evidence_bundle, refusal_reason, safety_flags)
         self.rag_repository.finish_rag_request(
@@ -414,5 +418,6 @@ class RagOrchestrator:
             "PRIVACY_CONCERN": "The request involves sensitive personal information and cannot be answered.",
             "INSUFFICIENT_EVIDENCE": "Published knowledge does not contain enough evidence to answer this question.",
             "HUMAN_REVIEW_REQUIRED": "This question requires clinician review instead of automated advice.",
+            "OUT_OF_SCOPE": "The request is outside the supported dental knowledge scope.",
         }
         return mapping.get(reason, "The request cannot be answered safely.")

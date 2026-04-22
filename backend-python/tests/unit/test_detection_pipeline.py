@@ -1,5 +1,3 @@
-"""Tests for DetectionPipeline — mock/heuristic routing and fallback rules."""
-
 from pathlib import Path
 
 import numpy as np
@@ -8,141 +6,76 @@ from PIL import Image
 
 from app.core.config import Settings
 from app.core.exceptions import BusinessException
+from app.infra.model.model_assets import ModelAssets
 from app.infra.model.model_registry import ModelRegistry
 from app.pipelines.detection_pipeline import DetectionPipeline
 from app.schemas.request import ImageInput
-from app.services.image_fetch_service import FetchedImage
 
 
 def _settings(**overrides) -> Settings:
+    repo_root = Path(__file__).resolve().parents[3]
     values = {
-        "ai_runtime_mode": "mock",
+        "ai_runtime_mode": "hybrid",
+        "rag_runtime_enabled": False,
+        "analysis_kb_enhancement_enabled": False,
+        "model_quality_enabled": False,
+        "model_quality_impl_type": "HEURISTIC",
         "model_tooth_detect_enabled": False,
+        "model_tooth_detect_impl_type": "HEURISTIC",
+        "model_segmentation_enabled": False,
+        "model_segmentation_impl_type": "HEURISTIC",
+        "model_grading_enabled": False,
+        "model_grading_impl_type": "HEURISTIC",
+        "model_risk_enabled": False,
+        "model_risk_impl_type": "HEURISTIC",
+        "model_weights_dir": str(repo_root / "model-weights"),
+        "quality_model_param_path": str(repo_root / "model-weights" / "quality" / "quality_model_params.json"),
+        "quality_model_weights_path": str(repo_root / "model-weights" / "quality" / "quality_model_params.json"),
         "model_confidence_threshold": 0.3,
     }
-    mapping = {
-        "CG_AI_RUNTIME_MODE": "ai_runtime_mode",
-        "CG_MODEL_TOOTH_DETECT_ENABLED": "model_tooth_detect_enabled",
-        "CG_MODEL_CONFIDENCE_THRESHOLD": "model_confidence_threshold",
-    }
-    for key, value in overrides.items():
-        target = mapping.get(key, key)
-        if target == "model_tooth_detect_enabled":
-            values[target] = str(value).lower() == "true"
-        elif target == "model_confidence_threshold":
-            values[target] = float(value)
-        else:
-            values[target] = value
+    values.update(overrides)
     return Settings(**values)
+
+
+def _pipeline(settings: Settings) -> DetectionPipeline:
+    assets = ModelAssets(settings)
+    registry = ModelRegistry(settings, assets)
+    registry.startup()
+    return DetectionPipeline(registry, settings)
 
 
 @pytest.fixture()
 def sample_image(tmp_path: Path) -> Path:
     arr = np.random.randint(60, 200, (256, 512), dtype=np.uint8)
-    img = Image.fromarray(arr, mode="L")
     path = tmp_path / "test.png"
-    img.save(path)
+    Image.fromarray(arr, mode="L").save(path)
     return path
 
 
-def _image_input(image_id: int = 1) -> ImageInput:
-    return ImageInput(image_id=image_id)
+def test_disabled_detection_module_fails_explicitly() -> None:
+    pipeline = _pipeline(_settings(ai_runtime_mode="mock"))
+
+    with pytest.raises(BusinessException) as exc_info:
+        pipeline.detect(ImageInput(image_id=1))
+
+    assert exc_info.value.code == "M5003"
+    assert pipeline.get_last_impl_type() == "DISABLED"
 
 
-def _fetched(image_id: int, path: Path) -> FetchedImage:
-    return FetchedImage(
-        image_id=image_id,
-        image_type_code="DENTAL",
-        path=path,
-        size_bytes=path.stat().st_size,
-        source="test",
-    )
+def test_enabled_detection_module_returns_real_heuristic_detections(sample_image: Path) -> None:
+    pipeline = _pipeline(_settings(model_tooth_detect_enabled=True))
+
+    detections = pipeline.detect(ImageInput(image_id=1), sample_image)
+
+    assert detections
+    assert all(item.tooth_code for item in detections)
+    assert pipeline.get_last_impl_type() == "HEURISTIC"
 
 
-class TestMockMode:
-    def test_returns_two_mock_detections(self):
-        settings = _settings(CG_AI_RUNTIME_MODE="mock")
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = DetectionPipeline(registry, settings)
+def test_enabled_detection_module_requires_image_path() -> None:
+    pipeline = _pipeline(_settings(ai_runtime_mode="real", model_tooth_detect_enabled=True))
 
-        detections = pipeline.detect(_image_input())
-        assert len(detections) == 2
-        assert detections[0].tooth_code == "16"
-        assert detections[1].tooth_code == "26"
+    with pytest.raises(BusinessException) as exc_info:
+        pipeline.detect(ImageInput(image_id=1), None)
 
-    def test_impl_type_is_mock(self):
-        settings = _settings(CG_AI_RUNTIME_MODE="mock")
-        registry = ModelRegistry(settings)
-        pipeline = DetectionPipeline(registry, settings)
-        assert pipeline.get_last_impl_type() == "MOCK"
-
-
-class TestHybridMode:
-    def test_real_path_returns_detections(self, sample_image: Path):
-        settings = _settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_TOOTH_DETECT_ENABLED="true",
-        )
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = DetectionPipeline(registry, settings)
-
-        detections = pipeline.detect(_image_input(), sample_image)
-        assert isinstance(detections, list)
-        # With a random image and low threshold, should detect some regions
-        for d in detections:
-            assert hasattr(d, "tooth_code")
-            assert hasattr(d, "bbox")
-            assert hasattr(d, "detection_score")
-
-    def test_detect_all_aggregates(self, sample_image: Path):
-        settings = _settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_TOOTH_DETECT_ENABLED="true",
-        )
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = DetectionPipeline(registry, settings)
-
-        images = [_image_input(1), _image_input(2)]
-        fetched = [_fetched(1, sample_image), _fetched(2, sample_image)]
-        detections = pipeline.detect_all(images, fetched)
-        assert isinstance(detections, list)
-
-    def test_fallback_on_error(self, tmp_path: Path):
-        settings = _settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_TOOTH_DETECT_ENABLED="true",
-        )
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = DetectionPipeline(registry, settings)
-
-        bad_path = tmp_path / "nonexistent.png"
-        detections = pipeline.detect(_image_input(), bad_path)
-        # Should fallback to mock
-        assert len(detections) == 2
-        assert detections[0].tooth_code == "16"
-
-
-class TestRealMode:
-    def test_raises_on_failure(self, tmp_path: Path):
-        settings = _settings(CG_AI_RUNTIME_MODE="real")
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = DetectionPipeline(registry, settings)
-
-        bad_path = tmp_path / "nonexistent.png"
-        with pytest.raises(BusinessException) as exc_info:
-            pipeline.detect(_image_input(), bad_path)
-        assert exc_info.value.code == "M5004"
-
-    def test_real_success(self, sample_image: Path):
-        settings = _settings(CG_AI_RUNTIME_MODE="real")
-        registry = ModelRegistry(settings)
-        registry.startup()
-        pipeline = DetectionPipeline(registry, settings)
-
-        detections = pipeline.detect(_image_input(), sample_image)
-        assert isinstance(detections, list)
+    assert exc_info.value.code == "M5005"

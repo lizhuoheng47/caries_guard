@@ -5,6 +5,7 @@ from app.core.config import Settings
 from app.core.logging import get_logger
 from app.infra.graph.neo4j_client import create_neo4j_driver
 from app.infra.llm.llm_gateway_factory import create_llm_client
+from app.infra.model.model_assets import ModelAssets
 from app.infra.model.model_registry import ModelRegistry
 from app.infra.rerank.rerank_factory import create_rerank_provider
 from app.infra.search.opensearch_client import create_opensearch_client
@@ -26,6 +27,8 @@ from app.repositories.metadata_repository import MetadataRepository
 from app.repositories.rag_repository import RagRepository
 from app.services.answer_validator_service import AnswerValidatorService
 from app.services.analysis_knowledge_service import AnalysisKnowledgeService
+from app.services.analysis_service import AnalysisService
+from app.services.analysis_asset_service import AnalysisAssetService
 from app.services.callback_service import CallbackService
 from app.services.case_context_builder import CaseContextBuilder
 from app.services.citation_assembler import CitationAssembler
@@ -76,6 +79,7 @@ class AppContainer:
         self.image_fetch_service = ImageFetchService(settings, self.storage)
         self.visual_asset_service = VisualAssetService(settings, self.storage)
         self.risk_service = RiskService(settings)
+        self.model_assets = ModelAssets(settings)
         self.metadata_repository = MetadataRepository(settings)
         self.rag_repository = RagRepository()
         self.knowledge_repository = KnowledgeRepository()
@@ -87,6 +91,7 @@ class AppContainer:
         self.qwen_vision_service = QwenVisionService(settings)
         self.vector_store = SimpleVectorStore()
         self.concept_normalization_service = ConceptNormalizationService()
+        self.analysis_asset_service = AnalysisAssetService(settings, self.model_assets)
 
         if self.rag_runtime_active:
             self.embedding_provider = create_embedding_provider(settings)
@@ -119,6 +124,7 @@ class AppContainer:
                 open_search_index_service=self.open_search_index_service,
                 graph_upsert_service=self.graph_upsert_service,
                 graph_repository=self.graph_repository,
+                rag_repository=self.rag_repository,
             )
             self.rag_orchestrator = RagOrchestrator(
                 settings=settings,
@@ -174,7 +180,7 @@ class AppContainer:
         self.analysis_knowledge_service = AnalysisKnowledgeService(settings, self.rag_service)
 
         # ── Phase 5A: model runtime ─────────────────────────────────────
-        self.model_registry = ModelRegistry(settings)
+        self.model_registry = ModelRegistry(settings, self.model_assets)
         self.model_registry.startup()
         self.governance_bootstrap_service = GovernanceBootstrapService(
             settings,
@@ -185,26 +191,31 @@ class AppContainer:
 
         self.quality_pipeline = QualityPipeline(self.model_registry, settings)
         self.detection_pipeline = DetectionPipeline(self.model_registry, settings)
-        self.segmentation_pipeline = SegmentationPipeline(self.model_registry, settings)
-        self.grading_pipeline = GradingPipeline(self.model_registry, settings)
+        self.segmentation_pipeline = SegmentationPipeline(self.model_registry, settings, self.model_assets)
+        self.grading_pipeline = GradingPipeline(self.model_registry, settings, self.model_assets)
         self.risk_pipeline = RiskPipeline(self.model_registry, settings)
-        self.model_switch_service = ModelSwitchService(self.model_registry, settings)
+        self.model_switch_service = ModelSwitchService(
+            self.model_registry,
+            settings,
+            self.model_assets,
+            self.analysis_asset_service,
+        )
 
         self.pipeline = InferencePipeline(
             settings=settings,
             image_fetch_service=self.image_fetch_service,
             visual_asset_service=self.visual_asset_service,
-            risk_service=self.risk_service,
             model_registry=self.model_registry,
+            model_assets=self.model_assets,
             quality_pipeline=self.quality_pipeline,
             detection_pipeline=self.detection_pipeline,
             segmentation_pipeline=self.segmentation_pipeline,
             grading_pipeline=self.grading_pipeline,
-            risk_pipeline=self.risk_pipeline,
+            risk_service=self.risk_service,
             ai_runtime_repository=self.ai_runtime_repository,
-            qwen_vision_service=self.qwen_vision_service,
-            analysis_knowledge_service=self.analysis_knowledge_service,
+            analysis_asset_service=self.analysis_asset_service,
         )
+        self.analysis_service = AnalysisService(self.pipeline, self.callback_service)
 
 
 @lru_cache(maxsize=1)

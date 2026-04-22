@@ -1,4 +1,4 @@
-"""Tests for GradingModelAdapter output structure."""
+"""Tests for heuristic grading adapter output structure."""
 
 from pathlib import Path
 
@@ -7,7 +7,7 @@ import pytest
 from PIL import Image
 
 from app.infra.model.base_model import ImplType
-from app.infra.model.grading_model import GradingModelAdapter
+from app.infra.model.grading_model import GradingHeuristicAdapter
 
 
 @pytest.fixture()
@@ -21,7 +21,7 @@ def sample_image(tmp_path: Path) -> Path:
 
 
 def test_impl_type_and_lifecycle():
-    adapter = GradingModelAdapter()
+    adapter = GradingHeuristicAdapter()
     assert adapter.impl_type == ImplType.HEURISTIC
     assert adapter.model_type_code == "GRADING"
     assert not adapter.is_loaded()
@@ -32,7 +32,7 @@ def test_impl_type_and_lifecycle():
 
 
 def test_infer_returns_required_keys(sample_image: Path):
-    adapter = GradingModelAdapter(confidence_threshold=0.3)
+    adapter = GradingHeuristicAdapter(confidence_threshold=0.3)
     adapter.load()
     result = adapter.infer(
         sample_image,
@@ -58,7 +58,7 @@ def test_infer_returns_required_keys(sample_image: Path):
 
 
 def test_infer_without_regions_uses_detection_fallback(sample_image: Path):
-    adapter = GradingModelAdapter(confidence_threshold=0.3)
+    adapter = GradingHeuristicAdapter(confidence_threshold=0.3)
     adapter.load()
     result = adapter.infer(
         sample_image,

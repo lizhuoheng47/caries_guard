@@ -1,6 +1,9 @@
 import os
 import json
 from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
 
 
 _VALID_RUNTIME_MODES = {"mock", "hybrid", "real"}
@@ -87,6 +90,59 @@ def _require_model_weights_if_enabled(weights_dir: str, model_name: str, enabled
     path = os.path.join(weights_dir, model_name)
     if not os.path.exists(path):
         raise ValueError(f"Model {model_name} is enabled with ML_MODEL type, but weights are missing at {path}")
+
+
+def _project_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _resolve_project_path(path_value: str) -> Path:
+    path = Path(path_value)
+    normalized = path.as_posix()
+    if normalized.startswith("/app/"):
+        return (_project_root() / normalized.removeprefix("/app/")).resolve()
+    if path.is_absolute():
+        if path.exists():
+            return path
+        return path
+    return (_project_root() / path).resolve()
+
+
+def _require_manifest_backed_model_assets(module_name: str, enabled: bool, impl_type: str, manifest_path_value: str) -> None:
+    if not enabled or impl_type != "ML_MODEL":
+        return
+
+    from app.core.exceptions import ModelRuntimeException
+    from app.infra.model.checkpoint_validator import CheckpointValidator
+    from app.infra.model.manifest_loader import ManifestLoader
+
+    try:
+        loader = ManifestLoader(_project_root())
+        manifest = loader.load(module_name, manifest_path_value)
+        class_map = {}
+        preprocess = {}
+        postprocess = {}
+
+        if manifest.class_map_path is not None and manifest.class_map_path.is_file():
+            with manifest.class_map_path.open("r", encoding="utf-8") as fp:
+                class_map = json.load(fp)
+        if manifest.preprocess_path is not None and manifest.preprocess_path.is_file():
+            with manifest.preprocess_path.open("r", encoding="utf-8") as fp:
+                preprocess = yaml.safe_load(fp)
+        if manifest.postprocess_path is not None and manifest.postprocess_path.is_file():
+            with manifest.postprocess_path.open("r", encoding="utf-8") as fp:
+                postprocess = yaml.safe_load(fp)
+
+        validator = CheckpointValidator(module_name)
+        validator.validate_manifest_assets(
+            manifest,
+            class_map=class_map if isinstance(class_map, dict) else {},
+            preprocess=preprocess if isinstance(preprocess, dict) else {},
+            postprocess=postprocess if isinstance(postprocess, dict) else {},
+        )
+        validator.validate_checkpoint_ready(manifest)
+    except ModelRuntimeException as exc:
+        raise ValueError(f"{exc.code} {exc.message}") from exc
 
 
 def _validate_model_impl_type(name: str, raw: str) -> str:
@@ -389,6 +445,8 @@ class Settings:
     model_quality_impl_type: str = os.getenv("CG_MODEL_QUALITY_IMPL_TYPE", "HEURISTIC").upper()
     model_tooth_detect_enabled: bool = bool_env("CG_MODEL_TOOTH_DETECT_ENABLED", False)
     model_tooth_detect_impl_type: str = os.getenv("CG_MODEL_TOOTH_DETECT_IMPL_TYPE", "HEURISTIC").upper()
+    model_tooth_detect_checkpoint_path: str = os.getenv("CG_MODEL_TOOTH_DETECT_CHECKPOINT_PATH", "").strip()
+    model_tooth_detect_config_path: str = os.getenv("CG_MODEL_TOOTH_DETECT_CONFIG_PATH", "").strip()
     model_segmentation_enabled: bool = bool_env("CG_MODEL_SEGMENTATION_ENABLED", False)
     model_segmentation_impl_type: str = os.getenv("CG_MODEL_SEGMENTATION_IMPL_TYPE", "HEURISTIC").upper()
     model_grading_enabled: bool = bool_env("CG_MODEL_GRADING_ENABLED", False)
@@ -398,12 +456,21 @@ class Settings:
     model_device: str = os.getenv("CG_MODEL_DEVICE", "cpu")
     model_weights_dir: str = os.getenv("CG_MODEL_WEIGHTS_DIR", "/app/model-weights")
     model_confidence_threshold: float = float_env("CG_MODEL_CONFIDENCE_THRESHOLD", 0.5)
+    model_segmentation_manifest_path: str = os.getenv(
+        "CG_MODEL_SEGMENTATION_MANIFEST_PATH",
+        "assets/models/manifests/segmentation_v1.yaml",
+    ).strip()
+    model_grading_manifest_path: str = os.getenv(
+        "CG_MODEL_GRADING_MANIFEST_PATH",
+        "assets/models/manifests/grading_v1.yaml",
+    ).strip()
     quality_model_param_path: str = os.getenv("CG_QUALITY_MODEL_PARAM_PATH", "").strip()
     quality_model_weights_path: str = os.getenv("CG_QUALITY_MODEL_WEIGHTS_PATH", "").strip()
     quality_fail_strategy: str = os.getenv("CG_QUALITY_FAIL_STRATEGY", "CONTINUE").upper()
     segmentation_force_fail: bool = bool_env("CG_SEGMENTATION_FORCE_FAIL", False)
     grading_force_fail: bool = bool_env("CG_GRADING_FORCE_FAIL", False)
     uncertainty_review_threshold: float = float_env("CG_UNCERTAINTY_REVIEW_THRESHOLD", 0.35)
+    strict_model_startup_validation: bool = bool_env("CG_STRICT_MODEL_STARTUP_VALIDATION", False)
 
     def __post_init__(self) -> None:
         mode = _validate_runtime_mode(self.ai_runtime_mode)
@@ -551,12 +618,26 @@ class Settings:
         for module_name, enabled, impl_type, env_name in modules:
             if mode == "real" and impl_type == "MOCK":
                 raise ValueError(f"{env_name}='MOCK' is forbidden when CG_AI_RUNTIME_MODE='real'")
-            _require_model_weights_if_enabled(
-                self.model_weights_dir,
-                module_name,
-                mode == "real" or enabled,
-                impl_type,
-            )
+            if mode == "hybrid" and impl_type == "MOCK":
+                raise ValueError(f"{env_name}='MOCK' is forbidden when CG_AI_RUNTIME_MODE='hybrid'")
+
+            validate_manifest_assets = module_name in {"segmentation", "grading"} and self.strict_model_startup_validation
+            if validate_manifest_assets:
+                _require_manifest_backed_model_assets(
+                    module_name,
+                    enabled,
+                    impl_type,
+                    self.model_segmentation_manifest_path if module_name == "segmentation" else self.model_grading_manifest_path,
+                )
+                continue
+
+            if self.strict_model_startup_validation:
+                _require_model_weights_if_enabled(
+                    self.model_weights_dir,
+                    module_name,
+                    enabled,
+                    impl_type,
+                )
 
         # Logging summary
         print(f"[*] CariesGuard Runtime Mode: {mode.upper()}")

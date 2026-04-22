@@ -65,19 +65,12 @@ class AnalysisRequestConsumer:
             task_no = payload.get("taskNo") or task.get("taskNo")
             trace_id = payload.get("traceId") or task.get("traceId")
             log.info("received analysis task taskNo=%s traceId=%s images=%s", task_no, trace_id, len(payload.get("images") or []))
-            callback_payload = self.container.pipeline.run(task)
-            self.container.callback_service.post_callback(callback_payload, payload.get("callbackUrl"))
+            self.container.analysis_service.execute(task)
             channel.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as exc:
             payload = task.get("payload") if isinstance(task.get("payload"), dict) else task
             task_no = payload.get("taskNo") if isinstance(payload, dict) else task.get("taskNo")
             trace_id = payload.get("traceId") if isinstance(payload, dict) else task.get("traceId")
-            callback_url = payload.get("callbackUrl") if isinstance(payload, dict) else None
             log.exception("analysis task failed taskNo=%s traceId=%s", task_no, trace_id)
-            try:
-                failure_payload = self.container.pipeline.build_failure_payload(task, exc)
-                self.container.callback_service.post_callback(failure_payload, callback_url)
-                channel.basic_ack(delivery_tag=method.delivery_tag)
-            except Exception:
-                log.exception("failed to callback failure result; message will be rejected")
-                channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            log.error("message rejected because callback could not be delivered error=%s", exc)
+            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)

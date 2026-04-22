@@ -1,43 +1,47 @@
-"""Tests for ModelRegistry — mode routing and lifecycle."""
+"""Tests for ModelRegistry mode routing and lifecycle."""
+
+from pathlib import Path
 
 from app.core.config import Settings
+from app.infra.model.model_assets import ModelAssets
 from app.infra.model.model_registry import ModelRegistry
 
 
 def _settings(**overrides) -> Settings:
+    repo_root = Path(__file__).resolve().parents[3]
     values = {
         "ai_runtime_mode": "mock",
+        "rag_runtime_enabled": False,
+        "analysis_kb_enhancement_enabled": False,
         "model_quality_enabled": False,
+        "model_quality_impl_type": "HEURISTIC",
         "model_tooth_detect_enabled": False,
+        "model_tooth_detect_impl_type": "HEURISTIC",
         "model_segmentation_enabled": False,
+        "model_segmentation_impl_type": "HEURISTIC",
         "model_grading_enabled": False,
+        "model_grading_impl_type": "HEURISTIC",
         "model_risk_enabled": False,
+        "model_risk_impl_type": "HEURISTIC",
+        "model_weights_dir": str(repo_root / "model-weights"),
+        "quality_model_param_path": str(repo_root / "model-weights" / "quality" / "quality_model_params.json"),
+        "quality_model_weights_path": str(repo_root / "model-weights" / "quality" / "quality_model_params.json"),
         "model_confidence_threshold": 0.5,
     }
-    mapping = {
-        "CG_AI_RUNTIME_MODE": "ai_runtime_mode",
-        "CG_MODEL_QUALITY_ENABLED": "model_quality_enabled",
-        "CG_MODEL_TOOTH_DETECT_ENABLED": "model_tooth_detect_enabled",
-        "CG_MODEL_SEGMENTATION_ENABLED": "model_segmentation_enabled",
-        "CG_MODEL_GRADING_ENABLED": "model_grading_enabled",
-        "CG_MODEL_RISK_ENABLED": "model_risk_enabled",
-        "CG_MODEL_CONFIDENCE_THRESHOLD": "model_confidence_threshold",
-    }
-    for key, value in overrides.items():
-        target = mapping.get(key, key)
-        if target.startswith("model_") and target.endswith("_enabled"):
-            values[target] = str(value).lower() == "true"
-        elif target == "model_confidence_threshold":
-            values[target] = float(value)
-        else:
-            values[target] = value
+    values.update(overrides)
     return Settings(**values)
 
 
+def _registry(**overrides) -> ModelRegistry:
+    settings = _settings(**overrides)
+    return ModelRegistry(settings, ModelAssets(settings))
+
+
 class TestMockMode:
-    def test_all_modules_return_none(self):
-        registry = ModelRegistry(_settings(CG_AI_RUNTIME_MODE="mock"))
+    def test_disabled_modules_keep_registry_empty(self):
+        registry = _registry(ai_runtime_mode="mock")
         registry.startup()
+
         assert registry.get_quality_model() is None
         assert registry.get_tooth_detector() is None
         assert registry.get_segmenter() is None
@@ -45,148 +49,93 @@ class TestMockMode:
         assert registry.get_risk_model() is None
         assert registry.get_runtime_mode() == "mock"
 
-    def test_is_module_real_always_false(self):
-        registry = ModelRegistry(_settings(CG_AI_RUNTIME_MODE="mock"))
-        assert not registry.is_module_real("quality")
-        assert not registry.is_module_real("tooth_detect")
+    def test_enabled_module_loads_mock_adapter_but_is_not_real(self):
+        registry = _registry(ai_runtime_mode="mock", model_quality_enabled=True)
+        registry.startup()
+
+        assert registry.get_quality_model() is not None
+        assert registry.get_quality_model().info()["implType"] == "MOCK"
+        assert registry.is_module_loaded("quality") is True
+        assert registry.is_module_real("quality") is False
 
 
 class TestHybridMode:
-    def test_quality_enabled_loads_adapter(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_QUALITY_ENABLED="true",
-        ))
+    def test_enabled_modules_load_heuristic_adapters(self):
+        registry = _registry(
+            ai_runtime_mode="hybrid",
+            model_quality_enabled=True,
+            model_tooth_detect_enabled=True,
+            model_segmentation_enabled=True,
+            model_grading_enabled=True,
+            model_risk_enabled=True,
+        )
         registry.startup()
-        assert registry.get_quality_model() is not None
-        assert registry.get_quality_model().is_loaded()
-        assert registry.get_tooth_detector() is None
 
-    def test_tooth_detect_enabled_loads_adapter(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_TOOTH_DETECT_ENABLED="true",
-        ))
-        registry.startup()
-        assert registry.get_tooth_detector() is not None
-        assert registry.get_tooth_detector().is_loaded()
-        assert registry.get_quality_model() is None
-
-    def test_segmentation_enabled_loads_adapter(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_SEGMENTATION_ENABLED="true",
-        ))
-        registry.startup()
-        assert registry.get_segmenter() is not None
-        assert registry.get_segmenter().is_loaded()
-
-    def test_grading_enabled_loads_adapter(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_GRADING_ENABLED="true",
-        ))
-        registry.startup()
-        assert registry.get_grading_model() is not None
-        assert registry.get_grading_model().is_loaded()
-
-    def test_risk_enabled_loads_adapter(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_RISK_ENABLED="true",
-        ))
-        registry.startup()
-        assert registry.get_risk_model() is not None
-        assert registry.get_risk_model().is_loaded()
-
-    def test_both_enabled(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_QUALITY_ENABLED="true",
-            CG_MODEL_TOOTH_DETECT_ENABLED="true",
-        ))
-        registry.startup()
-        assert registry.get_quality_model() is not None
-        assert registry.get_tooth_detector() is not None
+        assert registry.get_quality_model().info()["implType"] == "HEURISTIC"
+        assert registry.get_tooth_detector().info()["implType"] == "HEURISTIC"
+        assert registry.get_segmenter().info()["implType"] == "HEURISTIC"
+        assert registry.get_grading_model().info()["implType"] == "HEURISTIC"
+        assert registry.get_risk_model().info()["implType"] == "HEURISTIC"
+        assert registry.is_module_real("quality") is True
+        assert registry.is_module_real("tooth_detect") is True
 
     def test_disabled_module_is_not_real(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_QUALITY_ENABLED="true",
-            CG_MODEL_TOOTH_DETECT_ENABLED="false",
-        ))
-        assert registry.is_module_real("quality")
-        assert not registry.is_module_real("tooth_detect")
+        registry = _registry(
+            ai_runtime_mode="hybrid",
+            model_quality_enabled=True,
+            model_tooth_detect_enabled=False,
+        )
+        registry.startup()
+
+        assert registry.is_module_real("quality") is True
+        assert registry.is_module_real("tooth_detect") is False
 
 
 class TestRealMode:
-    def test_is_module_real_always_true(self):
-        registry = ModelRegistry(_settings(CG_AI_RUNTIME_MODE="real"))
-        assert registry.is_module_real("quality")
-        assert registry.is_module_real("tooth_detect")
-        assert registry.is_module_real("segmentation")
-        assert registry.is_module_real("grading")
-        assert registry.is_module_real("risk")
-
-    def test_all_adapters_loaded(self):
-        registry = ModelRegistry(_settings(CG_AI_RUNTIME_MODE="real"))
+    def test_only_enabled_modules_become_real(self):
+        registry = _registry(
+            ai_runtime_mode="real",
+            model_quality_enabled=True,
+            model_tooth_detect_enabled=True,
+        )
         registry.startup()
+
+        assert registry.is_module_real("quality") is True
+        assert registry.is_module_real("tooth_detect") is True
+        assert registry.is_module_real("segmentation") is False
         assert registry.get_quality_model() is not None
         assert registry.get_tooth_detector() is not None
-        assert registry.get_segmenter() is not None
-        assert registry.get_grading_model() is not None
-        assert registry.get_risk_model() is not None
+        assert registry.get_segmenter() is None
 
 
 class TestLifecycle:
-    def test_shutdown_unloads_all(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_QUALITY_ENABLED="true",
-            CG_MODEL_TOOTH_DETECT_ENABLED="true",
-        ))
+    def test_shutdown_unloads_all_loaded_adapters(self):
+        registry = _registry(
+            ai_runtime_mode="hybrid",
+            model_quality_enabled=True,
+            model_tooth_detect_enabled=True,
+        )
         registry.startup()
+
         registry.shutdown()
-        assert not registry.get_quality_model().is_loaded()
-        assert not registry.get_tooth_detector().is_loaded()
 
-    def test_status_dict(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_QUALITY_ENABLED="true",
-        ))
+        assert registry.get_quality_model().is_loaded() is False
+        assert registry.get_tooth_detector().is_loaded() is False
+
+    def test_status_includes_adapter_and_manifest_assets(self):
+        registry = _registry(
+            ai_runtime_mode="hybrid",
+            model_segmentation_enabled=True,
+            model_grading_enabled=True,
+        )
         registry.startup()
+
         status = registry.status()
+
         assert status["aiRuntimeMode"] == "hybrid"
-        assert "QUALITY" in status["adapters"]
-        assert status["adapters"]["QUALITY"]["implType"] == "HEURISTIC"
-
-    def test_status_includes_segmentation(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_SEGMENTATION_ENABLED="true",
-        ))
-        registry.startup()
-        status = registry.status()
-        assert "SEGMENTATION" in status["adapters"]
         assert status["adapters"]["SEGMENTATION"]["implType"] == "HEURISTIC"
-
-    def test_status_includes_grading(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_GRADING_ENABLED="true",
-        ))
-        registry.startup()
-        status = registry.status()
-        assert "GRADING" in status["adapters"]
         assert status["adapters"]["GRADING"]["implType"] == "HEURISTIC"
-
-    def test_status_includes_risk(self):
-        registry = ModelRegistry(_settings(
-            CG_AI_RUNTIME_MODE="hybrid",
-            CG_MODEL_RISK_ENABLED="true",
-        ))
-        registry.startup()
-        status = registry.status()
-        assert "RISK" in status["adapters"]
-        assert status["adapters"]["RISK"]["implType"] == "HEURISTIC"
+        assert status["assets"]["segmentation"]["modelCode"] == "caries-segmentation-v1"
+        assert status["assets"]["segmentation"]["datasetVersion"] == "caries-annot-v1.0"
+        assert status["assets"]["grading"]["modelCode"] == "caries-grading-v1"
+        assert status["assets"]["grading"]["labelOrder"] == ["C0", "C1", "C2", "C3"]

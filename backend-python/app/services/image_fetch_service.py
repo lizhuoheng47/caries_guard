@@ -46,6 +46,21 @@ class ImageFetchService:
         target_path = workspace / "images" / self._target_name(image)
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
+        if image.local_storage_path:
+            source_path = Path(image.local_storage_path)
+            if not source_path.is_file():
+                raise ResourceNotFoundException(f"local image does not exist: {source_path}")
+            shutil.copyfile(source_path, target_path)
+            return FetchedImage(
+                image_id=image.image_id,
+                image_type_code=image.image_type_code,
+                path=target_path,
+                size_bytes=target_path.stat().st_size,
+                source="localStoragePath",
+                bucket_name=image.bucket_name,
+                object_key=image.object_key,
+            )
+
         if image.bucket_name and image.object_key:
             if self.storage is None:
                 raise ResourceNotFoundException("MinIO storage client is not configured")
@@ -81,4 +96,3 @@ class ImageFetchService:
             suffix = "." + source_name.rsplit(".", 1)[-1].lower()
         image_id = image.image_id if image.image_id is not None else "unknown"
         return f"image_{image_id}{suffix}"
-

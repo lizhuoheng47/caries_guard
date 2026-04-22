@@ -17,7 +17,7 @@ import org.springframework.util.StringUtils;
 @Component
 public class ReviewTaskAssembler {
 
-    private static final List<String> GRADE_OPTIONS = List.of("G0", "G1", "G2", "G3", "G4");
+    private static final List<String> GRADE_OPTIONS = List.of("C0", "C1", "C2", "C3");
     private static final List<String> REASON_TAG_OPTIONS = List.of(
             "HIGH_UNCERTAINTY",
             "LOW_CONFIDENCE",

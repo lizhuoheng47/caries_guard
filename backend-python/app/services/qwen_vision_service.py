@@ -311,10 +311,13 @@ class QwenVisionService:
             area_ratio = self._normalize_area_ratio(item.get("lesionAreaRatio"), bbox, polygon, width, height)
             confidence = self._clamp_score(item.get("confidenceScore"), default=0.7)
             uncertainty = self._clamp_score(item.get("uncertaintyScore"), default=1.0 - confidence)
+            severity_code = self._normalize_severity(item.get("severityCode"), default="")
+            if not severity_code:
+                raise RuntimeError("Qwen vision finding is missing a valid severityCode")
             findings.append(
                 VisionFinding(
                     tooth_code=self._clean_text(item.get("toothCode")),
-                    severity_code=self._normalize_severity(item.get("severityCode"), default="C1"),
+                    severity_code=severity_code,
                     confidence_score=confidence,
                     uncertainty_score=uncertainty,
                     lesion_area_ratio=area_ratio,
@@ -392,9 +395,7 @@ class QwenVisionService:
             xs = [point[0] for point in polygon]
             ys = [point[1] for point in polygon]
             return self._clamp_box([min(xs), min(ys), max(xs), max(ys)], width, height)
-        if self._settings.ai_runtime_mode == "real":
-            raise RuntimeError("Qwen vision finding is missing a valid bbox or polygon")
-        return self._stable_box(width, height)
+        raise RuntimeError("Qwen vision finding is missing a valid bbox or polygon")
 
     def _parse_polygon(
         self,
@@ -493,14 +494,6 @@ class QwenVisionService:
         if clamped[3] <= clamped[1]:
             clamped[3] = min(height - 1, clamped[1] + max(8, height // 12))
         return clamped
-
-    @staticmethod
-    def _stable_box(width: int, height: int) -> list[int]:
-        x1 = max(0, int(width * 0.35))
-        y1 = max(0, int(height * 0.35))
-        x2 = min(width - 1, int(width * 0.55))
-        y2 = min(height - 1, int(height * 0.65))
-        return [x1, y1, x2, y2]
 
     @staticmethod
     def _bbox_polygon(bbox: list[int]) -> list[tuple[int, int]]:

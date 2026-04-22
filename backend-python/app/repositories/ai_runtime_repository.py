@@ -3,16 +3,11 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 
 from app.core.db import session_scope
 from app.core.time_utils import local_naive_now
-from app.models.ai_runtime import (
-    AiCallbackLog,
-    AiInferArtifact,
-    AiInferJob,
-    AiInferJobImage,
-)
+from app.models.ai_runtime import AiCallbackLog, AiInferArtifact, AiInferJob, AiInferJobImage
 
 
 def _row_to_dict(obj: Any) -> dict[str, Any]:
@@ -22,21 +17,14 @@ def _row_to_dict(obj: Any) -> dict[str, Any]:
 
 
 class AiRuntimeRepository:
-    """AI inference-job domain repository.
-
-    Scope (Phase 4 Step 5): ORM-backed skeleton. Service callers are not yet
-    wired through this layer — the current runtime still emits inference data
-    via the MQ worker/callback path. These helpers are the integration target
-    when the AI pipeline is ported over in a later phase.
-    """
-
-    # ----- infer job -----------------------------------------------------
+    """Repository for ai_infer_job, ai_infer_job_image, and ai_callback_log."""
 
     def create_infer_job(
         self,
         java_task_no: str,
         model_version: str,
         *,
+        trace_id: str | None = None,
         case_no: str | None = None,
         patient_uuid: str | None = None,
         infer_type_code: str = "ANALYZE",
@@ -47,9 +35,10 @@ class AiRuntimeRepository:
         now = local_naive_now()
         job_no = f"AIJOB-{uuid.uuid4().hex[:16].upper()}"
         with session_scope() as session:
-            job = AiInferJob(
+            row = AiInferJob(
                 job_no=job_no,
                 java_task_no=java_task_no,
+                trace_id=trace_id,
                 case_no=case_no,
                 patient_uuid=patient_uuid,
                 infer_type_code=infer_type_code,
@@ -62,9 +51,24 @@ class AiRuntimeRepository:
                 created_at=now,
                 updated_at=now,
             )
-            session.add(job)
+            session.add(row)
             session.flush()
-            return _row_to_dict(job)
+            return _row_to_dict(row)
+
+    def mark_infer_job_running(self, job_id: int) -> dict[str, Any]:
+        now = local_naive_now()
+        with session_scope() as session:
+            session.execute(
+                update(AiInferJob)
+                .where(AiInferJob.id == job_id)
+                .values(
+                    status_code="RUNNING",
+                    started_at=now,
+                    updated_at=now,
+                )
+            )
+            row = session.execute(select(AiInferJob).where(AiInferJob.id == job_id)).scalar_one_or_none()
+            return _row_to_dict(row) if row else {}
 
     def finish_infer_job(
         self,
@@ -87,21 +91,27 @@ class AiRuntimeRepository:
                     updated_at=now,
                 )
             )
-            job = session.execute(
-                select(AiInferJob).where(AiInferJob.id == job_id)
-            ).scalar_one_or_none()
-            return _row_to_dict(job) if job else {}
+            row = session.execute(select(AiInferJob).where(AiInferJob.id == job_id)).scalar_one_or_none()
+            return _row_to_dict(row) if row else {}
 
-    def get_latest_infer_job(self, java_task_no: str, *, open_only: bool = False) -> dict[str, Any] | None:
+    def get_latest_infer_job(
+        self,
+        java_task_no: str | None = None,
+        *,
+        trace_id: str | None = None,
+        open_only: bool = False,
+    ) -> dict[str, Any] | None:
+        if not java_task_no and not trace_id:
+            raise ValueError("java_task_no or trace_id is required")
         with session_scope() as session:
-            stmt = (
-                select(AiInferJob)
-                .where(
-                    AiInferJob.java_task_no == java_task_no,
-                    AiInferJob.deleted_flag == "0",
-                )
-                .order_by(AiInferJob.id.desc())
-            )
+            filters = [AiInferJob.deleted_flag == "0"]
+            if java_task_no and trace_id:
+                filters.append(or_(AiInferJob.java_task_no == java_task_no, AiInferJob.trace_id == trace_id))
+            elif java_task_no:
+                filters.append(AiInferJob.java_task_no == java_task_no)
+            else:
+                filters.append(AiInferJob.trace_id == trace_id)
+            stmt = select(AiInferJob).where(*filters).order_by(AiInferJob.id.desc())
             if open_only:
                 stmt = stmt.where(AiInferJob.status_code.notin_(["SUCCESS", "FAILED", "CANCELLED"]))
             row = session.execute(stmt).scalars().first()
@@ -118,25 +128,58 @@ class AiRuntimeRepository:
                     updated_at=now,
                 )
             )
-            job = session.execute(
-                select(AiInferJob).where(AiInferJob.id == job_id)
-            ).scalar_one_or_none()
-            return _row_to_dict(job) if job else {}
+            row = session.execute(select(AiInferJob).where(AiInferJob.id == job_id)).scalar_one_or_none()
+            return _row_to_dict(row) if row else {}
 
-    # ----- images / artifacts / callback logs ---------------------------
-
-    def add_job_image(self, job_id: int, **fields: Any) -> dict[str, Any]:
+    def upsert_job_image(
+        self,
+        job_id: int,
+        image_id: int | None,
+        **fields: Any,
+    ) -> dict[str, Any]:
         now = local_naive_now()
         with session_scope() as session:
-            row = AiInferJobImage(
-                job_id=job_id,
-                created_at=now,
-                updated_at=now,
-                **fields,
-            )
-            session.add(row)
+            row = session.execute(
+                select(AiInferJobImage)
+                .where(
+                    AiInferJobImage.job_id == job_id,
+                    AiInferJobImage.image_id == image_id,
+                    AiInferJobImage.deleted_flag == "0",
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                row = AiInferJobImage(
+                    job_id=job_id,
+                    image_id=image_id,
+                    created_at=now,
+                    updated_at=now,
+                    **fields,
+                )
+                session.add(row)
+                session.flush()
+                return _row_to_dict(row)
+            for key, value in fields.items():
+                setattr(row, key, value)
+            row.updated_at = now
             session.flush()
             return _row_to_dict(row)
+
+    def add_job_image(self, job_id: int, **fields: Any) -> dict[str, Any]:
+        payload = dict(fields)
+        image_id = payload.pop("image_id", None)
+        return self.upsert_job_image(job_id, image_id, **payload)
+
+    def list_job_images(self, job_id: int) -> list[dict[str, Any]]:
+        with session_scope() as session:
+            rows = session.execute(
+                select(AiInferJobImage)
+                .where(
+                    AiInferJobImage.job_id == job_id,
+                    AiInferJobImage.deleted_flag == "0",
+                )
+                .order_by(AiInferJobImage.id.asc())
+            ).scalars().all()
+            return [_row_to_dict(row) for row in rows]
 
     def add_artifact(self, job_id: int, **fields: Any) -> dict[str, Any]:
         now = local_naive_now()

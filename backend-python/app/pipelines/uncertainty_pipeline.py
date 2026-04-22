@@ -33,8 +33,13 @@ class UncertaintyResult:
 class UncertaintyPipeline:
     """Compose uncertainty from quality/detection/geometry/grading signals."""
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, review_threshold: float | None = None) -> None:
         self._settings = settings
+        self._review_threshold = (
+            float(review_threshold)
+            if review_threshold is not None
+            else float(settings.uncertainty_review_threshold)
+        )
 
     def assess(
         self,
@@ -45,13 +50,13 @@ class UncertaintyPipeline:
         segmentation_regions: list[dict[str, Any]] | None = None,
         lesion_results: list[dict[str, Any]] | None = None,
     ) -> UncertaintyResult:
-        if grading_result.grading_mode == "mock":
+        if grading_result.grading_mode != "real":
             score = self._clamp(grading_result.uncertainty_score)
-            needs_review = score >= self._settings.uncertainty_review_threshold
+            needs_review = score >= self._review_threshold
             reasons = ["UNCERTAINTY_THRESHOLD_EXCEEDED"] if needs_review else []
             return UncertaintyResult(
-                uncertainty_mode="mock",
-                uncertainty_impl_type="MOCK",
+                uncertainty_mode=grading_result.grading_mode or "disabled",
+                uncertainty_impl_type=grading_result.grading_impl_type or "DISABLED",
                 uncertainty_score=score,
                 uncertainty_reasons=reasons,
                 needs_review=needs_review,
@@ -90,7 +95,7 @@ class UncertaintyPipeline:
             class_margin=class_margin,
             score=composite,
         )
-        needs_review = composite >= self._settings.uncertainty_review_threshold
+        needs_review = composite >= self._review_threshold
         return UncertaintyResult(
             uncertainty_mode=grading_result.grading_mode,
             uncertainty_impl_type="COMPOSITE_HEURISTIC",
@@ -252,7 +257,7 @@ class UncertaintyPipeline:
             reasons.append("GRADING_MARGIN_LOW")
         if grading_prior >= 0.45:
             reasons.append("GRADING_PRIOR_UNCERTAIN")
-        if score >= self._settings.uncertainty_review_threshold:
+        if score >= self._review_threshold:
             reasons.append("UNCERTAINTY_THRESHOLD_EXCEEDED")
         # keep order and dedupe
         return list(dict.fromkeys(reasons))

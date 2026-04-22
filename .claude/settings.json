@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(mvn -pl caries-analysis -am test)",
-      "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && head -50 {}')",
-      "Bash(xargs grep *)"
-    ]
-  }
-}

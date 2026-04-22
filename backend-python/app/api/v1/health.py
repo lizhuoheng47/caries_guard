@@ -10,12 +10,14 @@ router = APIRouter(tags=["health"])
 @router.head("/health")
 def health_check() -> dict:
     container = get_container()
+    runtime_status = container.model_switch_service.get_runtime_status()
     data = {
         "status": "UP",
         "mode": container.settings.app_mode,
         "modelRegistry": {
             "modelVersion": container.settings.model_version,
-            "status": "MOCK",
+            "status": runtime_status.get("aiRuntimeMode"),
+            "runtimeStatus": runtime_status,
         },
         "dependencies": {
             "minioEndpoint": container.settings.minio_endpoint,

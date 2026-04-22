@@ -11,6 +11,7 @@ from app.core.config import Settings
 from app.infra.storage.minio_client import MinioStorageClient
 from app.repositories.graph_repository import GraphRepository
 from app.repositories.knowledge_repository import KnowledgeRepository
+from app.repositories.rag_repository import RagRepository
 from app.schemas.rag import KnowledgeDocumentRequest, KnowledgeRebuildRequest
 from app.services.chunk_build_service import ChunkBuildService
 from app.services.document_parse_service import DocumentParseService
@@ -31,6 +32,7 @@ class KnowledgeService:
         open_search_index_service: OpenSearchIndexService,
         graph_upsert_service: GraphUpsertService,
         graph_repository: GraphRepository,
+        rag_repository: RagRepository | None = None,
     ) -> None:
         self.settings = settings
         self.repository = repository
@@ -41,6 +43,7 @@ class KnowledgeService:
         self.open_search_index_service = open_search_index_service
         self.graph_upsert_service = graph_upsert_service
         self.graph_repository = graph_repository
+        self.rag_repository = rag_repository or RagRepository()
 
     def import_document(self, request: KnowledgeDocumentRequest) -> dict[str, Any]:
         kb = self.ensure_knowledge_base(
@@ -359,10 +362,7 @@ class KnowledgeService:
             knowledge_version=request.knowledge_version,
             org_id=request.org_id,
         )
-        from app.repositories.rag_repository import RagRepository
-
-        rag_repository = RagRepository()
-        job = rag_repository.create_rebuild_job(
+        job = self.rag_repository.create_rebuild_job(
             kb_id=kb["id"],
             knowledge_version=kb["knowledge_version"],
             vector_store_path=kb.get("vector_store_path"),
@@ -385,7 +385,7 @@ class KnowledgeService:
                 )
                 total_chunks += rebuilt["chunkCount"]
                 report.append(rebuilt)
-            finished = rag_repository.finish_rebuild_job(job["id"], "SUCCESS", total_chunks)
+            finished = self.rag_repository.finish_rebuild_job(job["id"], "SUCCESS", total_chunks)
             return {
                 "rebuildJobNo": finished["rebuild_job_no"],
                 "rebuildStatusCode": finished["rebuild_status_code"],
@@ -395,7 +395,7 @@ class KnowledgeService:
                 "graphStats": self.graph_statistics(kb["kb_code"], request.org_id),
             }
         except Exception as exc:
-            rag_repository.finish_rebuild_job(job["id"], "FAILED", 0, str(exc))
+            self.rag_repository.finish_rebuild_job(job["id"], "FAILED", 0, str(exc))
             raise
 
     def ensure_knowledge_base(

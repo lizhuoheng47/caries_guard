@@ -12,12 +12,7 @@ executor = ThreadPoolExecutor(max_workers=2)
 
 def _run_background(raw_payload: dict) -> None:
     container = get_container()
-    try:
-        callback_payload = container.pipeline.run(raw_payload)
-        container.callback_service.post_callback(callback_payload, raw_payload.get("callbackUrl"))
-    except Exception as exc:
-        failure_payload = container.pipeline.build_failure_payload(raw_payload, exc)
-        container.callback_service.post_callback(failure_payload, raw_payload.get("callbackUrl"))
+    container.analysis_service.execute(raw_payload)
 
 
 @router.post("/analyze")
@@ -30,4 +25,3 @@ def analyze(request: AnalyzeRequest) -> dict:
         "estimatedSeconds": 12,
     }
     return success_response(data=data, trace_id=request.trace_id, message="accepted")
-
