@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from app.schemas.risk_assessment import RiskFactor
 
-# 比赛展示用风险等级中文映射
 _RISK_LEVEL_CHINESE: dict[str, str] = {
     "HIGH": "高",
     "MEDIUM": "中",
@@ -33,7 +32,6 @@ class RiskExplanationService:
         drivers = ", ".join(item.code for item in positive[:3]) or "NO_MAJOR_RISK_DRIVER"
         review = " Human review is suggested before using this as a final clinical conclusion." if review_suggested else ""
 
-        # 中文标注（比赛展示）
         cn_level = _RISK_LEVEL_CHINESE.get(risk_level, risk_level)
         cn_drivers = "、".join(_FACTOR_CHINESE.get(item.code, item.code) for item in positive[:3]) or "无主要风险驱动"
         cn_review = " 建议在用作最终临床结论前进行人工复核。" if review_suggested else ""

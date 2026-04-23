@@ -23,19 +23,15 @@ class CypherTemplate:
 class CypherTemplateRegistry:
     def __init__(self, config_path: str | None = None) -> None:
         if config_path is None:
-            # Default to relative path from this file
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
             config_path = os.path.join(base_dir, "config", "cypher_templates.yaml")
-        
+
         self.config_path = config_path
         self.templates: dict[str, CypherTemplate] = {}
         self.load_templates()
 
     def load_templates(self) -> None:
         if not os.path.exists(self.config_path):
-            # In some environments, the file might not exist yet during testing
-            # or it might be in a different location. We'll handle this gracefully
-            # but log a warning if we had a proper logger.
             return
 
         with open(self.config_path, "r", encoding="utf-8") as f:
@@ -50,7 +46,7 @@ class CypherTemplateRegistry:
         code = item.get("code")
         if not code:
             raise ValueError("Cypher template missing 'code'")
-        
+
         if code in self.templates:
             raise ValueError(f"Duplicate Cypher template code: {code}")
 
@@ -61,11 +57,11 @@ class CypherTemplateRegistry:
         cypher = item.get("cypher")
         if not cypher:
             raise ValueError(f"Template {code} missing 'cypher'")
-            
+
         parameter_name = item.get("parameter_name")
         if not parameter_name:
             raise ValueError(f"Template {code} missing 'parameter_name'")
-            
+
         return_schema = item.get("return_schema")
         if not return_schema:
             raise ValueError(f"Template {code} missing 'return_schema'")

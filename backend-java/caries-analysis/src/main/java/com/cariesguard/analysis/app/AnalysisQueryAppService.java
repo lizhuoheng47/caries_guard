@@ -131,8 +131,6 @@ public class AnalysisQueryAppService {
         }
     }
 
-    // ─── AI 证据展示：核心组装逻辑 ───
-
     private AnalysisSummaryVO toSummaryVO(AnalysisResultSummaryModel summary) {
         String severity = summary.overallHighestSeverity();
         Double uncertainty = summary.uncertaintyScore() == null ? null : summary.uncertaintyScore().doubleValue();
@@ -148,7 +146,6 @@ public class AnalysisQueryAppService {
         JsonNode riskFactors = null;
         JsonNode evidenceRefs = null;
 
-        // 新增字段
         String gradingLabel = null;
         Double confidenceScore = null;
         Boolean needsReview = null;
@@ -195,7 +192,6 @@ public class AnalysisQueryAppService {
             riskFactors = jsonValue(root, "riskFactors", "risk_factors");
             evidenceRefs = jsonValue(root, "evidenceRefs", "evidence_refs");
 
-            // ── 新增字段提取 ──
             gradingLabel = textValue(root, "gradingLabel", "grading_label");
             confidenceScore = doubleValue(root, "confidenceScore", "confidence_score");
             needsReview = booleanValue(root, "needsReview", "needs_review");
@@ -203,10 +199,8 @@ public class AnalysisQueryAppService {
                     "followupSuggestion", "followup_suggestion");
             citations = extractCitations(root);
 
-            // reviewReason → 人可读标签
             String reviewReasonLabel = ReviewReasonLabels.toLabel(reviewReason);
 
-            // evidenceRefs → 分类展示
             Map<String, List<EvidenceRefItemVO>> classifiedEvidenceRefs = classifyEvidenceRefs(evidenceRefs);
 
             return new AnalysisSummaryVO(
@@ -247,8 +241,6 @@ public class AnalysisQueryAppService {
         }
     }
 
-    // ─── evidenceRefs 分类展示 ───
-
     private Map<String, List<EvidenceRefItemVO>> classifyEvidenceRefs(JsonNode evidenceRefs) {
         if (evidenceRefs == null || !evidenceRefs.isArray() || evidenceRefs.isEmpty()) {
             return null;
@@ -268,8 +260,6 @@ public class AnalysisQueryAppService {
         return classified;
     }
 
-    // ─── citations 提取 ───
-
     private List<AnalysisCitationVO> extractCitations(JsonNode root) {
         JsonNode citationsNode = jsonValue(root, "citations");
         if (citationsNode == null || !citationsNode.isArray() || citationsNode.isEmpty()) {
@@ -288,8 +278,6 @@ public class AnalysisQueryAppService {
         }
         return result;
     }
-
-    // ─── JSON 字段提取工具方法 ───
 
     private String textValue(JsonNode root, String... fields) {
         for (String field : fields) {

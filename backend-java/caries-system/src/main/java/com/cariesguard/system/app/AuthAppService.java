@@ -30,6 +30,7 @@ public class AuthAppService {
     private final JwtTokenProvider jwtTokenProvider;
     private final CompetitionExposureService competitionExposureService;
 
+
     public AuthAppService(SystemUserAuthRepository systemUserAuthRepository,
                           SystemPermissionRepository systemPermissionRepository,
                           LoginAuditService loginAuditService,

@@ -2,11 +2,6 @@ package com.cariesguard.analysis.interfaces.vo;
 
 import java.util.Map;
 
-/**
- * reviewReason 编码 → 人可读中文标签映射.
- * <p>
- * 比赛展示时，评委可以直接看到中文原因而非内部编码。
- */
 public final class ReviewReasonLabels {
 
     private ReviewReasonLabels() {
@@ -31,12 +26,6 @@ public final class ReviewReasonLabels {
 
     private static final String DEFAULT_LABEL = "需要人工复核";
 
-    /**
-     * 将 reviewReason 编码转为中文标签.
-     *
-     * @param reasonCode 编码，如 "HIGH_UNCERTAINTY"
-     * @return 中文标签；未知编码返回默认标签
-     */
     public static String toLabel(String reasonCode) {
         if (reasonCode == null || reasonCode.isBlank()) {
             return null;

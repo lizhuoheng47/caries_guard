@@ -76,7 +76,6 @@ class RagOrchestrator:
         context_text: str | None,
         include_debug: bool = False,
     ) -> dict[str, Any]:
-        # ── Fail-fast Mode Gate ──
         if self.settings.ai_runtime_mode == "real":
             if self.settings.llm_provider_code == "MOCK":
                 raise RuntimeError("CG_AI_RUNTIME_MODE='real' requires a real LLM provider")
@@ -277,7 +276,6 @@ class RagOrchestrator:
         )
         payload = dump_camel(answer)
         payload["answer"] = payload["answerText"]
-        # Add LLM telemetry to top level if available
         if llm_metadata:
             payload["llmTelemetry"] = llm_metadata
         payload["retrievalTelemetry"] = retrieval_meta

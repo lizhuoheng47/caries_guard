@@ -95,7 +95,7 @@ class CorrectionFeedbackAppServiceTests {
         ArgumentCaptor<CorrectionFeedbackCreateModel> captor = ArgumentCaptor.forClass(CorrectionFeedbackCreateModel.class);
         verify(anaCorrectionFeedbackRepository).save(captor.capture());
         assertThat(captor.getValue().correctedTruthJson()).contains("feedbackGovernance");
-        assertThat(captor.getValue().correctedTruthJson()).contains("feedback-governance-v1");
+        assertThat(captor.getValue().correctedTruthJson()).contains("feedback-governance-v2");
         assertThat(captor.getValue().correctedTruthJson()).contains("doctor corrected tooth grade");
     }
 
@@ -150,7 +150,7 @@ class CorrectionFeedbackAppServiceTests {
                 .put("originalUncertainty", 0.42)
                 .put("acceptedAiConclusion", false)
                 .put("correctionReason", "doctor corrected tooth grade")
-                .put("schemaVersion", "feedback-governance-v1");
+                .put("schemaVersion", "feedback-governance-v2");
         when(anaCorrectionFeedbackRepository.listTrainingCandidates(2001L, 2)).thenReturn(List.of(
                 new CorrectionFeedbackExportCandidateModel(
                         9001L,
@@ -174,7 +174,7 @@ class CorrectionFeedbackAppServiceTests {
         assertThat(result.samples().get(0).originalAiGrade()).isEqualTo("C2");
         assertThat(result.samples().get(0).doctorCorrectedGrade()).isEqualTo("C1");
         assertThat(result.samples().get(0).acceptedAiConclusion()).isFalse();
-        assertThat(result.samples().get(0).governanceSchemaVersion()).isEqualTo("feedback-governance-v1");
+        assertThat(result.samples().get(0).governanceSchemaVersion()).isEqualTo("feedback-governance-v2");
         verify(anaCorrectionFeedbackRepository).markExported(List.of(9001L), result.snapshotNo());
     }
 

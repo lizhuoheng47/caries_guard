@@ -61,7 +61,6 @@ public class CorrectionFeedbackAppService {
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Case does not exist"));
         ensureOrgAccess(operator, medicalCase.orgId());
 
-        // Delegate rules to CorrectionFeedbackDomainService
         correctionFeedbackDomainService.ensureCaseAllowsCorrection(medicalCase.caseStatusCode());
         correctionFeedbackDomainService.validateFeedbackTypeCode(command.feedbackTypeCode());
 
@@ -180,7 +179,6 @@ public class CorrectionFeedbackAppService {
         }
         putText(governance, "correctionReason", command.correctionReason());
         governance.put("trainingCandidate", !Boolean.FALSE.equals(command.trainingCandidate()));
-        // ── 新增结构化复核字段持久化 ──
         putText(governance, "doctorConfirmedGrade", command.doctorConfirmedGrade());
         if (command.agreedWithAi() != null) {
             governance.put("agreedWithAi", command.agreedWithAi());

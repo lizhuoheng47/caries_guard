@@ -1,9 +1,4 @@
-"""Risk fusion adapter - HEURISTIC implementation.
-
-Phase 5D combines structured patient factors with image-derived severity,
-uncertainty, and lesion evidence. It is an auditable algorithmic adapter, not a
-trained risk model.
-"""
+"""Risk fusion adapter backed by deterministic rules."""
 
 from __future__ import annotations
 
@@ -17,7 +12,7 @@ from app.services.risk_fusion_service import RiskFusionService
 
 
 class RiskHeuristicFusionAdapter(BaseModelAdapter):
-    """Heuristic risk-fusion adapter for Phase 5D."""
+    """Heuristic risk-fusion adapter."""
 
     model_code = "risk-fusion-heuristic-v1"
     model_type_code = "RISK"

@@ -75,7 +75,6 @@ function normalizeApiError(error: unknown): ApiClientError {
   return new ApiClientError('Unknown error');
 }
 
-// The base request instance
 const resolveApiTimeout = (): number => {
   const parsed = Number(import.meta.env.VITE_API_TIMEOUT_MS || '90000');
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 90000;
@@ -102,7 +101,6 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response): any => {
     const res = response.data as ApiResponse<unknown>;
-    // Standard response format: { code: '00000', data: ..., message: ... }
     if (res.code && res.code !== '00000') {
       return Promise.reject(new ApiClientError(res.message || 'Request failed', {
         code: res.code,

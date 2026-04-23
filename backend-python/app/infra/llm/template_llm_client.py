@@ -17,16 +17,8 @@ class TemplateLlmClient:
         self.model_name = model_name
 
     def generate(self, scene: str, query: str, evidence: list[dict], context_text: str | None = None) -> LlmResult:
-        if self.settings.ai_runtime_mode in {"real", "competition"}:
-            # Although 'competition' usually uses hybrid, the doc says:
-            # "若 competition-hybrid / real 模式仍命中该 client，则直接抛错"
-            # Note: in my previous turn I updated competition.env to 'hybrid'.
-            # I will check if runtime_mode is 'real' or if provider is specifically restricted.
-            pass
-
-        # Strict check as per doc
         if self.settings.ai_runtime_mode == "real" or self.settings.app_env == "competition":
-             raise RuntimeError(f"TemplateLlmClient (MOCK) is forbidden in {self.settings.ai_runtime_mode} mode")
+            raise RuntimeError(f"TemplateLlmClient (MOCK) is forbidden in {self.settings.ai_runtime_mode} mode")
 
         prompt = self._build_prompt(scene, query, evidence, context_text)
         if not evidence:

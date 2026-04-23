@@ -9,9 +9,9 @@ from PIL import Image
 from app.core.exceptions import ModelRuntimeException
 from app.infra.model.base_model import ImplType
 from app.infra.model.lesion_segmenter import LesionSegmenterAdapter
-from app.infra.model.lesion_segmenter_onnx import LesionSegmenterOnnxAdapter
 from app.infra.model.model_assets import ModelAssets
 from app.infra.model.model_router import ModelRouter
+from app.infra.model.segmentation_model_adapter import SegmentationModelAdapter
 from app.schemas.callback import ToothDetection
 
 
@@ -80,12 +80,12 @@ class _RouterSettings:
 def test_router_maps_segmentation_ml_model_adapter():
     impl_type = ModelRouter.resolve_impl_type(_RouterSettings(), "segmentation")
     assert impl_type == ImplType.ML_MODEL
-    assert ModelRouter.get_adapter_class("segmentation", impl_type) is LesionSegmenterOnnxAdapter
+    assert ModelRouter.get_adapter_class("segmentation", impl_type) is SegmentationModelAdapter
 
 
 def test_onnx_adapter_fails_explicitly_when_checkpoint_missing():
     assets = ModelAssets(_AssetSettings())
-    adapter = LesionSegmenterOnnxAdapter(model_assets=assets)
+    adapter = SegmentationModelAdapter(model_assets=assets)
 
     with pytest.raises(ModelRuntimeException, match="segmentation checkpoint does not exist") as exc_info:
         adapter.load()

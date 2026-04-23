@@ -149,8 +149,6 @@ class GraphUpsertService:
                         source_concept_id=source_payload["concept_id"],
                         target_concept_id=target_payload["concept_id"],
                     )
-        
-        # ── Return Detailed Stats ──
         return {
             "docId": doc_id,
             "conceptCount": len(concept_payloads),
@@ -163,7 +161,6 @@ class GraphUpsertService:
         """Detect conflicts such as alias collisions or version mismatches."""
         conflicts = []
         with self.driver.session(database=self.settings.neo4j_database) as session:
-            # Check for alias collisions: one alias pointing to multiple concepts
             res = session.run(
                 "MATCH (a:AliasTerm)-[:ALIAS_OF]->(n:Concept) "
                 "WITH a, collect(n) AS concepts "
@@ -176,9 +173,6 @@ class GraphUpsertService:
                     "alias": row["alias"],
                     "conflictingConcepts": row["conceptNames"]
                 })
-                
-            # Check for concept property mismatches across documents
-            # (In a real system, we'd check if the same name has different entityTypeCode)
         return conflicts
 
     def cleanup_document_graph(self, doc_id: int, session=None) -> None:

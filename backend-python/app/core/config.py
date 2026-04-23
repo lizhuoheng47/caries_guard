@@ -1,9 +1,12 @@
 import os
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+
+log = logging.getLogger("cariesguard-ai.config")
 
 
 _VALID_RUNTIME_MODES = {"mock", "hybrid", "real"}
@@ -439,7 +442,6 @@ class Settings:
     analysis_kb_enhancement_enabled: bool = bool_env("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED", False)
     analysis_kb_code: str = os.getenv("CG_ANALYSIS_KB_CODE", os.getenv("CG_RAG_DEFAULT_KB_CODE", "caries-default"))
 
-    # ── Phase 5: Model Runtime ──────────────────────────────────────────
     ai_runtime_mode: str = _validate_runtime_mode(os.getenv("CG_AI_RUNTIME_MODE", "mock"))
     model_quality_enabled: bool = bool_env("CG_MODEL_QUALITY_ENABLED", False)
     model_quality_impl_type: str = os.getenv("CG_MODEL_QUALITY_IMPL_TYPE", "HEURISTIC").upper()
@@ -506,10 +508,6 @@ class Settings:
         object.__setattr__(self, "llm_hedge_api_key", (self.llm_hedge_api_key or "").strip())
         object.__setattr__(self, "llm_hedge_delay_ms", max(0, int(self.llm_hedge_delay_ms)))
 
-        # ── Fail-fast Validation ──
-        # Strict dependency checks:
-        # - analysis_kb_enhancement_enabled always requires RAG runtime
-        # - real mode with RAG enabled requires real LLM/Embedding credentials
         rag_dependencies_required = self.analysis_kb_enhancement_enabled or (mode == "real" and self.rag_runtime_enabled)
         if self.analysis_kb_enhancement_enabled and not self.rag_runtime_enabled:
             raise ValueError("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED=true requires CG_RAG_RUNTIME_ENABLED=true")
@@ -639,47 +637,43 @@ class Settings:
                     impl_type,
                 )
 
-        # Logging summary
-        print(f"[*] CariesGuard Runtime Mode: {mode.upper()}")
-        print(f"[*] LLM Provider: {self.llm_provider_code} (Model: {self.llm_model_name})")
+        log.info("CariesGuard runtime mode=%s", mode.upper())
+        log.info("LLM provider=%s model=%s", self.llm_provider_code, self.llm_model_name)
         if self.llm_scene_routing_enabled:
-            print(
-                "[*] LLM Scene Routing: ENABLED "
-                f"(DOCTOR={self.llm_doctor_provider_code}/{self.llm_doctor_model_name}, "
-                f"PATIENT={self.llm_patient_provider_code}/{self.llm_patient_model_name})"
+            log.info(
+                "LLM scene routing enabled doctor=%s/%s patient=%s/%s",
+                self.llm_doctor_provider_code,
+                self.llm_doctor_model_name,
+                self.llm_patient_provider_code,
+                self.llm_patient_model_name,
             )
         if self.llm_hedge_enabled:
-            print(
-                "[*] LLM Hedge: ENABLED "
-                f"(delayMs={self.llm_hedge_delay_ms}, "
-                f"secondary={self.llm_hedge_provider_code}/{self.llm_hedge_model_name})"
+            log.info(
+                "LLM hedge enabled delayMs=%s secondary=%s/%s",
+                self.llm_hedge_delay_ms,
+                self.llm_hedge_provider_code,
+                self.llm_hedge_model_name,
             )
         if self.qwen_vision_enabled:
-            print(f"[*] Qwen Vision: ENABLED (Model: {self.qwen_vision_model})")
+            log.info("Qwen Vision enabled model=%s", self.qwen_vision_model)
         if self.analysis_kb_enhancement_enabled:
-            print(f"[*] Analysis KB Enhancement: ENABLED (KB: {self.analysis_kb_code})")
+            log.info("Analysis KB enhancement enabled kb=%s", self.analysis_kb_code)
         if self.rag_runtime_enabled:
-            print(f"[*] Embedding: {self.rag_embedding_provider} (Store: {self.rag_vector_store_type})")
+            log.info("Embedding provider=%s store=%s", self.rag_embedding_provider, self.rag_vector_store_type)
         else:
-            print("[*] RAG Runtime: DISABLED")
-        enabled_mods = [m for m, e, t in [
-            ("Quality", self.model_quality_enabled, self.model_quality_impl_type),
-            ("Detect", self.model_tooth_detect_enabled, self.model_tooth_detect_impl_type),
-            ("Segment", self.model_segmentation_enabled, self.model_segmentation_impl_type),
-            ("Grading", self.model_grading_enabled, self.model_grading_impl_type),
-            ("Risk", self.model_risk_enabled, self.model_risk_impl_type)
-        ] if e]
-        print(f"[*] Enabled Modules: {', '.join([f'{m}({self._get_impl_type(m)})' for m in enabled_mods]) if enabled_mods else 'None'}")
-
-    def _get_impl_type(self, module_name: str) -> str:
-        mapping = {
-            "Quality": self.model_quality_impl_type,
-            "Detect": self.model_tooth_detect_impl_type,
-            "Segment": self.model_segmentation_impl_type,
-            "Grading": self.model_grading_impl_type,
-            "Risk": self.model_risk_impl_type
-        }
-        return mapping.get(module_name, "UNKNOWN")
+            log.info("RAG runtime disabled")
+        enabled_modules = [
+            f"{name}({impl_type})"
+            for name, enabled, impl_type in [
+                ("Quality", self.model_quality_enabled, self.model_quality_impl_type),
+                ("Detect", self.model_tooth_detect_enabled, self.model_tooth_detect_impl_type),
+                ("Segment", self.model_segmentation_enabled, self.model_segmentation_impl_type),
+                ("Grading", self.model_grading_enabled, self.model_grading_impl_type),
+                ("Risk", self.model_risk_enabled, self.model_risk_impl_type),
+            ]
+            if enabled
+        ]
+        log.info("Enabled modules=%s", ", ".join(enabled_modules) if enabled_modules else "None")
 
     def _validate_scene_llm_profile(
         self,

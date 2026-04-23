@@ -18,10 +18,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Case-centric route aliases for analysis operations (D1).
- * These delegate to the same AppService methods as the resource-centric routes.
- */
 @Tag(name = "病例分析", description = "以病例为中心的分析操作别名")
 @RestController
 @RequestMapping("/api/v1/cases/{caseId}")
@@ -41,7 +37,6 @@ public class CaseAnalysisAliasController {
     @RequirePermission("analysis:create")
     public ApiResponse<AnalysisTaskVO> createAnalysisFromCase(@PathVariable Long caseId,
                                                                @Valid @RequestBody CreateAnalysisTaskCommand command) {
-        // Override caseId from path variable for consistency
         CreateAnalysisTaskCommand resolved = new CreateAnalysisTaskCommand(
                 caseId, command.patientId(), command.forceRetryFlag(), command.taskTypeCode(), command.remark());
         return ApiResponse.success(analysisTaskAppService.createTask(resolved), TraceIdUtils.currentTraceId());

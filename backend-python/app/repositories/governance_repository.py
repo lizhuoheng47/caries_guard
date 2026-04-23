@@ -26,16 +26,7 @@ def _row_to_dict(obj: Any) -> dict[str, Any]:
 
 
 class GovernanceRepository:
-    """Model-governance domain repository.
-
-    Scope (Phase 4 Step 5): ORM-backed skeleton. The governance surface
-    (model registry, evaluation, approval, dataset snapshots, annotation,
-    training runs) has schema coverage but no service-layer wiring yet.
-    These helpers give downstream workflows a typed entry point without
-    embedding DDL or hand-crafted SQL in the caller.
-    """
-
-    # ----- model registry -----------------------------------------------
+    """Model-governance domain repository."""
 
     def register_model_version(
         self,
@@ -138,8 +129,6 @@ class GovernanceRepository:
             row = session.execute(stmt).scalar_one_or_none()
             return _row_to_dict(row) if row else None
 
-    # ----- evaluation / approval ----------------------------------------
-
     def record_model_eval(
         self,
         model_version_id: int,
@@ -195,8 +184,6 @@ class GovernanceRepository:
             session.add(row)
             session.flush()
             return _row_to_dict(row)
-
-    # ----- datasets / training / annotation -----------------------------
 
     def create_dataset_snapshot(
         self,

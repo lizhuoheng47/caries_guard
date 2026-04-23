@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 import requests
-from typing import Any
+from typing import Any, cast
 
 from app.core.config import Settings
 from app.infra.vector.base_embedding_provider import BaseEmbeddingProvider, EmbeddingMetadata
@@ -41,9 +41,7 @@ class OpenAiCompatibleEmbeddingProvider(BaseEmbeddingProvider):
         if not data:
             raise RuntimeError("Embedding provider returned empty data")
             
-        # OpenAI returns data sorted by index, but it's safer to sort it explicitly if we want to be robust
-        # However, usually we just extract them.
-        results = [None] * len(texts)
+        results: list[list[float] | None] = [None] * len(texts)
         for item in data:
             index = item.get("index")
             embedding = item.get("embedding")
@@ -54,24 +52,23 @@ class OpenAiCompatibleEmbeddingProvider(BaseEmbeddingProvider):
                         f"got {len(embedding)}"
                     )
                 results[index] = embedding
-        
+
         if any(r is None for r in results):
             raise RuntimeError("Embedding provider returned incomplete data")
-            
-        return results # type: ignore
+
+        return cast(list[list[float]], results)
 
     def _post_with_retry(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not self.settings.rag_embedding_base_url:
             raise RuntimeError("CG_RAG_EMBEDDING_BASE_URL is required for non-HASHING embedding provider")
-            
+
         url = self.settings.rag_embedding_base_url.rstrip("/") + "/embeddings"
         headers = {"Content-Type": "application/json"}
         if self.settings.rag_embedding_api_key:
             headers["Authorization"] = f"Bearer {self.settings.rag_embedding_api_key}"
-            
+
         last_error: Exception | None = None
-        # Use same retry logic as LLM for consistency
-        retry_count = 2 
+        retry_count = 2
         for attempt in range(retry_count + 1):
             try:
                 response = requests.post(
@@ -85,7 +82,6 @@ class OpenAiCompatibleEmbeddingProvider(BaseEmbeddingProvider):
             except Exception as exc:
                 last_error = exc
                 if attempt < retry_count:
-                    # Exponential backoff
                     time.sleep(min(0.5 * (2 ** attempt), 2.0))
-                    
+
         raise RuntimeError(f"Embedding provider call failed: {last_error}")

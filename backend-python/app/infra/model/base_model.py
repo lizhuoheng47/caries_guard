@@ -1,11 +1,4 @@
-"""Base class and taxonomy for all model adapters.
-
-Phase 5 introduces a three-tier implementation type taxonomy:
-
-- **MOCK** — hard-coded template data (Phase 4 and earlier).
-- **HEURISTIC** — rule-based / image-statistics / algorithmic (Phase 5A).
-- **ML_MODEL** — real PyTorch / ONNX weights (Phase 5B+).
-"""
+"""Shared model adapter base types."""
 
 from __future__ import annotations
 
@@ -26,13 +19,7 @@ class ImplType(str, Enum):
 
 
 class BaseModelAdapter(ABC):
-    """Abstract base for all model adapters in Phase 5.
-
-    Every concrete adapter MUST declare:
-    - ``model_code``       — unique identifier, e.g. ``"quality-check-heuristic-v1"``
-    - ``model_type_code``  — functional category, e.g. ``"QUALITY"``
-    - ``impl_type``        — one of :class:`ImplType`
-    """
+    """Base for runtime model adapters."""
 
     model_code: str
     model_type_code: str

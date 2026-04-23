@@ -5,7 +5,6 @@ interface Props {
 }
 const props = withDefaults(defineProps<Props>(), { size: 18 })
 
-// Inline paths — matches React Icons mapping (subset used by Vue app)
 const paths: Record<string, string> = {
   logo: 'M7 3.5c-2 0-3.5 1.7-3.5 3.8 0 1.6.6 2.7 1 4 .5 1.5.5 3 .5 4.5 0 3 1 6.2 2.8 6.2 1.4 0 1.5-2 2.2-4 .5-1.4 1-2 2-2s1.5.6 2 2c.7 2 .8 4 2.2 4 1.8 0 2.8-3.2 2.8-6.2 0-1.5 0-3 .5-4.5.4-1.3 1-2.4 1-4 0-2.1-1.5-3.8-3.5-3.8-1.4 0-2.5.7-3.4 1.3-.7.4-1.1.6-1.6.6s-.9-.2-1.6-.6c-.9-.6-2-1.3-3.4-1.3Z',
   home: 'M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5M10 20v-6h4v6',

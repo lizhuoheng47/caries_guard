@@ -67,7 +67,6 @@ router.beforeEach(async (to, from, next) => {
   } else if (to.name === 'login' && authStore.isAuthenticated) {
     next({ path: '/' });
   } else {
-    // Attempt to load user info if not loaded yet
     if (authStore.isAuthenticated && !authStore.user) {
       try {
         await authStore.fetchUserInfo();

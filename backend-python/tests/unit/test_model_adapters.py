@@ -1,15 +1,13 @@
 """Tests for model adapters — output structure validation."""
 
 from pathlib import Path
-from unittest.mock import patch
-
 import numpy as np
 import pytest
 from PIL import Image
 
 from app.infra.model.base_model import ImplType
-from app.infra.model.quality_model import QualityModelAdapter
 from app.infra.model.tooth_detector import ToothDetectorAdapter, _fdi_code
+from app.quality.quality_adapter import QualityAssessmentAdapter
 
 
 @pytest.fixture()
@@ -25,14 +23,14 @@ def sample_image(tmp_path: Path) -> Path:
 # ── QualityModelAdapter ─────────────────────────────────────────────────
 
 
-class TestQualityModelAdapter:
+class TestQualityAssessmentAdapter:
     def test_impl_type_is_heuristic(self):
-        adapter = QualityModelAdapter()
+        adapter = QualityAssessmentAdapter()
         assert adapter.impl_type == ImplType.HEURISTIC
         assert adapter.model_type_code == "QUALITY"
 
     def test_lifecycle(self):
-        adapter = QualityModelAdapter()
+        adapter = QualityAssessmentAdapter()
         assert not adapter.is_loaded()
         adapter.load()
         assert adapter.is_loaded()
@@ -40,7 +38,7 @@ class TestQualityModelAdapter:
         assert not adapter.is_loaded()
 
     def test_infer_returns_required_keys(self, sample_image: Path):
-        adapter = QualityModelAdapter()
+        adapter = QualityAssessmentAdapter()
         adapter.load()
         result = adapter.infer(sample_image)
 
@@ -67,13 +65,13 @@ class TestQualityModelAdapter:
         path = tmp_path / "uniform.png"
         img.save(path)
 
-        adapter = QualityModelAdapter(confidence_threshold=0.3)
+        adapter = QualityAssessmentAdapter(confidence_threshold=0.3)
         adapter.load()
         result = adapter.infer(path)
         assert "blur" in result["qualityIssues"]
 
     def test_info_dict(self):
-        adapter = QualityModelAdapter()
+        adapter = QualityAssessmentAdapter()
         adapter.load()
         info = adapter.info()
         assert info["modelCode"] == "quality-assessment-cv-v2"

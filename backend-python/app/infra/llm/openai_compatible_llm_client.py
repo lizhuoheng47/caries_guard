@@ -47,19 +47,19 @@ class OpenAiCompatibleLlmClient:
             ],
             "temperature": self.settings.llm_temperature,
         }
-        
+
         start_time = time.perf_counter()
         response = self._post_with_retry(payload)
         latency_ms = int((time.perf_counter() - start_time) * 1000)
-        
+
         choice = response.get("choices", [{}])[0]
         answer = choice.get("message", {}).get("content")
         usage = response.get("usage")
         finish_reason = choice.get("finish_reason")
-        
+
         if not answer:
             raise RuntimeError("LLM provider returned empty completion")
-            
+
         return LlmResult(
             answer_text=str(answer).strip(),
             prompt_text=prompt,
@@ -77,7 +77,7 @@ class OpenAiCompatibleLlmClient:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-            
+
         last_error: Exception | None = None
         for attempt in range(self.settings.llm_retry_count + 1):
             try:
@@ -87,18 +87,16 @@ class OpenAiCompatibleLlmClient:
                     headers=headers,
                     timeout=self.settings.llm_timeout_seconds,
                 )
-                
+
                 if response.status_code == 429:
-                    # Rate limit - wait longer
                     time.sleep(min(1.0 * (2 ** attempt), 5.0))
                     continue
-                    
+
                 response.raise_for_status()
                 return response.json()
             except requests.exceptions.HTTPError as exc:
                 last_error = exc
                 if response.status_code >= 500:
-                    # Server error - retry
                     if attempt < self.settings.llm_retry_count:
                         time.sleep(min(0.5 * (2 ** attempt), 2.0))
                         continue
@@ -108,7 +106,7 @@ class OpenAiCompatibleLlmClient:
                 if attempt < self.settings.llm_retry_count:
                     time.sleep(min(0.5 * (2 ** attempt), 2.0))
                     continue
-                    
+
         raise RuntimeError(f"LLM provider call failed after {self.settings.llm_retry_count} retries: {last_error}")
 
     def resolve_profile(self, scene: str) -> dict[str, str]:

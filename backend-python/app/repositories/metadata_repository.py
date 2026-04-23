@@ -11,18 +11,7 @@ from app.core.config import Settings
 
 
 class MetadataRepository:
-    """Legacy schema-bootstrap helper retained for dev/local convenience.
-
-    Phase 4 (Python persistence engineering) moved all CRUD onto domain
-    repositories backed by SQLAlchemy ORM, and DDL lifecycle onto Alembic.
-    This class now only owns the ``ensure_schema()`` fallback used when a
-    developer runs ``python -m app.main`` against a fresh MySQL without
-    first executing ``alembic upgrade head``. The fallback is gated by
-    ``CG_DB_SCHEMA_BOOTSTRAP_ENABLED`` and is OFF in Docker/CI/prod.
-
-    Scheduled for removal in Phase 4 stage B once Alembic is load-bearing
-    in every environment.
-    """
+    """Schema bootstrap helper for local development environments."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings

@@ -179,7 +179,6 @@ class AppContainer:
 
         self.analysis_knowledge_service = AnalysisKnowledgeService(settings, self.rag_service)
 
-        # ── Phase 5A: model runtime ─────────────────────────────────────
         self.model_registry = ModelRegistry(settings, self.model_assets)
         self.model_registry.startup()
         self.governance_bootstrap_service = GovernanceBootstrapService(

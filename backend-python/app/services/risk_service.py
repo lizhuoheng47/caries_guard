@@ -7,8 +7,6 @@ from app.schemas.request import ImageSummary, PatientProfile
 from app.schemas.risk_assessment import StructuredRiskAssessment
 from app.services.risk_fusion_service import RiskFusionService
 
-# ── 比赛展示用中文标签映射 ──
-
 RISK_LEVEL_LABELS: dict[str, str] = {
     "HIGH": "高风险",
     "MEDIUM": "中风险",
@@ -103,26 +101,22 @@ class RiskService:
         structured = report.get("riskAssessment") or {}
         payload.update(structured)
 
-        # ── 比赛展示增强：添加中文标签 ──
         risk_level = payload.get("riskLevelCode") or payload.get("overallRiskLevelCode") or ""
         payload["riskLevelLabel"] = RISK_LEVEL_LABELS.get(risk_level, risk_level)
 
         followup = payload.get("followupSuggestion") or ""
         payload["followupSuggestionLabel"] = FOLLOWUP_SUGGESTION_LABELS.get(followup, followup)
 
-        # 风险因子增加中文名
         risk_factors = payload.get("riskFactors") or []
         for rf in risk_factors:
             if isinstance(rf, dict):
                 code = rf.get("code") or ""
                 rf["label"] = RISK_FACTOR_LABELS.get(code, code)
 
-        # 风险解释中文翻译提示
         explanation = payload.get("explanation") or ""
         if explanation:
             payload["explanationNote"] = "此风险解释由 AI 风险融合引擎自动生成，仅供临床参考，不构成诊断建议。"
 
-        # rawResultJson 折叠提示
         payload["rawResultJsonCollapsed"] = True
 
         return payload
