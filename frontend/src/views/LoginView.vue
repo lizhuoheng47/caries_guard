@@ -135,7 +135,7 @@ const handleLogin = async () => {
             <span>病灶检测</span>
           </div>
 
-          <div class="feature-chip feature-knowledge">
+          <div class="feature-chip feature-report">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M6 5.5H11C12.1 5.5 13 6.4 13 7.5V18.5H8C6.9 18.5 6 17.6 6 16.5V5.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
@@ -526,7 +526,7 @@ const handleLogin = async () => {
   animation-delay: 0.8s;
 }
 
-.feature-knowledge {
+.feature-report {
   right: 28px;
   top: 118px;
   animation-delay: 1.2s;
@@ -808,7 +808,7 @@ const handleLogin = async () => {
     left: 20px;
   }
 
-  .feature-knowledge {
+  .feature-report {
     right: 20px;
     top: 122px;
   }
@@ -857,7 +857,7 @@ const handleLogin = async () => {
     bottom: 44px;
   }
 
-  .feature-knowledge {
+  .feature-report {
     right: 8px;
     top: 92px;
   }

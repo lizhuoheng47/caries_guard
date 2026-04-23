@@ -1,5 +1,5 @@
-import type { ApiResponse } from '../dto/base';
-import type { AnalysisDetailViewDTO, AnalysisTaskPageDTO } from '../dto/analysis';
+import type { ApiResponse } from '../dto/base'
+import type { AnalysisDetailViewDTO, AnalysisTaskPageDTO } from '../dto/analysis'
 
 export const mockAnalysisApi = {
   getTasks(params: any): Promise<ApiResponse<AnalysisTaskPageDTO>> {
@@ -16,30 +16,30 @@ export const mockAnalysisApi = {
             taskNo: 'TSK-20260420-001',
             taskStatusCode: 'REVIEW',
             taskTypeCode: 'CARIES_ANALYSIS',
-            modelVersion: 'qwen3-vl-plus',
+            modelVersion: 'caries-v1',
             createdAt: new Date().toISOString(),
-            inferenceMillis: 1820,
+            inferenceMillis: 1820
           },
           {
             taskId: 1002,
             taskNo: 'TSK-20260420-002',
             taskStatusCode: 'SUCCESS',
             taskTypeCode: 'CARIES_ANALYSIS',
-            modelVersion: 'qwen3-vl-plus',
+            modelVersion: 'caries-v1',
             createdAt: new Date(Date.now() - 3600000).toISOString(),
-            inferenceMillis: 1260,
+            inferenceMillis: 1260
           },
           {
             taskId: 1003,
             taskNo: 'TSK-20260420-003',
             taskStatusCode: 'RUNNING',
             taskTypeCode: 'CARIES_ANALYSIS',
-            modelVersion: 'qwen3-vl-plus',
-            createdAt: new Date(Date.now() - 60000).toISOString(),
-          },
-        ],
-      },
-    });
+            modelVersion: 'caries-v1',
+            createdAt: new Date(Date.now() - 60000).toISOString()
+          }
+        ]
+      }
+    })
   },
 
   getTaskDetail(taskId: string | number): Promise<ApiResponse<AnalysisDetailViewDTO>> {
@@ -53,37 +53,37 @@ export const mockAnalysisApi = {
           caseId: 501,
           taskStatusCode: 'REVIEW',
           taskTypeCode: 'CARIES_ANALYSIS',
-          modelVersion: 'qwen3-vl-plus',
+          modelVersion: 'caries-v1',
           createdAt: new Date().toISOString(),
           inferenceMillis: 1820,
           visualAssets: [
             {
               assetTypeCode: 'OVERLAY',
               assetTypeLabel: 'Overlay',
-              accessUrl: '/mock-xray-overlay.jpg',
+              accessUrl: '/mock-xray-overlay.jpg'
             },
             {
               assetTypeCode: 'HEATMAP',
               assetTypeLabel: 'Heatmap',
-              accessUrl: '/mock-xray-heatmap.jpg',
-            },
-          ],
+              accessUrl: '/mock-xray-heatmap.jpg'
+            }
+          ]
         },
         patient: {
           patientIdMasked: 'P-***1023',
           patientNameMasked: 'Patient A',
           gender: 'F',
-          age: 34,
+          age: 34
         },
         caseInfo: {
           caseId: 501,
           caseNo: 'CASE-2026-001',
-          visitTime: new Date().toISOString(),
+          visitTime: new Date().toISOString()
         },
         image: {
           imageId: 801,
           imageUrl: '/mock-xray.jpg',
-          sourceDevice: 'BITEWING',
+          sourceDevice: 'BITEWING'
         },
         analysisSummary: {
           overallHighestSeverity: 'C2',
@@ -96,16 +96,15 @@ export const mockAnalysisApi = {
           confidenceScore: 0.85,
           needsReview: true,
           followUpRecommendation: 'Recommend dentist confirmation and prompt restorative treatment.',
-          knowledgeVersion: 'caries-default-v1',
           citations: [
             {
               rankNo: 1,
-              docTitle: 'Caries treatment guide',
+              docTitle: 'Clinical assessment note',
               chunkText: 'Moderate lesions should be clinically confirmed and treated promptly.',
               score: 0.92,
-              sourceUri: 'kb://guide-001',
-            },
-          ],
+              sourceUri: 'case://assessment-note-001'
+            }
+          ]
         },
         rawResultJson: {
           annotationImageWidth: 512,
@@ -116,15 +115,18 @@ export const mockAnalysisApi = {
           confidenceScore: 0.85,
           uncertaintyScore: 0.22,
           riskLevel: 'HIGH',
-          riskFactors: [{ factorName: 'Deep dentin involvement' }, { factorName: 'Multiple affected teeth' }],
+          riskFactors: [
+            { factorName: 'Deep dentin involvement' },
+            { factorName: 'Multiple affected teeth' }
+          ],
           clinicalSummary: 'Two suspicious dentin-level lesions are visible in the posterior region.',
           followUpRecommendation: 'Recommend dentist confirmation and prompt restorative treatment.',
           treatmentPlan: [
             {
               priority: 'HIGH',
               title: 'Restorative treatment',
-              details: 'Schedule prompt restorative treatment after chairside confirmation.',
-            },
+              details: 'Schedule prompt restorative treatment after chairside confirmation.'
+            }
           ],
           lesionResults: [
             {
@@ -137,7 +139,7 @@ export const mockAnalysisApi = {
               bbox: [150, 80, 235, 150],
               polygon: [[150, 80], [235, 80], [235, 150], [150, 150]],
               summary: 'Approximate dentin-level lesion on tooth 16.',
-              treatmentSuggestion: 'Composite restoration after clinical confirmation.',
+              treatmentSuggestion: 'Composite restoration after clinical confirmation.'
             },
             {
               toothCode: '17',
@@ -149,39 +151,40 @@ export const mockAnalysisApi = {
               bbox: [268, 92, 332, 144],
               polygon: [[268, 92], [332, 92], [332, 144], [268, 144]],
               summary: 'Smaller enamel lesion on tooth 17.',
-              treatmentSuggestion: 'Close follow-up and preventive care.',
-            },
+              treatmentSuggestion: 'Close follow-up and preventive care.'
+            }
           ],
-          knowledgeAdvice: {
-            knowledgeVersion: 'caries-default-v1',
-          },
           citations: [
             {
               rankNo: 1,
-              docTitle: 'Caries treatment guide',
+              docTitle: 'Clinical assessment note',
               chunkText: 'Moderate lesions should be clinically confirmed and treated promptly.',
               score: 0.92,
-              sourceUri: 'kb://guide-001',
-            },
-          ],
+              sourceUri: 'case://assessment-note-001'
+            }
+          ]
         },
         timeline: [
-          { time: new Date(Date.now() - 20000).toISOString(), title: 'Created', content: 'Analysis task created', status: 'DONE' },
-          { time: new Date(Date.now() - 10000).toISOString(), title: 'Inference', content: 'Python pipeline running', status: 'DONE' },
-          { time: new Date().toISOString(), title: 'Completed', content: 'Java callback stored final result', status: 'DONE' },
-        ],
-        ragHint: {
-          enabled: true,
-          latestAnswer: 'Recommend dentist confirmation and prompt restorative treatment.',
-          latestCitations: [
-            {
-              docNo: '1',
-              title: 'Caries treatment guide',
-              content: 'Moderate lesions should be clinically confirmed and treated promptly.',
-            },
-          ],
-        },
-      },
-    });
-  },
-};
+          {
+            time: new Date(Date.now() - 20000).toISOString(),
+            title: 'Created',
+            content: 'Analysis task created',
+            status: 'DONE'
+          },
+          {
+            time: new Date(Date.now() - 10000).toISOString(),
+            title: 'Inference',
+            content: 'Python pipeline running',
+            status: 'DONE'
+          },
+          {
+            time: new Date().toISOString(),
+            title: 'Completed',
+            content: 'Java callback stored final result',
+            status: 'DONE'
+          }
+        ]
+      }
+    })
+  }
+}

@@ -109,7 +109,6 @@ services:
       CARIES_BUCKET_VISUAL: ${CARIES_BUCKET_VISUAL:-caries-visual}
       CARIES_BUCKET_REPORT: ${CARIES_BUCKET_REPORT:-caries-report}
       CARIES_BUCKET_EXPORT: ${CARIES_BUCKET_EXPORT:-caries-export}
-      CARIES_BUCKET_KNOWLEDGE: ${CARIES_BUCKET_KNOWLEDGE:-caries-knowledge}
     entrypoint:
       - /bin/sh
       - -c
@@ -122,67 +121,15 @@ services:
         mc mb -p "caries/$${CARIES_BUCKET_VISUAL}"
         mc mb -p "caries/$${CARIES_BUCKET_REPORT}"
         mc mb -p "caries/$${CARIES_BUCKET_EXPORT}"
-        mc mb -p "caries/$${CARIES_BUCKET_KNOWLEDGE}"
         mc anonymous set none "caries/$${CARIES_BUCKET_IMAGE}"
         mc anonymous set none "caries/$${CARIES_BUCKET_VISUAL}"
         mc anonymous set none "caries/$${CARIES_BUCKET_REPORT}"
         mc anonymous set none "caries/$${CARIES_BUCKET_EXPORT}"
-        mc anonymous set none "caries/$${CARIES_BUCKET_KNOWLEDGE}"
         printf '%s\n' '{"Rules":[{"ID":"expire-caries-export-after-7-days","Status":"Enabled","Filter":{"Prefix":""},"Expiration":{"Days":7}}]}' > /tmp/caries-export-lifecycle.json
         mc ilm import "caries/$${CARIES_BUCKET_EXPORT}" < /tmp/caries-export-lifecycle.json
         printf '%s\n' '{"Rules":[{"ID":"expire-caries-visual-after-30-days","Status":"Enabled","Filter":{"Prefix":""},"Expiration":{"Days":30}}]}' > /tmp/caries-visual-lifecycle.json
         mc ilm import "caries/$${CARIES_BUCKET_VISUAL}" < /tmp/caries-visual-lifecycle.json
     restart: "no"
-    networks:
-      - caries-net
-
-  opensearch:
-    image: opensearchproject/opensearch:2.19.1
-    container_name: caries-opensearch
-    profiles: ["dev", "competition", "staging-real"]
-    environment:
-      discovery.type: single-node
-      DISABLE_INSTALL_DEMO_CONFIG: "true"
-      DISABLE_SECURITY_PLUGIN: "true"
-      OPENSEARCH_JAVA_OPTS: ${CARIES_OPENSEARCH_JAVA_OPTS:--Xms512m -Xmx512m}
-      TZ: Asia/Shanghai
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    ports:
-      - "${CARIES_OPENSEARCH_HOST_PORT:-9200}:9200"
-      - "${CARIES_OPENSEARCH_METRICS_HOST_PORT:-9600}:9600"
-    volumes:
-      - caries_opensearch_data:/usr/share/opensearch/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 30
-    networks:
-      - caries-net
-
-  neo4j:
-    image: neo4j:5.26-community
-    container_name: caries-neo4j
-    profiles: ["dev", "competition", "staging-real"]
-    environment:
-      NEO4J_AUTH: ${CARIES_NEO4J_AUTH:-neo4j/cariesguard}
-      NEO4J_server_default__listen__address: 0.0.0.0
-      NEO4J_server_memory_heap_initial__size: ${CARIES_NEO4J_HEAP_INITIAL:-512m}
-      NEO4J_server_memory_heap_max__size: ${CARIES_NEO4J_HEAP_MAX:-512m}
-      TZ: Asia/Shanghai
-    ports:
-      - "${CARIES_NEO4J_HTTP_HOST_PORT:-7474}:7474"
-      - "${CARIES_NEO4J_BOLT_HOST_PORT:-7687}:7687"
-    volumes:
-      - caries_neo4j_data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:7474 >/dev/null 2>&1 || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 30
     networks:
       - caries-net
 
@@ -220,9 +167,6 @@ services:
       CARIES_ANALYSIS_CALLBACK_SECRET: ${CARIES_ANALYSIS_CALLBACK_SECRET:-docker-change-me-to-a-strong-analysis-callback-secret}
       CARIES_ANALYSIS_MODEL_VERSION: ${CARIES_ANALYSIS_MODEL_VERSION:-caries-v1}
       CARIES_COMPETITION_MODE_ENABLED: ${CARIES_COMPETITION_MODE_ENABLED:-true}
-      CARIES_RAG_BASE_URL: http://backend-python:8001/ai/v1
-      CARIES_RAG_CONNECT_TIMEOUT_MS: ${CARIES_RAG_CONNECT_TIMEOUT_MS:-3000}
-      CARIES_RAG_READ_TIMEOUT_MS: ${CARIES_RAG_READ_TIMEOUT_MS:-10000}
       TZ: Asia/Shanghai
     ports:
       - "${CARIES_BACKEND_JAVA_HOST_PORT:-8080}:8080"
@@ -240,10 +184,6 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
-      opensearch:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
     networks:
       caries-net:
         aliases:
@@ -276,7 +216,6 @@ services:
       CG_MINIO_BUCKET_VISUAL: ${CARIES_BUCKET_VISUAL:-caries-visual}
       CG_BUCKET_REPORT: ${CARIES_BUCKET_REPORT:-caries-report}
       CG_BUCKET_EXPORT: ${CARIES_BUCKET_EXPORT:-caries-export}
-      CG_BUCKET_KNOWLEDGE: ${CARIES_BUCKET_KNOWLEDGE:-caries-knowledge}
       CG_MYSQL_HOST: mysql
       CG_MYSQL_PORT: 3306
       CG_MYSQL_DATABASE: ${CARIES_MYSQL_DATABASE_AI:-caries_ai}
