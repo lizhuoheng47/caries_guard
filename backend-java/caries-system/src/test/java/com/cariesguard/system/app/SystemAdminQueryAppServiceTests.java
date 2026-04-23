@@ -204,7 +204,7 @@ class SystemAdminQueryAppServiceTests {
                         "Cases & Imaging",
                         "AI Analysis Tasks",
                         "AI Result Detail",
-                        "Knowledge & Citation",
+                        "Clinical Reports",
                         "Review & Feedback",
                         "AI Runtime & Evaluation",
                         "AI Ops Detail");
@@ -247,7 +247,7 @@ class SystemAdminQueryAppServiceTests {
 
         SystemMenuDetailVO result = service.getMenu(6001L);
 
-        assertThat(result.menuName()).isEqualTo("Knowledge & Citation");
+        assertThat(result.menuName()).isEqualTo("Clinical Reports");
         assertThat(result.orderNum()).isEqualTo(40);
     }
 }

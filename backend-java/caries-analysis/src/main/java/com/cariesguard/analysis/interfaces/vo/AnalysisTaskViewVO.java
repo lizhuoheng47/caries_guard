@@ -13,6 +13,4 @@ public class AnalysisTaskViewVO {
     private AnalysisSummaryVO analysisSummary;
     private JsonNode rawResultJson;
     private List<AnalysisDetailViewVO.TimelineNodeVO> timeline;
-    private AnalysisDetailViewVO.RagHint ragHint;
 }
-

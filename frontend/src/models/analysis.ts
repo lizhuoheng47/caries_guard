@@ -93,7 +93,6 @@ export interface AnalysisDetail {
     abnormalToothCount: number;
     clinicalSummary?: string;
     followUpRecommendation?: string;
-    knowledgeVersion?: string;
     treatmentPlan: AnalysisTreatmentItem[];
     lesions: AnalysisLesion[];
     citations: AnalysisCitation[];
@@ -102,9 +101,4 @@ export interface AnalysisDetail {
     rawResultJson?: Record<string, any> | null;
   };
   timeline: TimelineNode[];
-  rag: {
-    enabled: boolean;
-    answer?: string;
-    citations: AnalysisCitation[];
-  };
 }

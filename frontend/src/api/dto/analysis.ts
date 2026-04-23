@@ -53,7 +53,6 @@ export interface AnalysisSummaryDTO {
   confidenceScore?: number;
   needsReview?: boolean;
   followUpRecommendation?: string;
-  knowledgeVersion?: string;
   citations?: AnalysisCitationDTO[];
   rawResultJson?: Record<string, any> | null;
 }
@@ -100,13 +99,4 @@ export interface AnalysisDetailViewDTO {
     status?: 'DONE' | 'ACTIVE' | 'PENDING' | string;
     duration?: string;
   }[];
-  ragHint?: {
-    enabled?: boolean;
-    latestAnswer?: string;
-    latestCitations?: {
-      docNo?: string;
-      title?: string;
-      content?: string;
-    }[];
-  };
 }

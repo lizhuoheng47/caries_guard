@@ -40,16 +40,6 @@ const router = createRouter({
           component: () => import('../views/ReviewWorkbenchView.vue')
         },
         {
-          path: 'rag',
-          name: 'rag-console',
-          component: () => import('../views/RagConsoleView.vue')
-        },
-        {
-          path: 'knowledge',
-          name: 'knowledge-repo',
-          component: () => import('../views/KnowledgeRepoView.vue')
-        },
-        {
           path: 'cases',
           name: 'case-portal',
           component: () => import('../views/CasePortalView.vue')

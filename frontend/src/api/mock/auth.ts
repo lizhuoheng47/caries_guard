@@ -57,7 +57,6 @@ export const mockAuthApi = {
               { id: 11, parentId: 1, name: '影像扫描', path: '/scan', icon: 'scan', sort: 1 },
               { id: 12, parentId: 1, name: '分析队列', path: '/analysis', icon: 'list', sort: 2 },
               { id: 13, parentId: 1, name: '医生复核', path: '/review', icon: 'check-square', sort: 3 },
-              { id: 14, parentId: 1, name: '智能解释', path: '/rag', icon: 'message-square', sort: 4 },
             ]
           },
           {
@@ -68,7 +67,6 @@ export const mockAuthApi = {
             sort: 2,
             children: [
               { id: 21, parentId: 2, name: 'AI 评估看板', path: '/dashboard/ai', icon: 'activity', sort: 1 },
-              { id: 22, parentId: 2, name: '知识图库', path: '/knowledge', icon: 'book', sort: 2 },
             ]
           }
         ]

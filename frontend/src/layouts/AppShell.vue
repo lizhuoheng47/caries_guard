@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n'
 import { setLang } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 
-type NavId = 'home' | 'analyze' | 'knowledge' | 'rag' | 'cases'
+type NavId = 'home' | 'analyze' | 'cases'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,8 +17,6 @@ const { t, locale } = useI18n()
 const navItems = computed(() => [
   { id: 'home' as const, icon: 'home', label: t('nav.home'), path: '/dashboard/ai' },
   { id: 'analyze' as const, icon: 'scan', label: t('nav.analyze'), path: '/analysis' },
-  { id: 'knowledge' as const, icon: 'library', label: t('nav.knowledge'), path: '/knowledge' },
-  { id: 'rag' as const, icon: 'report', label: t('nav.rag'), path: '/rag' },
   { id: 'cases' as const, icon: 'settings', label: t('nav.cases'), path: '/cases' }
 ])
 
@@ -26,8 +24,6 @@ const activeId = computed<NavId>(() => {
   const path = route.path
   if (path.startsWith('/dashboard')) return 'home'
   if (path.startsWith('/analysis')) return 'analyze'
-  if (path.startsWith('/knowledge')) return 'knowledge'
-  if (path.startsWith('/rag')) return 'rag'
   return 'cases'
 })
 

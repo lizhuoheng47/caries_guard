@@ -139,7 +139,7 @@ class InferencePipeline:
             risk_level=risk_assessment.risk_level_code or risk_assessment.overall_risk_level_code,
             risk_factors=risk_assessment.risk_factors or [],
             review_reason=aggregate["reviewReason"],
-            knowledge_version=self.settings.rag_knowledge_version,
+            knowledge_version=None,
             evidence_refs=[],
             doctor_review_required_reason=aggregate["reviewReason"] if aggregate["needsReview"] else None,
         )

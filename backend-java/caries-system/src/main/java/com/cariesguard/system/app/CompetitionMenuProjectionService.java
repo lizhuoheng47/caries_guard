@@ -17,7 +17,7 @@ public class CompetitionMenuProjectionService {
             "/patients", new CompetitionMenuPresentation("Cases & Imaging", 10, CompetitionReadyState.PROJECTED_ONLY, null),
             "/analysis/tasks", new CompetitionMenuPresentation("AI Analysis Tasks", 20, CompetitionReadyState.READY, null),
             "/cases", new CompetitionMenuPresentation("AI Result Detail", 30, CompetitionReadyState.PROJECTED_ONLY, null),
-            "/reports", new CompetitionMenuPresentation("Knowledge & Citation", 40, CompetitionReadyState.PROJECTED_ONLY, null),
+            "/reports", new CompetitionMenuPresentation("Clinical Reports", 40, CompetitionReadyState.PROJECTED_ONLY, null),
             "/images", new CompetitionMenuPresentation("Review & Feedback", 50, CompetitionReadyState.PROJECTED_ONLY, null),
             "/dashboard/model-runtime", new CompetitionMenuPresentation("AI Runtime & Evaluation", 60, CompetitionReadyState.READY, null));
 

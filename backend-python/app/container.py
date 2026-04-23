@@ -1,17 +1,9 @@
 from functools import lru_cache
-from typing import Any
 
 from app.core.config import Settings
-from app.core.logging import get_logger
-from app.infra.graph.neo4j_client import create_neo4j_driver
-from app.infra.llm.llm_gateway_factory import create_llm_client
 from app.infra.model.model_assets import ModelAssets
 from app.infra.model.model_registry import ModelRegistry
-from app.infra.rerank.rerank_factory import create_rerank_provider
-from app.infra.search.opensearch_client import create_opensearch_client
 from app.infra.storage.minio_client import MinioStorageClient
-from app.infra.vector.embedding_factory import create_embedding_provider
-from app.infra.vector.simple_vector_store import SimpleVectorStore
 from app.pipelines.detection_pipeline import DetectionPipeline
 from app.pipelines.grading_pipeline import GradingPipeline
 from app.pipelines.inference_pipeline import InferencePipeline
@@ -19,165 +11,33 @@ from app.pipelines.quality_pipeline import QualityPipeline
 from app.pipelines.risk_pipeline import RiskPipeline
 from app.pipelines.segmentation_pipeline import SegmentationPipeline
 from app.repositories.ai_runtime_repository import AiRuntimeRepository
-from app.repositories.eval_repository import EvalRepository
-from app.repositories.graph_repository import GraphRepository
 from app.repositories.governance_repository import GovernanceRepository
-from app.repositories.knowledge_repository import KnowledgeRepository
 from app.repositories.metadata_repository import MetadataRepository
-from app.repositories.rag_repository import RagRepository
-from app.services.answer_validator_service import AnswerValidatorService
-from app.services.analysis_knowledge_service import AnalysisKnowledgeService
 from app.services.analysis_service import AnalysisService
 from app.services.analysis_asset_service import AnalysisAssetService
 from app.services.callback_service import CallbackService
-from app.services.case_context_builder import CaseContextBuilder
-from app.services.citation_assembler import CitationAssembler
-from app.services.chunk_build_service import ChunkBuildService
-from app.services.concept_normalization_service import ConceptNormalizationService
-from app.services.cypher_template_registry import CypherTemplateRegistry
-from app.services.dense_retriever import DenseRetriever
-from app.services.document_parse_service import DocumentParseService
-from app.services.entity_extraction_service import EntityExtractionService
-from app.services.entity_linking_service import EntityLinkingService
-from app.services.fusion_service import FusionService
 from app.services.governance_bootstrap_service import GovernanceBootstrapService
-from app.services.graph_retriever import GraphRetriever
-from app.services.graph_upsert_service import GraphUpsertService
-from app.services.eval_service import EvalService
-from app.services.eval_bootstrap_service import EvalBootstrapService
 from app.services.image_fetch_service import ImageFetchService
-from app.services.intent_classifier_service import IntentClassifierService
-from app.services.knowledge_service import KnowledgeService
-from app.services.lexical_retriever import LexicalRetriever
 from app.services.model_switch_service import ModelSwitchService
-from app.services.open_search_index_service import OpenSearchIndexService
-from app.services.query_rewrite_service import QueryRewriteService
 from app.services.qwen_vision_service import QwenVisionService
-from app.services.rag_orchestrator import RagOrchestrator
-from app.services.rag_log_service import RagLogService
-from app.services.refusal_policy_service import RefusalPolicyService
-from app.services.rag_service import RagService
-from app.services.rerank_service import RerankService
 from app.services.risk_service import RiskService
 from app.services.visual_asset_service import VisualAssetService
-
-log = get_logger("cariesguard-ai.container")
 
 
 class AppContainer:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.rag_service: Any = None
-        # Decouple pure imaging worker runtime from RAG dependencies:
-        # when HTTP APIs are disabled and analysis KB enhancement is off,
-        # skip RAG stack bootstrap even if rag_runtime_enabled is true.
-        self.rag_runtime_active = bool(
-            settings.rag_runtime_enabled
-            and (settings.analysis_kb_enhancement_enabled or settings.http_enabled)
-        )
         self.storage = MinioStorageClient(settings)
         self.image_fetch_service = ImageFetchService(settings, self.storage)
         self.visual_asset_service = VisualAssetService(settings, self.storage)
         self.risk_service = RiskService(settings)
         self.model_assets = ModelAssets(settings)
         self.metadata_repository = MetadataRepository(settings)
-        self.rag_repository = RagRepository()
-        self.knowledge_repository = KnowledgeRepository()
-        self.graph_repository = GraphRepository()
-        self.eval_repository = EvalRepository()
         self.ai_runtime_repository = AiRuntimeRepository()
         self.governance_repository = GovernanceRepository()
         self.callback_service = CallbackService(settings, self.ai_runtime_repository)
         self.qwen_vision_service = QwenVisionService(settings)
-        self.vector_store = SimpleVectorStore()
-        self.concept_normalization_service = ConceptNormalizationService()
         self.analysis_asset_service = AnalysisAssetService(settings, self.model_assets)
-
-        if self.rag_runtime_active:
-            self.embedding_provider = create_embedding_provider(settings)
-            self.rerank_provider = create_rerank_provider(settings, self.embedding_provider)
-            self.opensearch_client = create_opensearch_client(settings)
-            self.neo4j_driver = create_neo4j_driver(settings)
-            self.document_parse_service = DocumentParseService()
-            self.chunk_build_service = ChunkBuildService()
-            self.entity_extraction_service = EntityExtractionService(self.concept_normalization_service)
-            self.open_search_index_service = OpenSearchIndexService(settings, self.opensearch_client, self.embedding_provider)
-            self.cypher_template_registry = CypherTemplateRegistry()
-            self.graph_upsert_service = GraphUpsertService(settings, self.neo4j_driver, self.graph_repository)
-            try:
-                self.graph_upsert_service.ensure_schema()
-            except Exception as exc:
-                if settings.ai_runtime_mode == "real":
-                    raise
-                log.warning("neo4j schema bootstrap failed - continuing in non-real mode error=%s", exc)
-            self.lexical_retriever = LexicalRetriever(self.open_search_index_service)
-            self.dense_retriever = DenseRetriever(self.open_search_index_service)
-            self.graph_retriever = GraphRetriever(settings, self.neo4j_driver, self.cypher_template_registry)
-            self.llm_client = create_llm_client(settings)
-            self.knowledge_service = KnowledgeService(
-                settings=settings,
-                repository=self.knowledge_repository,
-                storage=self.storage,
-                parser_service=self.document_parse_service,
-                chunk_build_service=self.chunk_build_service,
-                entity_extraction_service=self.entity_extraction_service,
-                open_search_index_service=self.open_search_index_service,
-                graph_upsert_service=self.graph_upsert_service,
-                graph_repository=self.graph_repository,
-                rag_repository=self.rag_repository,
-            )
-            self.rag_orchestrator = RagOrchestrator(
-                settings=settings,
-                rag_repository=self.rag_repository,
-                knowledge_repository=self.knowledge_repository,
-                llm_client=self.llm_client,
-                query_rewrite_service=QueryRewriteService(),
-                intent_classifier_service=IntentClassifierService(),
-                entity_linking_service=EntityLinkingService(
-                    self.graph_repository,
-                    self.concept_normalization_service,
-                    self.entity_extraction_service,
-                ),
-                lexical_retriever=self.lexical_retriever,
-                dense_retriever=self.dense_retriever,
-                graph_retriever=self.graph_retriever,
-                fusion_service=FusionService(settings),
-                rerank_service=RerankService(self.rerank_provider),
-                citation_assembler=CitationAssembler(),
-                refusal_policy_service=RefusalPolicyService(),
-                answer_validator_service=AnswerValidatorService(),
-            )
-            self.rag_service = RagService(
-                rag_orchestrator=self.rag_orchestrator,
-                case_context_builder=CaseContextBuilder(),
-            )
-            self.rag_log_service = RagLogService(self.rag_repository)
-            self.eval_service = EvalService(self.eval_repository, self.rag_service)
-            self.eval_bootstrap_service = EvalBootstrapService(self.eval_repository)
-            self.eval_bootstrap_service.bootstrap()
-        else:
-            self.embedding_provider = None
-            self.rerank_provider = None
-            self.opensearch_client = None
-            self.neo4j_driver = None
-            self.document_parse_service = None
-            self.chunk_build_service = None
-            self.entity_extraction_service = None
-            self.open_search_index_service = None
-            self.cypher_template_registry = None
-            self.graph_upsert_service = None
-            self.lexical_retriever = None
-            self.dense_retriever = None
-            self.graph_retriever = None
-            self.llm_client = None
-            self.knowledge_service = _DisabledFeatureService("Knowledge")
-            self.rag_orchestrator = None
-            self.rag_service = _DisabledRagService()
-            self.rag_log_service = _DisabledFeatureService("RAG log")
-            self.eval_service = _DisabledFeatureService("Eval")
-            self.eval_bootstrap_service = None
-
-        self.analysis_knowledge_service = AnalysisKnowledgeService(settings, self.rag_service)
 
         self.model_registry = ModelRegistry(settings, self.model_assets)
         self.model_registry.startup()
@@ -220,28 +80,3 @@ class AppContainer:
 @lru_cache(maxsize=1)
 def get_container() -> AppContainer:
     return AppContainer(Settings())
-
-
-class _DisabledRagService:
-    def ask(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
-        raise RuntimeError("RAG runtime is disabled. Set CG_RAG_RUNTIME_ENABLED=true to use RAG APIs.")
-
-    def doctor_qa(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
-        return self.ask(*_args, **_kwargs)
-
-    def patient_explanation(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
-        return self.ask(*_args, **_kwargs)
-
-
-class _DisabledFeatureService:
-    def __init__(self, feature_name: str) -> None:
-        self._feature_name = feature_name
-
-    def __getattr__(self, _name: str):
-        def _disabled(*_args: Any, **_kwargs: Any):
-            raise RuntimeError(
-                f"{self._feature_name} runtime is disabled. "
-                "Set CG_RAG_RUNTIME_ENABLED=true to enable related APIs."
-            )
-
-        return _disabled

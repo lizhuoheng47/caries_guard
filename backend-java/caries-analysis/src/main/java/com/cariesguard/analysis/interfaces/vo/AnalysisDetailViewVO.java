@@ -11,7 +11,6 @@ public class AnalysisDetailViewVO {
     private ImageDetailVO image;
     private AnalysisSummary analysisSummary;
     private List<TimelineNodeVO> timeline;
-    private RagHint ragHint;
 
     @Data
     public static class PatientBriefVO {
@@ -53,19 +52,5 @@ public class AnalysisDetailViewVO {
         private String content;
         private String status;
         private String duration;
-    }
-
-    @Data
-    public static class RagHint {
-        private Boolean enabled;
-        private String latestAnswer;
-        private List<CitationVO> latestCitations;
-    }
-
-    @Data
-    public static class CitationVO {
-        private String docNo;
-        private String title;
-        private String content;
     }
 }

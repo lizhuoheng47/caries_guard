@@ -4,7 +4,6 @@ import com.cariesguard.analysis.domain.model.AnalysisCaseModel;
 import com.cariesguard.analysis.domain.model.AnalysisImageModel;
 import com.cariesguard.analysis.domain.model.AnalysisPatientModel;
 import com.cariesguard.analysis.interfaces.vo.AnalysisDetailViewVO;
-import com.cariesguard.analysis.interfaces.vo.AnalysisCitationVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisSummaryVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskDetailVO;
 import com.cariesguard.analysis.interfaces.vo.AnalysisTaskViewVO;
@@ -36,7 +35,6 @@ public class AnalysisTaskViewAssembler {
         view.setAnalysisSummary(task.summary());
         view.setRawResultJson(resolveRawResult(task.summary()));
         view.setTimeline(buildTimeline(task));
-        view.setRagHint(buildRagHint(task.summary()));
         return view;
     }
 
@@ -83,19 +81,6 @@ public class AnalysisTaskViewAssembler {
         }
     }
 
-    private AnalysisDetailViewVO.RagHint buildRagHint(AnalysisSummaryVO summary) {
-        AnalysisDetailViewVO.RagHint hint = new AnalysisDetailViewVO.RagHint();
-        hint.setEnabled(Boolean.TRUE);
-        if (summary == null) {
-            return hint;
-        }
-        hint.setLatestAnswer(summary.followUpRecommendation());
-        if (summary.citations() != null && !summary.citations().isEmpty()) {
-            hint.setLatestCitations(summary.citations().stream().map(this::toCitation).toList());
-        }
-        return hint;
-    }
-
     private List<AnalysisDetailViewVO.TimelineNodeVO> buildTimeline(AnalysisTaskDetailVO task) {
         List<AnalysisDetailViewVO.TimelineNodeVO> nodes = new ArrayList<>();
         if (task.createdAt() != null) {
@@ -119,14 +104,6 @@ public class AnalysisTaskViewAssembler {
         node.setContent(content);
         node.setStatus(status);
         return node;
-    }
-
-    private AnalysisDetailViewVO.CitationVO toCitation(AnalysisCitationVO citation) {
-        AnalysisDetailViewVO.CitationVO vo = new AnalysisDetailViewVO.CitationVO();
-        vo.setDocNo(citation.rankNo() == null ? null : String.valueOf(citation.rankNo()));
-        vo.setTitle(citation.docTitle());
-        vo.setContent(citation.chunkText());
-        return vo;
     }
 
     private String maskPatientId(Long patientId) {

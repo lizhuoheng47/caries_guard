@@ -251,7 +251,7 @@ class Settings:
     rag_index_dir: str = os.getenv("CG_RAG_INDEX_DIR", "/tmp/cariesguard/vector-index")
     rag_default_kb_code: str = os.getenv("CG_RAG_DEFAULT_KB_CODE", "caries-default")
     rag_default_kb_name: str = os.getenv("CG_RAG_DEFAULT_KB_NAME", "CariesGuard Default Knowledge Base")
-    rag_runtime_enabled: bool = bool_env("CG_RAG_RUNTIME_ENABLED", True)
+    rag_runtime_enabled: bool = bool_env("CG_RAG_RUNTIME_ENABLED", False)
     rag_knowledge_version: str = os.getenv("CG_RAG_KNOWLEDGE_VERSION", "v1.0")
     rag_embedding_model: str = os.getenv("CG_RAG_EMBEDDING_MODEL", "text-embedding-3-small")
     rag_embedding_provider: str = os.getenv("CG_RAG_EMBEDDING_PROVIDER", "OPENAI_COMPATIBLE").strip().upper()

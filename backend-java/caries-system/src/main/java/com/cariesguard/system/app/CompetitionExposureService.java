@@ -17,7 +17,6 @@ public class CompetitionExposureService {
     private static final List<String> RETAINED_ENTRIES = List.of(
             "analysis",
             "review",
-            "rag",
             "/dashboard/model-runtime");
 
     private static final List<String> ENFORCEMENT_SURFACES = List.of(

@@ -124,7 +124,6 @@ export const AnalysisAdapter = {
     const raw = dto.rawResultJson || dto.analysisSummary?.rawResultJson || {};
     const visualAssets = normalizeAssets(dto.task.visualAssets);
     const citations = normalizeCitations(dto.analysisSummary?.citations || raw.citations);
-    const ragCitations = normalizeCitations(dto.ragHint?.latestCitations);
     const lesions = normalizeLesions(raw.lesionResults);
 
     return {
@@ -165,12 +164,7 @@ export const AnalysisAdapter = {
         clinicalSummary: raw.clinicalSummary,
         followUpRecommendation:
           dto.analysisSummary?.followUpRecommendation ||
-          raw.followUpRecommendation ||
-          dto.ragHint?.latestAnswer,
-        knowledgeVersion:
-          dto.analysisSummary?.knowledgeVersion ||
-          raw.knowledgeAdvice?.knowledgeVersion ||
-          raw.knowledgeVersion,
+          raw.followUpRecommendation,
         treatmentPlan: normalizeTreatmentPlan(raw.treatmentPlan),
         lesions,
         citations,
@@ -187,11 +181,6 @@ export const AnalysisAdapter = {
         time: item.time,
         description: item.content,
       })),
-      rag: {
-        enabled: Boolean(dto.ragHint?.enabled),
-        answer: dto.ragHint?.latestAnswer || raw.followUpRecommendation,
-        citations: ragCitations.length ? ragCitations : citations,
-      },
     };
   },
 };

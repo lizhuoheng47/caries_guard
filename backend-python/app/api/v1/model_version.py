@@ -49,24 +49,5 @@ def model_version() -> dict:
         "tpcNet": _module_payload("segmentation", segmentation_assets),
         "edlGrade": _module_payload("grading", grading_assets),
         "riskFusion": _module_payload("risk"),
-        "rag": {
-            "knowledgeBaseCode": settings.rag_default_kb_code,
-            "knowledgeVersion": settings.rag_knowledge_version,
-            "embeddingModel": settings.rag_embedding_model,
-            "vectorStoreType": settings.rag_vector_store_type,
-            "llmProviderCode": settings.llm_provider_code,
-            "llmModelName": settings.llm_model_name,
-            "llmSceneRoutingEnabled": settings.llm_scene_routing_enabled,
-            "llmSceneProfiles": {
-                "DOCTOR_QA": {
-                    "providerCode": settings.llm_doctor_provider_code,
-                    "modelName": settings.llm_doctor_model_name,
-                },
-                "PATIENT_EXPLAIN": {
-                    "providerCode": settings.llm_patient_provider_code,
-                    "modelName": settings.llm_patient_model_name,
-                },
-            },
-        },
     }
     return success_response(data=data, trace_id="model-version")
