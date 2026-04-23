@@ -317,7 +317,7 @@ const handleLogin = async () => {
 <style scoped>
 .login-shell {
   position: relative;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   background:
     radial-gradient(circle at 14% 18%, rgba(40, 174, 255, 0.18), transparent 26%),
@@ -372,22 +372,25 @@ const handleLogin = async () => {
 .login-layout {
   position: relative;
   z-index: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(420px, 0.85fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
-  gap: 64px;
-  min-height: 100vh;
-  max-width: 1440px;
+  gap: clamp(24px, 4vw, 56px);
+  min-height: 100dvh;
+  max-width: 1480px;
   margin: 0 auto;
-  padding: 44px 48px;
+  padding: clamp(18px, 3vw, 42px) clamp(16px, 4vw, 48px);
 }
 
 .hero-panel {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  flex: 1 1 52rem;
+  gap: clamp(18px, 3vh, 30px);
   min-width: 0;
+  max-width: min(100%, 760px);
 }
 
 .brand-pill {
@@ -395,7 +398,8 @@ const handleLogin = async () => {
   align-items: center;
   gap: 14px;
   width: fit-content;
-  padding: 12px 18px;
+  max-width: min(100%, 360px);
+  padding: clamp(10px, 1.2vw, 12px) clamp(14px, 1.5vw, 18px);
   border: 1px solid rgba(149, 205, 255, 0.18);
   border-radius: 18px;
   background: linear-gradient(180deg, rgba(18, 35, 69, 0.9), rgba(10, 25, 54, 0.7));
@@ -406,40 +410,40 @@ const handleLogin = async () => {
 .brand-icon {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
+  width: clamp(40px, 3vw, 46px);
+  height: clamp(40px, 3vw, 46px);
+  border-radius: clamp(12px, 1vw, 14px);
   color: #55f2ff;
   background: linear-gradient(135deg, rgba(79, 247, 255, 0.24), rgba(58, 103, 255, 0.16));
   box-shadow: 0 0 22px rgba(73, 231, 255, 0.22);
 }
 
 .brand-icon svg {
-  width: 24px;
-  height: 24px;
+  width: clamp(20px, 1.5vw, 24px);
+  height: clamp(20px, 1.5vw, 24px);
 }
 
 .brand-title {
-  font-size: 18px;
+  font-size: clamp(16px, 1.2vw, 18px);
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .brand-subtitle {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: clamp(9px, 0.7vw, 11px);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: rgba(214, 236, 255, 0.54);
 }
 
 .hero-copy {
-  max-width: 640px;
+  max-width: min(100%, 640px);
 }
 
 .hero-kicker {
-  margin: 0 0 16px;
-  font-size: 12px;
+  margin: 0 0 clamp(10px, 1.8vh, 16px);
+  font-size: clamp(10px, 0.8vw, 12px);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: rgba(154, 218, 255, 0.64);
@@ -447,8 +451,8 @@ const handleLogin = async () => {
 
 .hero-copy h1 {
   margin: 0;
-  font-size: clamp(48px, 5vw, 74px);
-  line-height: 1.03;
+  font-size: clamp(36px, 4.7vw, 74px);
+  line-height: 1.04;
   letter-spacing: -0.04em;
   font-weight: 800;
 }
@@ -460,24 +464,24 @@ const handleLogin = async () => {
 }
 
 .hero-copy p {
-  margin: 18px 0 0;
-  font-size: 22px;
-  line-height: 1.65;
+  margin: clamp(12px, 2vh, 18px) 0 0;
+  font-size: clamp(15px, 1.55vw, 22px);
+  line-height: 1.55;
   color: rgba(224, 238, 255, 0.78);
 }
 
 .hero-stage {
   position: relative;
-  min-height: 420px;
-  max-width: 720px;
+  width: min(100%, 720px);
+  min-height: clamp(250px, 38vh, 420px);
 }
 
 .tooth-halo {
   position: absolute;
   left: 50%;
   top: 56%;
-  width: 420px;
-  height: 420px;
+  width: clamp(260px, 31vw, 420px);
+  height: clamp(260px, 31vw, 420px);
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: radial-gradient(circle, rgba(55, 228, 255, 0.18) 0%, rgba(55, 228, 255, 0.04) 50%, transparent 72%);
@@ -489,7 +493,7 @@ const handleLogin = async () => {
   position: relative;
   z-index: 1;
   display: block;
-  width: min(100%, 620px);
+  width: min(100%, clamp(320px, 41vw, 600px));
   margin: 0 auto;
   overflow: visible;
 }
@@ -504,11 +508,11 @@ const handleLogin = async () => {
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  min-width: 148px;
-  padding: 12px 14px;
+  gap: clamp(8px, 1vw, 12px);
+  min-width: clamp(118px, 10vw, 148px);
+  padding: clamp(8px, 1vw, 12px) clamp(10px, 1.15vw, 14px);
   border: 1px solid rgba(126, 181, 255, 0.18);
-  border-radius: 18px;
+  border-radius: clamp(14px, 1.5vw, 18px);
   background: linear-gradient(180deg, rgba(12, 27, 57, 0.88), rgba(8, 22, 50, 0.64));
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(14px);
@@ -516,46 +520,46 @@ const handleLogin = async () => {
 }
 
 .feature-analysis {
-  left: 10px;
-  top: 118px;
+  left: 1.5%;
+  top: 24%;
 }
 
 .feature-detect {
-  left: 18px;
-  bottom: 88px;
+  left: 3%;
+  bottom: 8%;
   animation-delay: 0.8s;
 }
 
 .feature-report {
-  right: 28px;
-  top: 118px;
+  right: 4%;
+  top: 24%;
   animation-delay: 1.2s;
 }
 
 .feature-review {
-  right: 10px;
-  bottom: 88px;
+  right: 1.5%;
+  bottom: 6%;
   animation-delay: 1.8s;
 }
 
 .feature-icon {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
+  width: clamp(34px, 3vw, 42px);
+  height: clamp(34px, 3vw, 42px);
+  border-radius: clamp(11px, 1vw, 14px);
   background: linear-gradient(135deg, rgba(74, 245, 255, 0.24), rgba(104, 117, 255, 0.16));
   color: #7ff5ff;
   flex-shrink: 0;
 }
 
 .feature-icon svg {
-  width: 20px;
-  height: 20px;
+  width: clamp(16px, 1.45vw, 20px);
+  height: clamp(16px, 1.45vw, 20px);
 }
 
 .feature-chip span {
-  font-size: 15px;
+  font-size: clamp(12px, 0.95vw, 15px);
   font-weight: 600;
   color: rgba(240, 248, 255, 0.88);
 }
@@ -563,14 +567,17 @@ const handleLogin = async () => {
 .auth-panel {
   display: flex;
   justify-content: center;
+  flex: 0 1 clamp(340px, 31vw, 438px);
+  width: min(100%, 438px);
+  margin-left: auto;
 }
 
 .login-card {
   position: relative;
-  width: min(100%, 460px);
-  padding: 34px 34px 26px;
+  width: 100%;
+  padding: clamp(24px, 2.3vw, 34px) clamp(20px, 2.3vw, 34px) clamp(20px, 2vw, 26px);
   border: 1px solid rgba(158, 212, 255, 0.3);
-  border-radius: 28px;
+  border-radius: clamp(22px, 2vw, 28px);
   background:
     linear-gradient(180deg, rgba(22, 40, 78, 0.86), rgba(8, 18, 42, 0.84)),
     radial-gradient(circle at top right, rgba(59, 235, 255, 0.18), transparent 35%);
@@ -583,7 +590,7 @@ const handleLogin = async () => {
 .card-edge {
   position: absolute;
   inset: 0;
-  border-radius: 28px;
+  border-radius: clamp(22px, 2vw, 28px);
   padding: 1px;
   background: linear-gradient(135deg, rgba(129, 219, 255, 0.45), rgba(62, 243, 255, 0.18), rgba(122, 121, 255, 0.42));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -596,22 +603,22 @@ const handleLogin = async () => {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 28px;
+  gap: clamp(14px, 1.8vw, 24px);
+  margin-bottom: clamp(20px, 2.2vh, 28px);
 }
 
 .card-head h2 {
   margin: 0;
-  font-size: 38px;
+  font-size: clamp(28px, 2.7vw, 38px);
   line-height: 1.1;
   font-weight: 700;
 }
 
 .card-head-bar {
   display: inline-block;
-  width: 34px;
+  width: clamp(28px, 2vw, 34px);
   height: 3px;
-  margin-top: 14px;
+  margin-top: clamp(10px, 1vh, 14px);
   border-radius: 999px;
   background: linear-gradient(90deg, #3fe8ff, #4da5ff);
   box-shadow: 0 0 16px rgba(63, 232, 255, 0.42);
@@ -620,9 +627,9 @@ const handleLogin = async () => {
 .card-fingerprint {
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
-  border-radius: 18px;
+  width: clamp(50px, 4vw, 58px);
+  height: clamp(50px, 4vw, 58px);
+  border-radius: clamp(16px, 1.4vw, 18px);
   color: #64efff;
   background: linear-gradient(135deg, rgba(74, 245, 255, 0.12), rgba(113, 111, 255, 0.14));
   border: 1px solid rgba(158, 212, 255, 0.16);
@@ -632,18 +639,18 @@ const handleLogin = async () => {
 .field {
   position: relative;
   display: block;
-  margin-bottom: 16px;
+  margin-bottom: clamp(12px, 1.4vh, 16px);
 }
 
 .field input {
   width: 100%;
-  height: 70px;
-  padding: 0 54px 0 52px;
+  height: clamp(58px, 7.4vh, 70px);
+  padding: 0 clamp(44px, 4vw, 54px) 0 clamp(44px, 4vw, 52px);
   border: 1px solid rgba(146, 196, 255, 0.15);
-  border-radius: 18px;
+  border-radius: clamp(16px, 1.5vw, 18px);
   background: linear-gradient(180deg, rgba(14, 31, 66, 0.78), rgba(12, 24, 54, 0.58));
   color: #f3fbff;
-  font-size: 18px;
+  font-size: clamp(15px, 1.25vw, 18px);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
@@ -665,7 +672,7 @@ const handleLogin = async () => {
 
 .field-icon {
   position: absolute;
-  left: 20px;
+  left: clamp(16px, 1.4vw, 20px);
   top: 50%;
   transform: translateY(-50%);
   color: rgba(206, 229, 255, 0.44);
@@ -673,7 +680,7 @@ const handleLogin = async () => {
 
 .field-toggle {
   position: absolute;
-  right: 16px;
+  right: clamp(12px, 1vw, 16px);
   top: 50%;
   display: grid;
   place-items: center;
@@ -700,14 +707,14 @@ const handleLogin = async () => {
 .card-actions {
   display: flex;
   justify-content: flex-end;
-  margin: 4px 0 18px;
+  margin: 4px 0 clamp(14px, 2vh, 18px);
 }
 
 .link-button {
   padding: 0;
   border: 0;
   background: transparent;
-  font-size: 14px;
+  font-size: clamp(12px, 0.95vw, 14px);
   color: rgba(190, 216, 255, 0.76);
   cursor: pointer;
 }
@@ -722,12 +729,12 @@ const handleLogin = async () => {
   justify-content: center;
   gap: 10px;
   width: 100%;
-  height: 72px;
+  height: clamp(60px, 8vh, 72px);
   border: 0;
-  border-radius: 18px;
+  border-radius: clamp(16px, 1.5vw, 18px);
   background: linear-gradient(90deg, #3cecff 0%, #43d6ff 44%, #6669ff 100%);
   color: #06213f;
-  font-size: 22px;
+  font-size: clamp(18px, 1.6vw, 22px);
   font-weight: 800;
   box-shadow: 0 22px 54px rgba(67, 180, 255, 0.34);
   cursor: pointer;
@@ -750,9 +757,9 @@ const handleLogin = async () => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 26px;
+  margin-top: clamp(18px, 2vh, 26px);
   color: rgba(190, 216, 255, 0.58);
-  font-size: 13px;
+  font-size: clamp(11px, 0.92vw, 13px);
 }
 
 .safety-line svg {
@@ -785,14 +792,21 @@ const handleLogin = async () => {
 
 @media (max-width: 1200px) {
   .login-layout {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 40px;
+    justify-content: center;
+    gap: 36px;
     padding: 32px 24px 40px;
   }
 
   .hero-panel {
+    flex-basis: 100%;
+    max-width: 760px;
     align-items: center;
     text-align: center;
+  }
+
+  .auth-panel {
+    flex-basis: min(100%, 438px);
+    margin-left: 0;
   }
 
   .hero-stage {
@@ -819,14 +833,6 @@ const handleLogin = async () => {
 }
 
 @media (max-width: 840px) {
-  .hero-copy h1 {
-    font-size: 52px;
-  }
-
-  .hero-copy p {
-    font-size: 18px;
-  }
-
   .hero-stage {
     min-height: 360px;
   }
@@ -873,6 +879,60 @@ const handleLogin = async () => {
 
   .card-head h2 {
     font-size: 30px;
+  }
+}
+
+@media (max-height: 860px) and (min-width: 841px) {
+  .login-layout {
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  .hero-panel {
+    gap: 16px;
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(34px, 4.1vw, 60px);
+  }
+
+  .hero-copy p {
+    margin-top: 10px;
+    font-size: clamp(14px, 1.2vw, 18px);
+  }
+
+  .hero-stage {
+    min-height: clamp(220px, 32vh, 330px);
+  }
+
+  .tooth-halo {
+    width: clamp(220px, 24vw, 320px);
+    height: clamp(220px, 24vw, 320px);
+  }
+
+  .tooth-visual {
+    width: min(100%, clamp(280px, 32vw, 500px));
+  }
+
+  .feature-chip {
+    min-width: 110px;
+    padding: 8px 10px;
+  }
+
+  .login-card {
+    padding: 22px 22px 18px;
+  }
+
+  .field input {
+    height: 58px;
+  }
+
+  .submit-button {
+    height: 60px;
+  }
+
+  .safety-line {
+    margin-top: 16px;
   }
 }
 

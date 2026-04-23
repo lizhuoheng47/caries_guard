@@ -255,6 +255,7 @@ public final class AnalysisReportE2EFixture {
                 new ReportRenderService(),
                 new ReportPdfService(),
                 objectStorageService,
+                null,
                 caseCommandAppService,
                 followupTriggerService);
 

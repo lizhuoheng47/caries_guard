@@ -25,7 +25,6 @@ def health_check() -> dict:
             "mysqlHost": container.settings.mysql_host,
             "mysqlPort": container.settings.mysql_port,
             "mysqlDatabase": container.settings.mysql_database,
-            "ragIndexDir": container.settings.rag_index_dir,
         },
     }
     return success_response(data=data, trace_id="health")

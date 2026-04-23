@@ -142,7 +142,6 @@ public class AnalysisQueryAppService {
         String riskLevel = null;
         String reviewReason = null;
         String doctorReviewRequiredReason = null;
-        String knowledgeVersion = null;
         JsonNode riskFactors = null;
         JsonNode evidenceRefs = null;
 
@@ -155,9 +154,28 @@ public class AnalysisQueryAppService {
 
         if (!StringUtils.hasText(summary.rawResultJson())) {
             return new AnalysisSummaryVO(
-                    severity, uncertainty, reviewFlag, lesionCount, abnormalToothCount, summaryVersionNo, null,
-                    null, null, null, null, null, null,
-                    null, null, null, null, null, null, null, null, true, null);
+                    severity,
+                    uncertainty,
+                    reviewFlag,
+                    lesionCount,
+                    abnormalToothCount,
+                    summaryVersionNo,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    true,
+                    null);
         }
         try {
             JsonNode root = objectMapper.readTree(summary.rawResultJson());
@@ -188,7 +206,6 @@ public class AnalysisQueryAppService {
             riskLevel = textValue(root, "riskLevel", "risk_level");
             reviewReason = textValue(root, "reviewReason", "review_reason");
             doctorReviewRequiredReason = textValue(root, "doctorReviewRequiredReason", "doctor_review_required_reason");
-            knowledgeVersion = textValue(root, "knowledgeVersion", "knowledge_version");
             riskFactors = jsonValue(root, "riskFactors", "risk_factors");
             evidenceRefs = jsonValue(root, "evidenceRefs", "evidence_refs");
 
@@ -214,7 +231,6 @@ public class AnalysisQueryAppService {
                     riskLevel,
                     reviewReason,
                     doctorReviewRequiredReason,
-                    knowledgeVersion,
                     riskFactors,
                     evidenceRefs,
                     gradingLabel,
@@ -231,7 +247,7 @@ public class AnalysisQueryAppService {
             if (StringUtils.hasText(severity) || uncertainty != null || StringUtils.hasText(reviewFlag)) {
                 return new AnalysisSummaryVO(
                         severity, uncertainty, reviewFlag, lesionCount, abnormalToothCount, summaryVersionNo, null,
-                        riskLevel, reviewReason, doctorReviewRequiredReason, knowledgeVersion, riskFactors, evidenceRefs,
+                        riskLevel, reviewReason, doctorReviewRequiredReason, riskFactors, evidenceRefs,
                         gradingLabel, confidenceScore, needsReview, followUpRecommendation,
                         ReviewReasonLabels.toLabel(reviewReason),
                         classifyEvidenceRefs(evidenceRefs), citations, rawResultJsonNode,

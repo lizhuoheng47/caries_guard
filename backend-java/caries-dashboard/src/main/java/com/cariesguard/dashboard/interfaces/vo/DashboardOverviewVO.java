@@ -11,7 +11,5 @@ public record DashboardOverviewVO(
         java.math.BigDecimal averageInferenceMillis,
         java.math.BigDecimal highUncertaintyRate,
         java.math.BigDecimal reviewPassRate,
-        long todayRagRequestCount,
-        java.math.BigDecimal knowledgeHitRate,
         java.math.BigDecimal doctorAdoptionRate) {
 }

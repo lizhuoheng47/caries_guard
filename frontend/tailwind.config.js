@@ -9,7 +9,7 @@ export default {
       colors: {
         'neural-cyan': 'var(--cyan)',
         'soft-cyan': 'var(--cyan-soft)',
-        'knowledge-violet': 'var(--violet)',
+        'report-violet': 'var(--violet)',
         'alert-amber': 'var(--amber)',
         'critical-magenta': 'var(--magenta)',
         'safe-emerald': 'var(--emerald)',

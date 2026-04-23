@@ -13,43 +13,30 @@ public record ModelRuntimeVO(
         BigDecimal highUncertaintyRate,
         BigDecimal reviewSuggestedRate,
         long correctionFeedbackCount,
-        
-        // AI Governance Callback Metrics
+
         long callbackTotalCount,
         long callbackSuccessCount,
         BigDecimal callbackSuccessRate,
-        
-        // AI Governance Visual Asset Metrics
+
         long visualAssetExpectedCount,
         long visualAssetGeneratedCount,
         BigDecimal visualAssetSuccessRate,
-        
-        // AI Governance Review Metrics
+
         long reviewSuggestedCount,
         long reviewCompletedCount,
         BigDecimal reviewCompletionRate,
-        
-        // AI Governance Risk Output Metrics
+
         long riskAssessmentTriggeredCount,
         long riskAssessmentCoveredCount,
         BigDecimal riskOutputCoverage,
-        
-        // AI Governance Evidence/Citation Metrics
-        long ragRequestCount,
-        long citationPresentCount,
-        BigDecimal citationCompleteness,
-        
-        // AI Governance Doctor Agreement Metrics
+
         long doctorReviewTotalCount,
         long doctorReviewAgreeCount,
         BigDecimal doctorReviewAgreementRate,
-        
-        // System & Model Information
-        String knowledgeVersion,
+
         String runtimeMode,
         String llmProviderCode,
         String llmModelName,
-
         List<ModelVersionRuntimeVO> modelVersions) {
 
     public ModelRuntimeVO(String currentModelVersion,
@@ -64,8 +51,7 @@ public record ModelRuntimeVO(
                 0L, 0L, BigDecimal.ZERO,
                 0L, 0L, BigDecimal.ZERO,
                 0L, 0L, BigDecimal.ZERO,
-                0L, 0L, BigDecimal.ZERO,
-                "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN",
+                "UNKNOWN", "UNKNOWN", "UNKNOWN",
                 List.of());
     }
 }

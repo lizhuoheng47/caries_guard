@@ -52,8 +52,6 @@ public class DashboardNeuralAppService {
         kpis.setTotalTasks(safeInt(overview.todayAnalysisTaskCount()));
         kpis.setReviewRate(toDouble(overview.reviewPassRate()));
         kpis.setAvgUncertainty(toDouble(modelRuntime.highUncertaintyRate()));
-        kpis.setRagRequestCount(safeInt(overview.todayRagRequestCount()));
-        kpis.setLatestKnowledgeVersion(firstNonBlank(modelRuntime.knowledgeVersion(), "UNKNOWN"));
         return kpis;
     }
 
@@ -78,7 +76,7 @@ public class DashboardNeuralAppService {
     private EvalSummary buildEvalSummary(ModelRuntimeVO modelRuntime) {
         EvalSummary evalSummary = new EvalSummary();
         evalSummary.setDatasetName("runtime:last-30-days");
-        evalSummary.setCitationAccuracy(toDouble(modelRuntime.citationCompleteness()));
+        evalSummary.setCitationAccuracy(null);
         evalSummary.setGraphPathHitRate(null);
         evalSummary.setRefusalPrecision(null);
         evalSummary.setGroundednessRate(toDouble(modelRuntime.callbackSuccessRate()));

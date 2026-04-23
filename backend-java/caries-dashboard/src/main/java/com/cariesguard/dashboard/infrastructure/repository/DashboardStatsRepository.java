@@ -54,14 +54,9 @@ public class DashboardStatsRepository {
                      WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ?) AS today_analysis_task_count,
                     (SELECT AVG(inference_millis)
                      FROM ana_task_record
-                     WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ? AND inference_millis IS NOT NULL) AS average_inference_millis,
-                    (
-                        SELECT COUNT(1)
-                        FROM %s
-                        WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ?
-                    ) AS today_rag_request_count
-                """.formatted(aiTable("rag_request_log")),
-                orgId, orgId, orgId, orgId, orgId, orgId, orgId, todayStart, orgId, recentThreshold, orgId, todayStart);
+                     WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ? AND inference_millis IS NOT NULL) AS average_inference_millis
+                """,
+                orgId, orgId, orgId, orgId, orgId, orgId, orgId, todayStart, orgId, recentThreshold);
         Map<String, Object> aiRow = jdbcTemplate.queryForMap("""
                 SELECT
                     COUNT(s.id) AS summary_count,
@@ -91,17 +86,6 @@ public class DashboardStatsRepository {
                 INNER JOIN med_case c ON c.id = latest.case_id
                 WHERE c.org_id = ? AND c.deleted_flag = 0
                 """, orgId, recentThreshold, orgId);
-        Map<String, Object> knowledgeRow = jdbcTemplate.queryForMap("""
-                SELECT
-                    COUNT(1) AS rag_request_count,
-                    COUNT(DISTINCT rl.request_id) AS hit_request_count
-                FROM %s r
-                LEFT JOIN %s rl ON rl.request_id = r.id
-                WHERE r.org_id = ?
-                  AND r.deleted_flag = 0
-                  AND r.created_at >= ?
-                """.formatted(aiTable("rag_request_log"), aiTable("rag_retrieval_log")),
-                orgId, recentThreshold);
         Map<String, Object> feedbackRow = jdbcTemplate.queryForMap("""
                 SELECT
                     SUM(CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(corrected_truth_json, '$.feedbackGovernance.acceptedAiConclusion')) = 'true' THEN 1 ELSE 0 END) AS ai_accepted_count,
@@ -114,7 +98,6 @@ public class DashboardStatsRepository {
                 """, orgId, recentThreshold);
         long summaryCount = longValue(aiRow.get("summary_count"));
         long reviewRequiredCount = longValue(reviewRow.get("review_required_count"));
-        long ragRequestCount = longValue(knowledgeRow.get("rag_request_count"));
         long aiAcceptedCount = longValue(feedbackRow.get("ai_accepted_count"));
         long aiCorrectedCount = longValue(feedbackRow.get("ai_corrected_count"));
         return new DashboardOverviewVO(
@@ -128,8 +111,6 @@ public class DashboardStatsRepository {
                 decimalValue(row.get("average_inference_millis")),
                 rate(longValue(aiRow.get("high_uncertainty_count")), summaryCount),
                 rate(longValue(reviewRow.get("review_passed_count")), reviewRequiredCount),
-                longValue(row.get("today_rag_request_count")),
-                rate(longValue(knowledgeRow.get("hit_request_count")), ragRequestCount),
                 rate(aiAcceptedCount, aiAcceptedCount + aiCorrectedCount));
     }
 
@@ -296,14 +277,6 @@ public class DashboardStatsRepository {
                     (SELECT COUNT(DISTINCT case_id) FROM med_risk_assessment_record WHERE org_id = ? AND deleted_flag = 0 AND overall_risk_level_code IS NOT NULL AND assessed_at >= ?) AS covered_count
                 """, orgId, recentThreshold, orgId, recentThreshold);
 
-        // Evidence/Citation Metrics
-        Map<String, Object> ragRow = jdbcTemplate.queryForMap("""
-                SELECT
-                    (SELECT COUNT(1) FROM %s WHERE org_id = ? AND deleted_flag = 0 AND created_at >= ?) AS request_count,
-                    (SELECT COUNT(DISTINCT request_id) FROM %s WHERE org_id = ? AND cited_flag = '1') AS cited_count
-                """.formatted(aiTable("rag_request_log"), aiTable("rag_retrieval_log")),
-                orgId, recentThreshold, orgId);
-
         // Doctor Agreement Metrics
         Map<String, Object> feedbackRow = jdbcTemplate.queryForMap("""
                 SELECT
@@ -369,9 +342,6 @@ public class DashboardStatsRepository {
         long riskTriggeredCount = longValue(riskRow.get("triggered_count"));
         long riskCoveredCount = longValue(riskRow.get("covered_count"));
         
-        long ragRequestCount = longValue(ragRow.get("request_count"));
-        long citationPresentCount = longValue(ragRow.get("cited_count"));
-        
         long doctorReviewTotalCount = longValue(feedbackRow.get("total_feedback_count"));
         long doctorReviewAgreeCount = longValue(feedbackRow.get("ai_accepted_count"));
 
@@ -401,16 +371,12 @@ public class DashboardStatsRepository {
                 riskTriggeredCount,
                 riskCoveredCount,
                 rate(riskCoveredCount, riskTriggeredCount),
-                
-                ragRequestCount,
-                citationPresentCount,
-                rate(citationPresentCount, ragRequestCount),
-                
+
                 doctorReviewTotalCount,
                 doctorReviewAgreeCount,
                 rate(doctorReviewAgreeCount, doctorReviewTotalCount),
-                
-                "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN",
+
+                "UNKNOWN", "UNKNOWN", "UNKNOWN",
                 modelVersions);
     }
 

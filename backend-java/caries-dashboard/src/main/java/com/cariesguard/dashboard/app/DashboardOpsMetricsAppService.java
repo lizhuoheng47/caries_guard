@@ -31,10 +31,9 @@ public class DashboardOpsMetricsAppService {
 
     public ModelRuntimeVO getModelRuntime() {
         ModelRuntimeVO vo = dashboardStatsRepository.queryModelRuntime(SecurityContextUtils.currentUser().getOrgId());
-        
+
         String llmProviderCode = "UNKNOWN";
         String llmModelName = "UNKNOWN";
-        String knowledgeVersion = "UNKNOWN";
 
         try {
             List<Map<String, Object>> llmModels = jdbcTemplate.queryForList(
@@ -44,15 +43,8 @@ public class DashboardOpsMetricsAppService {
                 llmProviderCode = String.valueOf(llmModels.get(0).get("model_code"));
                 llmModelName = String.valueOf(llmModels.get(0).get("model_name"));
             }
-
-            List<Map<String, Object>> kbs = jdbcTemplate.queryForList(
-                    "SELECT version_no FROM " + aiTable("mdl_model_version")
-                            + " WHERE model_type_code = 'KNOWLEDGE_BASE' AND active_flag = '1' ORDER BY id DESC LIMIT 1");
-            if (!kbs.isEmpty()) {
-                knowledgeVersion = String.valueOf(kbs.get(0).get("version_no"));
-            }
         } catch (Exception e) {
-            // Fallback if caries_ai is not reachable
+            // Ignore AI metadata lookup failures and keep runtime metrics available.
         }
 
         return new ModelRuntimeVO(
@@ -65,32 +57,27 @@ public class DashboardOpsMetricsAppService {
                 vo.highUncertaintyRate(),
                 vo.reviewSuggestedRate(),
                 vo.correctionFeedbackCount(),
-                
+
                 vo.callbackTotalCount(),
                 vo.callbackSuccessCount(),
                 vo.callbackSuccessRate(),
-                
+
                 vo.visualAssetExpectedCount(),
                 vo.visualAssetGeneratedCount(),
                 vo.visualAssetSuccessRate(),
-                
+
                 vo.reviewSuggestedCount(),
                 vo.reviewCompletedCount(),
                 vo.reviewCompletionRate(),
-                
+
                 vo.riskAssessmentTriggeredCount(),
                 vo.riskAssessmentCoveredCount(),
                 vo.riskOutputCoverage(),
-                
-                vo.ragRequestCount(),
-                vo.citationPresentCount(),
-                vo.citationCompleteness(),
-                
+
                 vo.doctorReviewTotalCount(),
                 vo.doctorReviewAgreeCount(),
                 vo.doctorReviewAgreementRate(),
-                
-                knowledgeVersion,
+
                 runtimeMode,
                 llmProviderCode,
                 llmModelName,

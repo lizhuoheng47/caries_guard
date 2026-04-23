@@ -19,15 +19,13 @@ public class AINeuralDashboardVO {
         private Integer totalTasks;
         private Double reviewRate;
         private Double avgUncertainty;
-        private Integer ragRequestCount;
-        private String latestKnowledgeVersion;
     }
 
     @Data
     public static class BucketCount {
         private String bucket;
         private Integer count;
-        
+
         public BucketCount(String bucket, Integer count) {
             this.bucket = bucket;
             this.count = count;
@@ -39,7 +37,7 @@ public class AINeuralDashboardVO {
         private String dimension;
         private Double score;
         private Double baseline;
-        
+
         public ModelCapability(String dimension, Double score, Double baseline) {
             this.dimension = dimension;
             this.score = score;
@@ -52,7 +50,7 @@ public class AINeuralDashboardVO {
         private String grade;
         private Integer count;
         private Double ratio;
-        
+
         public GradingDistribution(String grade, Integer count, Double ratio) {
             this.grade = grade;
             this.count = count;
@@ -65,7 +63,7 @@ public class AINeuralDashboardVO {
         private String day;
         private Integer hour;
         private Integer value;
-        
+
         public ActivityHeatmap(String day, Integer hour, Integer value) {
             this.day = day;
             this.hour = hour;
@@ -80,7 +78,7 @@ public class AINeuralDashboardVO {
         private String type;
         private String message;
         private String status;
-        
+
         public SystemEvent(String id, String time, String type, String message, String status) {
             this.id = id;
             this.time = time;

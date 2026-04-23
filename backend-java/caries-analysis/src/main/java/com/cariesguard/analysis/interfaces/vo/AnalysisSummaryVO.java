@@ -15,7 +15,6 @@ public record AnalysisSummaryVO(
         String riskLevel,
         String reviewReason,
         String doctorReviewRequiredReason,
-        String knowledgeVersion,
         JsonNode riskFactors,
         JsonNode evidenceRefs,
         String gradingLabel,

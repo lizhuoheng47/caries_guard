@@ -168,7 +168,7 @@ onMounted(() => {
       <div>
         <div class="micro">{{ locale === 'zh' ? '欢迎回来 · 今日工作概览' : 'Welcome back · Today overview' }}</div>
         <h1 class="page-hello-title">
-          {{ locale === 'zh' ? '当前 Java BFF 侧分析、复核与知识检索已接入新布局。' : 'The Java BFF analysis, review and knowledge flows are now mounted on the new layout.' }}
+          {{ locale === 'zh' ? '当前 Java BFF 侧分析、复核与报告流已接入新布局。' : 'The Java BFF analysis, review, and reporting flows are now mounted on the new layout.' }}
         </h1>
       </div>
       <NButton type="primary" size="large" @click="openAnalysis()">
