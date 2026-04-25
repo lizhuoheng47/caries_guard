@@ -1,0 +1,23 @@
+{
+  "datasetCode": "caries_guard_segmentation_poc",
+  "manifestVersion": "1.0",
+  "annotationVersion": "caries-segmentation-poc-v1",
+  "maskEncoding": {
+    "format": "png",
+    "dtype": "uint8",
+    "backgroundValue": 0,
+    "ignoreIndex": 255
+  },
+  "segmentationClasses": [
+    {
+      "classId": 0,
+      "classCode": "background",
+      "displayName": "Background"
+    },
+    {
+      "classId": 1,
+      "classCode": "caries_lesion",
+      "displayName": "Caries Lesion"
+    }
+  ]
+}

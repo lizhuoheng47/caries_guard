@@ -1,0 +1,26 @@
+version: "1.0"
+segmentation:
+  maskThreshold: 0.5
+  minRegionAreaPx: 64
+  connectedComponents: true
+  bboxClampToImage: true
+  polygonSimplifyEpsilonPx: 2.0
+  exportMaskPng: true
+  exportOverlayPng: true
+  exportHeatmapPng: true
+grading:
+  labelOrder:
+    - "C0"
+    - "C1"
+    - "C2"
+    - "C3"
+  decisionMode: "max_severity_region"
+  confidenceClamp: [0.0, 0.99]
+  uncertaintyReviewThreshold: 0.35
+quality:
+  labelOrder:
+    - "PASS"
+    - "WARN"
+    - "FAIL"
+  failOnQualityLabel:
+    - "FAIL"

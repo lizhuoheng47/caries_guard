@@ -1,0 +1,4 @@
+-r requirements.txt
+torch==2.5.1
+monai==1.4.0
+onnx==1.17.0

@@ -1,0 +1,30 @@
+version: "1.0"
+shared:
+  imageColorMode: "grayscale"
+  imageSize: [512, 512]
+  keepAspectRatio: false
+  interpolation: "bilinear"
+  normalize:
+    mode: "minmax_0_1"
+    mean: [0.5]
+    std: [0.5]
+  valueClip:
+    min: 0
+    max: 255
+segmentation:
+  maskColorMode: "grayscale"
+  maskInterpolation: "nearest"
+  foregroundClassCode: "CARIES_LESION"
+grading:
+  cropFromMask: true
+  cropPaddingPixels: 8
+  allowWholeImageFallback: true
+quality:
+  useWholeImage: true
+trainingOnly:
+  augmentations:
+    horizontalFlip: false
+    randomRotateDegrees: 5
+    randomBrightnessContrast: 0.08
+inferenceOnly:
+  augmentations: []

@@ -1,0 +1,34 @@
+manifestVersion: "1.0"
+modelCode: "caries-segmentation-techval-monai-unet-poc-v1"
+taskType: "SEGMENTATION"
+status: "TECHNICAL_VALIDATION_UNAPPROVED"
+arch: "onnx_segmentation"
+dataset:
+  datasetCode: "caries_guard_segmentation_poc"
+  annotationVersion: "caries-techval-traindata-poc-2026-04-22"
+  datasetVersion: "caries-techval-traindata-poc-2026-04-22"
+  classMapPath: "assets/models/checkpoints/segmentation_techval_monai_unet_poc_v1/class_map.json"
+artifact:
+  checkpointPath: "assets/models/checkpoints/segmentation_techval_monai_unet_poc_v1/model.onnx"
+  checkpointFormat: "onnx"
+  checkpointSha256: "edb889b121363c8e9f7c87713f092474384b09b0f6f279374ba49a5001fd5eaa"
+  exportedAt: "2026-04-22T10:58:41.855361+00:00"
+inputSpec:
+  imageChannels: 1
+  expectedImageSize: [256, 256]
+  preprocessConfigPath: "assets/models/checkpoints/segmentation_techval_monai_unet_poc_v1/preprocess.yaml"
+outputSpec:
+  outputType: "binary_mask"
+  numClasses: 2
+  foregroundClassCode: "caries_lesion"
+  postprocessConfigPath: "assets/models/checkpoints/segmentation_techval_monai_unet_poc_v1/postprocess.yaml"
+  generatedAssets:
+    - "MASK"
+    - "OVERLAY"
+    - "HEATMAP"
+release:
+  runtimeCompatible: true
+  failOnMissingCheckpoint: true
+  approvedForProduction: false
+  approvalStatus: "UNAPPROVED"
+  validationStage: "TECHNICAL_VALIDATION"

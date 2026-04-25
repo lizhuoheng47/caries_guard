@@ -1,0 +1,80 @@
+{
+  "datasetCode": "caries_v1",
+  "manifestVersion": "1.0",
+  "annotationVersion": "caries-annot-v1.0",
+  "maskEncoding": {
+    "format": "png",
+    "dtype": "uint8",
+    "backgroundValue": 0,
+    "ignoreIndex": 255
+  },
+  "segmentationClasses": [
+    {
+      "classId": 0,
+      "classCode": "BACKGROUND",
+      "displayName": "Background"
+    },
+    {
+      "classId": 1,
+      "classCode": "CARIES_LESION",
+      "displayName": "Caries Lesion"
+    }
+  ],
+  "gradingLabels": [
+    {
+      "labelId": 0,
+      "labelCode": "C0",
+      "displayName": "No Visible Caries"
+    },
+    {
+      "labelId": 1,
+      "labelCode": "C1",
+      "displayName": "Early Enamel Lesion"
+    },
+    {
+      "labelId": 2,
+      "labelCode": "C2",
+      "displayName": "Dentinal Caries"
+    },
+    {
+      "labelId": 3,
+      "labelCode": "C3",
+      "displayName": "Deep Caries"
+    }
+  ],
+  "qualityLabels": [
+    {
+      "labelId": 0,
+      "labelCode": "PASS",
+      "displayName": "Usable"
+    },
+    {
+      "labelId": 1,
+      "labelCode": "WARN",
+      "displayName": "Review Recommended"
+    },
+    {
+      "labelId": 2,
+      "labelCode": "FAIL",
+      "displayName": "Retake Required"
+    }
+  ],
+  "imageTypes": [
+    {
+      "typeCode": "BITEWING",
+      "displayName": "Bitewing X-ray"
+    },
+    {
+      "typeCode": "PERIAPICAL",
+      "displayName": "Periapical X-ray"
+    },
+    {
+      "typeCode": "PANORAMIC",
+      "displayName": "Panoramic X-ray"
+    },
+    {
+      "typeCode": "OCCLUSAL",
+      "displayName": "Occlusal X-ray"
+    }
+  ]
+}

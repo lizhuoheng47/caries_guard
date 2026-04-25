@@ -1,0 +1,36 @@
+manifestVersion: "1.0"
+modelCode: "caries-segmentation-v1"
+taskType: "SEGMENTATION"
+status: "MISSING_CHECKPOINT"
+dataset:
+  datasetCode: "caries_v1"
+  annotationVersion: "caries-annot-v1.0"
+  classMapPath: "assets/datasets/caries_v1/meta/class_map.json"
+  trainManifestPath: "assets/datasets/caries_v1/manifests/train.jsonl"
+  valManifestPath: "assets/datasets/caries_v1/manifests/val.jsonl"
+  testManifestPath: "assets/datasets/caries_v1/manifests/test.jsonl"
+  datasetCardPath: "assets/datasets/caries_v1/meta/dataset_card.md"
+artifact:
+  checkpointPath: "assets/models/checkpoints/segmentation_v1/model.onnx"
+  checkpointFormat: "onnx"
+  checkpointSha256: null
+  exportedAt: null
+inputSpec:
+  imageChannels: 1
+  expectedImageSize: [512, 512]
+  preprocessConfigPath: "assets/models/configs/preprocess.yaml"
+outputSpec:
+  outputType: "binary_mask"
+  foregroundClassCode: "CARIES_LESION"
+  postprocessConfigPath: "assets/models/configs/postprocess.yaml"
+  generatedAssets:
+    - "MASK"
+    - "OVERLAY"
+    - "HEATMAP"
+training:
+  framework: null
+  trainingRunRef: null
+  baseModelRef: null
+release:
+  runtimeCompatible: true
+  failOnMissingCheckpoint: true

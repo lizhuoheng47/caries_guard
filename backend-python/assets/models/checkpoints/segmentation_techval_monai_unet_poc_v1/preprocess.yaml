@@ -1,0 +1,21 @@
+version: '1.0'
+shared:
+  imageColorMode: grayscale
+  imageSize:
+  - 256
+  - 256
+  keepAspectRatio: false
+  interpolation: bilinear
+  normalize:
+    mode: minmax_0_1
+    mean:
+    - 0.5
+    std:
+    - 0.5
+  valueClip:
+    min: 0
+    max: 255
+segmentation:
+  maskColorMode: grayscale
+  maskInterpolation: nearest
+  foregroundClassCode: caries_lesion

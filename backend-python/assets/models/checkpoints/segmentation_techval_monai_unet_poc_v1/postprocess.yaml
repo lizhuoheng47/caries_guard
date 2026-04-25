@@ -1,0 +1,10 @@
+version: '1.0'
+segmentation:
+  maskThreshold: 0.5
+  minRegionAreaPx: 16
+  connectedComponents: true
+  bboxClampToImage: true
+  polygonSimplifyEpsilonPx: 2.0
+  exportMaskPng: true
+  exportOverlayPng: false
+  exportHeatmapPng: false
