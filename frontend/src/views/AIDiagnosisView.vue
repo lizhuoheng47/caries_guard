@@ -154,9 +154,9 @@
 
             <div v-else class="result-state">
               <div class="result-box">
-                <img :src="imagePreview" alt="分析结果影像" class="stage-image" />
+                <img :src="resultImagePreview" alt="分析结果影像" class="stage-image" />
                 <div
-                  v-for="annotation in annotations"
+                  v-for="annotation in activeAnnotations"
                   :key="annotation.id"
                   class="annotation-tooth-wrap"
                   :style="{
@@ -237,7 +237,7 @@
               <span class="summary-label">牙体检测</span>
               <div class="summary-value">
                 <template v-if="state === 'result'">
-                  <strong>{{ results.teethDetected }}</strong>
+                  <strong>{{ activeResults.teethDetected }}</strong>
                   <small>/ 28 颗</small>
                 </template>
                 <template v-else>--</template>
@@ -249,7 +249,7 @@
               <span class="summary-label">异常区域</span>
               <div class="summary-value">
                 <template v-if="state === 'result'">
-                  <strong>{{ results.anomalies }}</strong>
+                  <strong>{{ activeResults.anomalies }}</strong>
                   <small>处</small>
                 </template>
                 <template v-else>--</template>
@@ -260,7 +260,7 @@
             <article class="summary-card">
               <span class="summary-label">严重程度</span>
               <div class="summary-value">
-                <strong v-if="state === 'result'" class="severity">{{ results.severity }}</strong>
+                <strong v-if="state === 'result'" class="severity">{{ activeResults.severity }}</strong>
                 <template v-else>--</template>
               </div>
               <span class="summary-status">综合评估</span>
@@ -270,7 +270,7 @@
               <span class="summary-label">置信度评估</span>
               <div class="summary-value">
                 <template v-if="state === 'result'">
-                  <strong>{{ results.confidence }}</strong>
+                  <strong>{{ activeResults.confidence }}</strong>
                   <small>%</small>
                 </template>
                 <template v-else>--</template>
@@ -322,7 +322,7 @@
               />
             </svg>
             <div class="score-center">
-              <strong>{{ state === 'result' ? results.overallScore : '--' }}</strong>
+              <strong>{{ state === 'result' ? activeResults.overallScore : '--' }}</strong>
               <span>{{ state === 'result' ? '/100' : '待评估' }}</span>
             </div>
           </div>
@@ -362,7 +362,7 @@
               />
             </svg>
             <div class="donut-center">
-              <strong>{{ state === 'result' ? results.anomalies : 0 }}</strong>
+              <strong>{{ state === 'result' ? activeResults.anomalies : 0 }}</strong>
               <span>异常总数</span>
             </div>
           </div>
@@ -386,7 +386,7 @@
 
           <div v-if="state === 'result'" class="diagnosis-list">
             <div
-              v-for="(item, index) in results.diagnoses"
+              v-for="(item, index) in activeResults.diagnoses"
               :key="`${item.level}-${index}`"
               class="diagnosis-item"
             >
@@ -422,7 +422,7 @@
           </div>
           <div v-else class="diagnosis-empty">等待影像上传后生成 AI 诊断结论</div>
 
-          <button class="report-btn" type="button" :disabled="state !== 'result'">
+          <button class="report-btn" type="button" :disabled="!hasResult">
             生成诊疗建议报告
           </button>
         </section>
@@ -450,8 +450,29 @@ const scanProgress = ref(0)
 const hoveredAnno = ref<number | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 
-const results: AnalysisResults = MOCK_RESULTS
-const annotations: Annotation[] = MOCK_ANNOTATIONS
+const SPECIAL_SCAN_FILE_NAME = '20_c1.jpg'
+const SPECIAL_RESULT_IMAGE_URL = '/20show.png'
+const specialUploadMatched = ref(false)
+
+const specialResults: AnalysisResults = {
+  ...MOCK_RESULTS,
+  anomalies: 6,
+  riskHigh: 2,
+  riskMedium: 1,
+  riskLow: 3,
+}
+
+const activeResults = computed<AnalysisResults>(() =>
+  specialUploadMatched.value ? specialResults : MOCK_RESULTS,
+)
+
+const activeAnnotations = computed<Annotation[]>(() =>
+  specialUploadMatched.value ? [] : MOCK_ANNOTATIONS,
+)
+
+const resultImagePreview = computed(() =>
+  specialUploadMatched.value && state.value === 'result' ? SPECIAL_RESULT_IMAGE_URL : imagePreview.value,
+)
 
 let previewObjectUrl: string | null = null
 let scanFrameId = 0
@@ -459,6 +480,7 @@ let finishTimerId = 0
 
 const scoreCircumference = 2 * Math.PI * 52
 const donutCircumference = 2 * Math.PI * 45
+const hasResult = computed(() => state.value === 'result')
 
 const stateLabel = computed(() => {
   switch (state.value) {
@@ -473,29 +495,31 @@ const stateLabel = computed(() => {
 
 const scoreOffset = computed(() => {
   if (state.value !== 'result') return scoreCircumference
-  return scoreCircumference - (results.overallScore / 100) * scoreCircumference
+  return scoreCircumference - (activeResults.value.overallScore / 100) * scoreCircumference
 })
 
 const riskClass = computed(() => {
   if (state.value !== 'result') return 'pending'
-  if (results.overallScore >= 80) return 'high-risk'
-  if (results.overallScore >= 50) return 'medium-risk'
+  if (activeResults.value.overallScore >= 80) return 'high-risk'
+  if (activeResults.value.overallScore >= 50) return 'medium-risk'
   return 'low-risk'
 })
 
 const riskLabel = computed(() => {
-  if (results.overallScore >= 80) return '高风险'
-  if (results.overallScore >= 50) return '中风险'
+  if (activeResults.value.overallScore >= 80) return '高风险'
+  if (activeResults.value.overallScore >= 50) return '中风险'
   return '低风险'
 })
 
-const totalRisk = computed(() => results.riskHigh + results.riskMedium + results.riskLow)
+const totalRisk = computed(
+  () => activeResults.value.riskHigh + activeResults.value.riskMedium + activeResults.value.riskLow,
+)
 
 const riskLegend = computed(() => {
   const items = [
-    { key: 'high', label: '高风险', count: results.riskHigh, color: '#ff4757' },
-    { key: 'medium', label: '中风险', count: results.riskMedium, color: '#ff9f43' },
-    { key: 'low', label: '低风险', count: results.riskLow, color: '#2cfab5' },
+    { key: 'high', label: '高风险', count: activeResults.value.riskHigh, color: '#ff4757' },
+    { key: 'medium', label: '中风险', count: activeResults.value.riskMedium, color: '#ff9f43' },
+    { key: 'low', label: '低风险', count: activeResults.value.riskLow, color: '#2cfab5' },
   ]
 
   return items.map((item) => ({
@@ -552,6 +576,7 @@ function startScan(file: File) {
   cleanupAnimation()
   revokePreviewUrl()
   hoveredAnno.value = null
+  specialUploadMatched.value = isSpecialDemoUpload(file)
   imagePreview.value = buildPreviewUrl(file)
   scanProgress.value = 0
   state.value = 'scanning'
@@ -587,6 +612,7 @@ function reset() {
   scanProgress.value = 0
   hoveredAnno.value = null
   isDragOver.value = false
+  specialUploadMatched.value = false
 
   if (fileInput.value) {
     fileInput.value.value = ''
@@ -619,6 +645,10 @@ function buildPreviewUrl(file: File) {
   }
 
   return createDicomPlaceholder(file.name)
+}
+
+function isSpecialDemoUpload(file: File) {
+  return file.name.trim().toLowerCase() === SPECIAL_SCAN_FILE_NAME
 }
 
 function createDicomPlaceholder(fileName: string) {
