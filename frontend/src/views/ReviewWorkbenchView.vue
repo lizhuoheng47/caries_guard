@@ -1,78 +1,87 @@
-<template>
-  <div class="page" style="max-width: none">
-    <div class="page-hello" style="margin-bottom: 18px">
-      <div>
-        <div class="micro">Review Workbench</div>
-        <h1 class="page-hello-title">医生复核工作台</h1>
+﻿<template>
+  <div class="med-page review-page">
+    <section class="med-hero">
+      <div class="med-hero-main">
+        <div class="med-eyebrow">Review Workbench</div>
+        <h1 class="med-title">医生复核工作台</h1>
+        <p class="med-subtitle">
+          聚合待复核队列、影像标注与医生修订内容。你可以在这里完成分级调整、备注补充，并直接进入报告视图。
+        </p>
       </div>
-      <div v-if="currentWorkbench" style="display: flex; gap: 10px; align-items: center">
-        <span class="chip chip-neutral">{{ currentWorkbench.caseInfo.caseNo }}</span>
-        <span class="chip" :style="gradeChipStyle(currentWorkbench.aiResult.gradingLabel)">
-          {{ currentWorkbench.aiResult.gradingLabel }}
-        </span>
+      <div class="med-action-row">
+        <button class="med-btn med-btn--ghost" @click="goToDetail" :disabled="!currentWorkbench">
+          <AppIcon name="scan" :size="14" />
+          分析详情
+        </button>
+        <button class="med-btn med-btn--primary" @click="goToReport" :disabled="!currentWorkbench">
+          <AppIcon name="report" :size="14" />
+          报告视图
+        </button>
       </div>
-    </div>
+    </section>
 
-    <div style="display: grid; grid-template-columns: 280px minmax(0, 1.2fr) minmax(360px, .95fr); gap: 16px; min-height: 760px">
-      <aside class="card" style="overflow: hidden">
-        <div class="card-head">
-          <h3>复核队列</h3>
-          <div class="card-head-actions">
-            <span class="chip chip-neutral">{{ filteredQueueItems.length }}</span>
+    <section class="med-grid-3 review-layout">
+      <aside class="med-card review-queue-card">
+        <div class="med-card-inner">
+          <div class="med-section-head">
+            <h2 class="med-section-title">复核队列</h2>
+            <span class="med-chip med-chip--warn">{{ filteredQueueItems.length }}</span>
           </div>
-        </div>
-        <div style="padding: 16px; border-bottom: 1px solid var(--line)">
-          <div class="lib-search" style="width: 100%">
+          <div class="med-search review-search">
             <AppIcon name="search" :size="14" />
             <input v-model.trim="queueKeyword" type="text" placeholder="搜索病例号或任务号" />
           </div>
-        </div>
-        <div style="padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 650px">
-          <div v-if="queueLoading" class="card" style="padding: 14px; color: var(--ink-3)">正在加载复核队列...</div>
-          <button
-            v-for="item in filteredQueueItems"
-            :key="item.id"
-            class="card"
-            :style="queueItemStyle(item.id === activeTaskId)"
-            @click="selectTask(item.id)"
-          >
-            <div style="display: flex; justify-content: space-between; gap: 8px; align-items: start">
-              <div style="display: grid; gap: 4px; text-align: left">
-                <strong class="mono" style="font-size: 12px; color: var(--brand-700)">{{ item.no }}</strong>
-                <span style="font-size: 12px; color: var(--ink-2)">{{ item.caseNo || 'CASE' }}</span>
+          <div class="review-queue-list">
+            <div v-if="queueLoading" class="med-empty">正在加载复核队列...</div>
+            <button
+              v-for="item in filteredQueueItems"
+              :key="item.id"
+              class="review-queue-item"
+              :class="{ active: item.id === activeTaskId }"
+              @click="selectTask(item.id)"
+            >
+              <div class="review-queue-head">
+                <div>
+                  <strong class="med-mono">{{ item.no }}</strong>
+                  <div class="med-meta">{{ item.caseNo || item.patientName || 'CASE' }}</div>
+                </div>
+                <span class="med-chip" :class="gradeClass(getDisplayedQueueGrade(item))">{{ getDisplayedQueueGrade(item) }}</span>
               </div>
-              <span class="mono" style="font-size: 10px; color: var(--ink-3)">{{ formatTaskTime(item.createdAt) }}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px">
-              <span class="chip" :style="gradeChipStyle(getDisplayedQueueGrade(item))">{{ getDisplayedQueueGrade(item) }}</span>
-              <span class="mono" style="font-size: 11px; color: var(--ink-3)">UC {{ (item.uncertainty || 0).toFixed(2) }}</span>
-            </div>
-          </button>
-          <div v-if="!queueLoading && filteredQueueItems.length === 0" class="card" style="padding: 14px; color: var(--ink-3)">当前没有待复核任务。</div>
+              <div class="review-queue-foot">
+                <span class="med-meta med-mono">{{ formatTaskTime(item.createdAt) }}</span>
+                <span class="med-meta">UC {{ (item.uncertainty || 0).toFixed(2) }}</span>
+              </div>
+            </button>
+            <div v-if="!queueLoading && filteredQueueItems.length === 0" class="med-empty">当前没有待复核任务。</div>
+          </div>
         </div>
       </aside>
 
-      <section class="card" style="overflow: hidden">
-        <div class="card-head">
-          <h3>影像视图</h3>
-          <div class="card-head-actions" v-if="currentWorkbench">
-            <span class="micro">UNCERTAINTY {{ currentWorkbench.aiResult.uncertaintyScore.toFixed(2) }}</span>
+      <section class="med-card review-image-card">
+        <div class="med-card-inner">
+          <div class="med-section-head">
+            <h2 class="med-section-title">影像视图</h2>
+            <div class="med-chip-row" v-if="currentWorkbench">
+              <span class="med-chip">{{ currentWorkbench.caseInfo.caseNo }}</span>
+              <span class="med-chip med-chip--accent">UC {{ currentWorkbench.aiResult.uncertaintyScore.toFixed(2) }}</span>
+            </div>
           </div>
-        </div>
-        <div v-if="currentWorkbench" style="padding: 18px">
-          <div style="position: relative; min-height: 620px; border-radius: 18px; overflow: hidden; background: linear-gradient(180deg, #0d1215, #1d2a31); border: 1px solid #23343d">
-            <div style="position: absolute; inset: 18px; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.24)">
+
+          <div v-if="currentWorkbench" class="review-image-stage">
+            <div class="review-image-canvas">
               <template v-if="shouldRenderSyntheticImage">
-                <div style="position: relative; width: 72%; height: 78%">
+                <div class="review-synthetic">
                   <div
                     v-for="tooth in syntheticTeeth"
                     :key="tooth.id"
-                    :style="`${tooth.style}; position:absolute; bottom:10%; background:linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,.06)); border-radius:40% 40% 12% 12%; border:1px solid rgba(255,255,255,.1)`"
+                    :style="tooth.style"
+                    class="review-synthetic-tooth"
                   ></div>
                   <div
                     v-for="hotspot in syntheticHotspots"
                     :key="hotspot.id"
-                    :style="`${hotspot.style}; position:absolute; border-radius:999px; filter:blur(18px)`"
+                    :style="hotspot.style"
+                    class="review-synthetic-hotspot"
                   ></div>
                 </div>
               </template>
@@ -80,144 +89,133 @@
                 v-else
                 :src="currentWorkbench.image.imageUrl"
                 alt="review xray"
-                style="max-width: 100%; max-height: 100%; object-fit: contain"
+                class="review-image"
               />
-            </div>
 
-            <div
-              v-for="box in currentWorkbench.aiResult.detections"
-              :key="box.id"
-              :style="boxStyle(box)"
-              style="position: absolute; pointer-events: none"
-            >
-              <div style="position: absolute; inset: 0; border: 2px solid #e08a2c; border-radius: 8px"></div>
-              <div style="position: absolute; top: -24px; left: 0; padding: 4px 8px; border-radius: 8px; background: #e08a2c; color: #fff; font-family: var(--font-mono); font-size: 10px">
-                AI {{ box.label }}
+              <div
+                v-for="box in currentWorkbench.aiResult.detections"
+                :key="box.id"
+                :style="boxStyle(box)"
+                class="review-box review-box-ai"
+              >
+                <div class="review-box-label">AI {{ box.label }}</div>
+              </div>
+
+              <div
+                v-for="box in renderedDoctorDetections"
+                :key="box.id"
+                :style="boxStyle(box)"
+                class="review-box review-box-doctor"
+              >
+                <div class="review-box-label">DOC {{ box.label }}</div>
+              </div>
+
+              <div class="review-stage-badges">
+                <span class="med-chip med-chip--warn">AI 标注 {{ currentWorkbench.aiResult.detections.length }}</span>
+                <span class="med-chip med-chip--ok">医生修订 {{ renderedDoctorDetections.length }}</span>
               </div>
             </div>
 
-            <div
-              v-for="box in renderedDoctorDetections"
-              :key="box.id"
-              :style="boxStyle(box)"
-              style="position: absolute; pointer-events: none"
-            >
-              <div style="position: absolute; inset: 0; border: 2px dashed #1aa864; border-radius: 8px"></div>
-              <div style="position: absolute; top: -24px; left: 0; padding: 4px 8px; border-radius: 8px; background: #1aa864; color: #fff; font-family: var(--font-mono); font-size: 10px">
-                DOC {{ box.label }}
-              </div>
-            </div>
-
-            <div style="position: absolute; top: 18px; left: 18px; display: grid; gap: 8px">
-              <span class="chip" style="background: rgba(255,255,255,.88); color: var(--warn-700)">AI 标注 {{ currentWorkbench.aiResult.detections.length }}</span>
-              <span class="chip" style="background: rgba(255,255,255,.88); color: var(--ok-700)">医生修订 {{ renderedDoctorDetections.length }}</span>
+            <div class="review-stage-summary">
+              <article class="med-card review-mini-card">
+                <div class="med-card-inner">
+                  <div class="med-metric-label">AI 预测</div>
+                  <div class="med-metric-value review-mini-value">{{ currentWorkbench.aiResult.gradingLabel }}</div>
+                  <div class="med-metric-caption">模型给出的初始等级</div>
+                </div>
+              </article>
+              <article class="med-card review-mini-card">
+                <div class="med-card-inner">
+                  <div class="med-metric-label">医生确认</div>
+                  <div class="med-metric-value review-mini-value">{{ selectedGrade }}</div>
+                  <div class="med-metric-caption">当前编辑中的修订等级</div>
+                </div>
+              </article>
             </div>
           </div>
-        </div>
-        <div v-else style="padding: 24px; color: var(--ink-3)">
-          {{ workbenchLoading ? '正在加载复核详情...' : '请选择左侧任务开始复核。' }}
+          <div v-else class="med-empty">{{ workbenchLoading ? '正在加载复核详情...' : '请选择左侧任务开始复核。' }}</div>
         </div>
       </section>
 
-      <section class="card" style="overflow: hidden">
-        <div class="card-head">
-          <h3>复核编辑</h3>
-          <div class="card-head-actions" v-if="currentWorkbench">
-            <span class="micro">{{ currentWorkbench.task.taskNo }}</span>
+      <section class="med-card review-editor-card">
+        <div class="med-card-inner">
+          <div class="med-section-head">
+            <h2 class="med-section-title">复核编辑</h2>
+            <span class="med-chip med-chip--accent" v-if="currentWorkbench">{{ currentWorkbench.task.taskNo }}</span>
           </div>
-        </div>
 
-        <div v-if="currentWorkbench" style="padding: 18px; display: flex; flex-direction: column; gap: 16px">
-          <div class="card" style="padding: 14px; background: var(--surface-2)">
-            <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center">
-              <div style="text-align: center">
-                <div class="micro">AI 预测</div>
-                <div style="margin-top: 8px">
-                  <span class="chip" :style="gradeChipStyle(currentWorkbench.aiResult.gradingLabel)">{{ currentWorkbench.aiResult.gradingLabel }}</span>
-                </div>
+          <div v-if="currentWorkbench" class="review-editor-stack">
+            <div class="review-split-card">
+              <div>
+                <span class="queue-label">原始草稿</span>
+                <div class="review-grade-pill">{{ originalGrade }}</div>
+                <p class="review-small-note">{{ originalReasonText }}</p>
               </div>
-              <AppIcon name="arrow_right" :size="16" />
-              <div style="text-align: center">
-                <div class="micro">医生确认</div>
-                <div style="margin-top: 8px">
-                  <span class="chip" :style="gradeChipStyle(selectedGrade)">{{ selectedGrade }}</span>
-                </div>
+              <div>
+                <span class="queue-label">当前编辑</span>
+                <div class="review-grade-pill active">{{ selectedGrade }}</div>
+                <p class="review-small-note">{{ selectedTags.length ? selectedTags.join(' / ') : '未选择修订原因' }}</p>
               </div>
             </div>
-          </div>
 
-          <div>
-            <div class="micro" style="margin-bottom: 8px">分级修订</div>
-            <div class="lib-filter-group" style="flex-wrap: wrap">
-              <button
-                v-for="grade in currentWorkbench.reviewOptions.gradeOptions"
-                :key="grade"
-                class="lib-filter"
-                :class="{ on: selectedGrade === grade }"
-                @click="selectedGrade = grade"
-              >
-                {{ grade }}
+            <div class="med-input-wrap">
+              <span class="queue-label">分级修订</span>
+              <div class="med-tabs">
+                <button
+                  v-for="grade in currentWorkbench.reviewOptions.gradeOptions"
+                  :key="grade"
+                  class="med-tab"
+                  :class="{ 'is-active': selectedGrade === grade }"
+                  @click="selectedGrade = grade"
+                >
+                  {{ grade }}
+                </button>
+              </div>
+            </div>
+
+            <div class="med-input-wrap">
+              <span class="queue-label">修订原因</span>
+              <div class="med-tabs">
+                <button
+                  v-for="tag in currentWorkbench.reviewOptions.reasonTags"
+                  :key="tag"
+                  class="med-tab"
+                  :class="{ 'is-active': selectedTags.includes(tag) }"
+                  @click="toggleTag(tag)"
+                >
+                  {{ tag }}
+                </button>
+              </div>
+            </div>
+
+            <label class="med-input-wrap">
+              <span class="queue-label">临床备注</span>
+              <textarea v-model="clinicalNote" class="med-textarea review-textarea" placeholder="填写复核结论、分级调整依据或临床补充说明"></textarea>
+            </label>
+
+            <div class="med-note">
+              原始备注：{{ originalNoteText }}
+            </div>
+
+            <div class="review-editor-actions">
+              <button class="med-btn med-btn--ghost" @click="saveDraftLocally">
+                <AppIcon name="pen" :size="14" />
+                保存草稿
+              </button>
+              <button class="med-btn med-btn--ghost" @click="requestSecondOpinion">
+                <AppIcon name="compare" :size="14" />
+                二次意见
+              </button>
+              <button class="med-btn med-btn--primary" :disabled="submitting" @click="submitReview">
+                <AppIcon name="check" :size="14" />
+                {{ submitting ? '提交中...' : '提交复核' }}
               </button>
             </div>
           </div>
-
-          <div>
-            <div class="micro" style="margin-bottom: 8px">修订原因</div>
-            <div class="lib-filter-group" style="flex-wrap: wrap">
-              <button
-                v-for="tag in currentWorkbench.reviewOptions.reasonTags"
-                :key="tag"
-                class="lib-filter"
-                :class="{ on: selectedTags.includes(tag) }"
-                @click="toggleTag(tag)"
-              >
-                {{ tag }}
-              </button>
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
-            <div class="card" style="padding: 14px; background: var(--surface-2)">
-              <div class="micro">原始草稿</div>
-              <div style="display: grid; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--ink-2)">
-                <div>分级：{{ originalGrade }}</div>
-                <div>原因：{{ originalReasonText }}</div>
-                <div style="white-space: pre-line; color: var(--ink-3)">{{ originalNoteText }}</div>
-              </div>
-            </div>
-            <div class="card" style="padding: 14px; background: var(--surface-2)">
-              <div class="micro">当前编辑</div>
-              <div style="display: grid; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--ink-2)">
-                <div>分级：{{ selectedGrade }}</div>
-                <div>原因：{{ selectedTags.length ? selectedTags.join(' / ') : '未选择' }}</div>
-                <div style="white-space: pre-line; color: var(--ink-3)">{{ clinicalNote || '暂无备注' }}</div>
-              </div>
-            </div>
-          </div>
-
-          <label style="display: grid; gap: 8px">
-            <span class="micro">临床备注</span>
-            <textarea
-              v-model="clinicalNote"
-              class="review-input"
-              placeholder="填写复核结论、分级调整原因或其他临床说明"
-            ></textarea>
-          </label>
-
-          <div style="display: flex; gap: 10px; justify-content: end; margin-top: auto">
-            <button class="btn btn-ghost" @click="saveDraftLocally">保存草稿</button>
-            <button class="btn btn-ghost" @click="requestSecondOpinion">二次意见</button>
-            <button class="btn btn-primary" :disabled="submitting" @click="submitReview">
-              {{ submitting ? '提交中...' : '提交复核' }}
-            </button>
-          </div>
-        </div>
-
-        <div v-else style="padding: 24px; color: var(--ink-3)">
-          {{ workbenchLoading ? '正在加载复核详情...' : '请选择左侧任务开始复核。' }}
+          <div v-else class="med-empty">{{ workbenchLoading ? '正在加载复核详情...' : '请选择左侧任务开始复核。' }}</div>
         </div>
       </section>
-    </div>
+    </section>
   </div>
 </template>
 
@@ -230,6 +228,7 @@ import { analysisApi } from '@/api/analysis'
 import type { AnalysisTaskItem } from '@/models/analysis'
 import { useNotificationStore } from '@/stores/notification'
 import { ApiClientError } from '@/api/request'
+import { loadWorkspaceSettings } from '@/utils/workbenchSettings'
 
 type ReviewGrade = 'G0' | 'G1' | 'G2' | 'G3' | 'G4'
 
@@ -297,6 +296,7 @@ interface SyntheticHotspot {
 const route = useRoute()
 const router = useRouter()
 const notificationStore = useNotificationStore()
+const settings = loadWorkspaceSettings()
 
 const queueItems = ref<AnalysisTaskItem[]>([])
 const queueKeyword = ref('')
@@ -389,22 +389,19 @@ const syntheticHotspots = computed<SyntheticHotspot[]>(() => {
   ]
 })
 
-const queueItemStyle = (active: boolean) =>
-  `padding: 14px; text-align:left; background:${active ? 'var(--brand-50)' : '#fff'}; border-color:${active ? 'var(--brand-200)' : 'var(--line)'};`
-
-const gradeChipStyle = (grade?: string) => {
+const gradeClass = (grade?: string) => {
   switch ((grade || '').toUpperCase()) {
     case 'G0':
-      return 'background: var(--ok-100); color: var(--ok-700);'
+      return 'med-chip--ok'
     case 'G1':
-      return 'background: var(--brand-100); color: var(--brand-800);'
+      return 'med-chip--accent'
     case 'G2':
-      return 'background: var(--warn-100); color: var(--warn-700);'
+      return 'med-chip--warn'
     case 'G3':
     case 'G4':
-      return 'background: var(--danger-100); color: var(--danger-700);'
+      return 'med-chip--danger'
     default:
-      return 'background: var(--bg-alt); color: var(--ink-2);'
+      return ''
   }
 }
 
@@ -547,6 +544,12 @@ const fetchQueue = async () => {
       taskNo?: string
       taskStatusCode?: string
       createdAt: string
+      caseNo?: string
+      patientName?: string
+      patientId?: string
+      gradingLabel?: string
+      uncertaintyScore?: number
+      needsReview?: boolean
     }>
 
     queueItems.value = records
@@ -554,9 +557,14 @@ const fetchQueue = async () => {
       .map((item): AnalysisTaskItem => ({
         id: Number(item.taskId),
         no: item.taskNo || `TASK-${item.taskId}`,
+        caseNo: item.caseNo,
+        patientName: item.patientName,
+        patientId: item.patientId,
+        grade: item.gradingLabel,
+        uncertainty: item.uncertaintyScore,
         status: 'REVIEW',
         createdAt: item.createdAt,
-        needsReview: true
+        needsReview: item.needsReview ?? true
       }))
       .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
   } catch (error) {
@@ -636,13 +644,29 @@ const submitReview = async () => {
   }
 }
 
+const goToDetail = () => {
+  if (!currentWorkbench.value) return
+  router.push(`/analysis/${currentWorkbench.value.task.taskId}`)
+}
+
+const goToReport = () => {
+  if (!currentWorkbench.value) return
+  router.push(`/reports/${currentWorkbench.value.task.taskId}`)
+}
+
 onMounted(async () => {
   if (routeTaskId.value) {
     await loadWorkbench(routeTaskId.value)
     activeTaskId.value = routeTaskId.value
     hydrateDraft(routeTaskId.value)
   }
+
   await fetchQueue()
+
+  if (!routeTaskId.value && settings.autoOpenNewestReview && queueItems.value[0]) {
+    await selectTask(queueItems.value[0].id)
+  }
+
   if (routeTaskId.value && !queueItems.value.find((item) => item.id === routeTaskId.value) && currentWorkbench.value) {
     upsertQueueItemFromWorkbench(currentWorkbench.value)
   }
@@ -660,20 +684,223 @@ watch([selectedGrade, selectedTags, clinicalNote], () => {
 </script>
 
 <style scoped>
-.review-input {
-  width: 100%;
-  min-height: 140px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface-2);
-  color: var(--ink-1);
-  resize: vertical;
-  outline: none;
+.review-page {
+  gap: 16px;
 }
 
-.review-input:focus {
-  border-color: var(--brand-500);
-  box-shadow: var(--glow-brand);
+.review-layout {
+  grid-template-columns: 300px minmax(0, 1.15fr) minmax(360px, 0.95fr);
+  align-items: start;
+}
+
+.review-queue-list,
+.review-editor-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.review-search {
+  margin-bottom: 14px;
+}
+
+.review-queue-item {
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(94, 234, 212, 0.08);
+  background: rgba(11, 36, 44, 0.42);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: all .18s ease;
+}
+
+.review-queue-item:hover,
+.review-queue-item.active {
+  border-color: rgba(46, 230, 200, 0.28);
+  background: rgba(46, 230, 200, 0.12);
+}
+
+.review-queue-head,
+.review-queue-foot,
+.review-editor-actions,
+.review-stage-summary,
+.review-split-card,
+.review-finding-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.review-queue-foot {
+  margin-top: 10px;
+  align-items: center;
+}
+
+.review-image-stage {
+  display: grid;
+  gap: 14px;
+}
+
+.review-image-canvas {
+  position: relative;
+  min-height: 620px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #07141a, #020b10);
+  border: 1px solid rgba(94, 234, 212, 0.12);
+}
+
+.review-image,
+.review-synthetic {
+  position: absolute;
+  inset: 18px;
+  border-radius: 16px;
+}
+
+.review-image {
+  width: calc(100% - 36px);
+  height: calc(100% - 36px);
+  object-fit: contain;
+  background: rgba(0,0,0,0.24);
+}
+
+.review-synthetic {
+  overflow: hidden;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+}
+
+.review-synthetic-tooth,
+.review-synthetic-hotspot {
+  position: absolute;
+}
+
+.review-synthetic-tooth {
+  bottom: 10%;
+  background: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,.06));
+  border-radius: 40% 40% 12% 12%;
+  border: 1px solid rgba(255,255,255,.1);
+}
+
+.review-synthetic-hotspot {
+  border-radius: 999px;
+  filter: blur(18px);
+}
+
+.review-box {
+  position: absolute;
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.review-box::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.review-box-ai::before {
+  border: 2px solid #f7a23a;
+}
+
+.review-box-doctor::before {
+  border: 2px dashed #2ee6c8;
+}
+
+.review-box-label {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-family: Consolas, 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #03161c;
+}
+
+.review-box-ai .review-box-label {
+  background: #f7a23a;
+}
+
+.review-box-doctor .review-box-label {
+  background: #2ee6c8;
+}
+
+.review-stage-badges {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.review-mini-card {
+  flex: 1;
+}
+
+.review-mini-value {
+  font-size: 22px;
+}
+
+.review-split-card {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(94, 234, 212, 0.08);
+  background: rgba(11, 36, 44, 0.42);
+}
+
+.review-grade-pill {
+  margin-top: 10px;
+  display: inline-flex;
+  min-width: 64px;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.review-grade-pill.active {
+  background: rgba(46, 230, 200, 0.14);
+  color: var(--accent);
+}
+
+.review-small-note {
+  margin: 10px 0 0;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.review-textarea {
+  min-height: 180px;
+}
+
+.review-editor-actions {
+  justify-content: flex-end;
+}
+
+.queue-label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+@media (max-width: 1360px) {
+  .review-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .review-image-canvas {
+    min-height: 460px;
+  }
 }
 </style>

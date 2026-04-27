@@ -5,6 +5,7 @@ import { i18n } from './i18n'
 import './index.css'
 import './styles/tokens.css'
 import './styles/app.css'
+import './styles/medical-workspace.css'
 import App from './App.vue'
 
 const app = createApp(App)

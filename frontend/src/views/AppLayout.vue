@@ -122,8 +122,9 @@ const menu = [
   --accent-warm: rgba(46, 230, 200, 0.12);
   position: relative;
   display: flex;
-  width: 100vw;
+  width: 100%;
   min-height: 100vh;
+  height: 100vh;
   color: var(--text);
   background: var(--bg-deep);
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
@@ -350,6 +351,7 @@ const menu = [
   z-index: 1;
   flex: 1;
   min-width: 0;
+  min-height: 0;
   padding: 28px 32px 32px;
   overflow-y: auto;
 }

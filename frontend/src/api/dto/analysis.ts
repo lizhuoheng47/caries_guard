@@ -4,6 +4,12 @@ export interface AnalysisTaskListItemDTO {
   taskStatusCode: 'SUCCESS' | 'RUNNING' | 'REVIEW' | 'FAILED' | 'PENDING' | string;
   taskTypeCode?: string;
   modelVersion?: string;
+  caseNo?: string;
+  patientName?: string;
+  patientId?: string;
+  gradingLabel?: string;
+  uncertaintyScore?: number;
+  needsReview?: boolean;
   errorCode?: string;
   errorMessage?: string;
   createdAt: string;

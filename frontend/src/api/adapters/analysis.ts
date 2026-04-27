@@ -97,16 +97,19 @@ const normalizeLesions = (lesions: any): AnalysisLesion[] => {
 
 export const AnalysisAdapter = {
   toTaskItem(dto: AnalysisTaskListItemDTO): AnalysisTaskItem {
+    const normalizedStatus = normalizeTaskStatus(dto.taskStatusCode)
     return {
       id: Number(dto.taskId),
       no: dto.taskNo,
-      caseNo: undefined,
-      grade: undefined,
-      uncertainty: undefined,
-      status: normalizeTaskStatus(dto.taskStatusCode),
+      patientName: dto.patientName,
+      patientId: dto.patientId,
+      caseNo: dto.caseNo,
+      grade: dto.gradingLabel,
+      uncertainty: typeof dto.uncertaintyScore === 'number' ? dto.uncertaintyScore : undefined,
+      status: normalizedStatus,
       createdAt: dto.createdAt,
       duration: dto.inferenceMillis,
-      needsReview: normalizeTaskStatus(dto.taskStatusCode) === 'REVIEW',
+      needsReview: typeof dto.needsReview === 'boolean' ? dto.needsReview : normalizedStatus === 'REVIEW',
     };
   },
 

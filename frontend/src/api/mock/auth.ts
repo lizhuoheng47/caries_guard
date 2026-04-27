@@ -56,8 +56,8 @@ export const mockAuthApi = {
             children: [
               { id: 11, parentId: 1, name: '工作台', path: '/dashboard', icon: 'home', sort: 1 },
               { id: 12, parentId: 1, name: 'AI 诊断分析', path: '/ai-diagnosis', icon: 'scan', sort: 2 },
-              { id: 13, parentId: 1, name: '病例中心', path: '/cases', icon: 'folder', sort: 3 },
-              { id: 14, parentId: 1, name: '数据报表', path: '/reports', icon: 'bar-chart', sort: 4 },
+              { id: 13, parentId: 1, name: '病例中心', path: '/cases', icon: 'library', sort: 3 },
+              { id: 14, parentId: 1, name: '数据报表', path: '/reports', icon: 'report', sort: 4 },
               { id: 15, parentId: 1, name: '用户中心', path: '/user-center', icon: 'user', sort: 5 },
               { id: 16, parentId: 1, name: '系统设置', path: '/settings', icon: 'settings', sort: 6 },
             ]

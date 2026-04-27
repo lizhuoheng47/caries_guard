@@ -1,5 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { loadWorkspaceSettings } from '../utils/workbenchSettings';
+
+const resolveLandingPath = () => {
+  const landing = loadWorkspaceSettings().defaultLanding
+  if (landing === 'cases') return '/cases'
+  if (landing === 'analysis') return '/analysis'
+  if (landing === 'ai-diagnosis') return '/ai-diagnosis'
+  return '/dashboard'
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -17,7 +26,7 @@ const router = createRouter({
       children: [
         {
           path: '',
-          redirect: { name: 'dashboard' }
+          redirect: () => resolveLandingPath()
         },
         {
           path: 'dashboard',
@@ -50,7 +59,7 @@ const router = createRouter({
           component: () => import('../views/CasePortalView.vue')
         },
         {
-          path: 'reports',
+          path: 'reports/:taskId?',
           name: 'report-page',
           component: () => import('../views/ReportPage.vue')
         },

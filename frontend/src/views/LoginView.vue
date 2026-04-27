@@ -231,6 +231,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ApiClientError } from '@/api/request'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
+import { loadWorkspaceSettings } from '@/utils/workbenchSettings'
 
 const router = useRouter()
 const route = useRoute()
@@ -302,7 +303,13 @@ const onSubmit = async () => {
     })
 
     notificationStore.success('登录成功', '正在进入系统。')
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard'
+    const defaultLanding = loadWorkspaceSettings().defaultLanding
+    const defaultRedirect =
+      defaultLanding === 'cases' ? '/cases'
+      : defaultLanding === 'analysis' ? '/analysis'
+      : defaultLanding === 'ai-diagnosis' ? '/ai-diagnosis'
+      : '/dashboard'
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : defaultRedirect
     await router.push(redirect)
   } catch (error) {
     const feedback = resolveLoginError(error)
