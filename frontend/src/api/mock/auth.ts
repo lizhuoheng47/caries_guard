@@ -50,23 +50,16 @@ export const mockAuthApi = {
           {
             id: 1,
             parentId: 0,
-            name: 'AI CORE',
+            name: 'DentAI',
             path: '',
             sort: 1,
             children: [
-              { id: 11, parentId: 1, name: '影像扫描', path: '/scan', icon: 'scan', sort: 1 },
-              { id: 12, parentId: 1, name: '分析队列', path: '/analysis', icon: 'list', sort: 2 },
-              { id: 13, parentId: 1, name: '医生复核', path: '/review', icon: 'check-square', sort: 3 },
-            ]
-          },
-          {
-            id: 2,
-            parentId: 0,
-            name: 'INTELLIGENCE',
-            path: '',
-            sort: 2,
-            children: [
-              { id: 21, parentId: 2, name: 'AI 评估看板', path: '/dashboard/ai', icon: 'activity', sort: 1 },
+              { id: 11, parentId: 1, name: '工作台', path: '/dashboard', icon: 'home', sort: 1 },
+              { id: 12, parentId: 1, name: 'AI 诊断分析', path: '/ai-diagnosis', icon: 'scan', sort: 2 },
+              { id: 13, parentId: 1, name: '病例中心', path: '/cases', icon: 'folder', sort: 3 },
+              { id: 14, parentId: 1, name: '数据报表', path: '/reports', icon: 'bar-chart', sort: 4 },
+              { id: 15, parentId: 1, name: '用户中心', path: '/user-center', icon: 'user', sort: 5 },
+              { id: 16, parentId: 1, name: '系统设置', path: '/settings', icon: 'settings', sort: 6 },
             ]
           }
         ]

@@ -17,12 +17,17 @@ const router = createRouter({
       children: [
         {
           path: '',
-          redirect: '/dashboard/ai'
+          redirect: { name: 'dashboard' }
         },
         {
-          path: 'dashboard/ai',
-          name: 'dashboard-ai',
+          path: 'dashboard',
+          name: 'dashboard',
           component: () => import('../views/DashboardView.vue')
+        },
+        {
+          path: 'ai-diagnosis',
+          name: 'ai-diagnosis',
+          component: () => import('../views/AIDiagnosisView.vue')
         },
         {
           path: 'analysis',
@@ -43,6 +48,21 @@ const router = createRouter({
           path: 'cases',
           name: 'case-portal',
           component: () => import('../views/CasePortalView.vue')
+        },
+        {
+          path: 'reports',
+          name: 'report-page',
+          component: () => import('../views/ReportPage.vue')
+        },
+        {
+          path: 'settings',
+          name: 'settings-page',
+          component: () => import('../views/SettingsPage.vue')
+        },
+        {
+          path: 'user-center',
+          name: 'user-center',
+          component: () => import('../views/UserCenterView.vue')
         }
       ]
     }

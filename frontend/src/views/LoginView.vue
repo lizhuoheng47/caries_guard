@@ -302,7 +302,7 @@ const onSubmit = async () => {
     })
 
     notificationStore.success('登录成功', '正在进入系统。')
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard/ai'
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard'
     await router.push(redirect)
   } catch (error) {
     const feedback = resolveLoginError(error)
