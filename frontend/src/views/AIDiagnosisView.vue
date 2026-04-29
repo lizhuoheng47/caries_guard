@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page diagnosis-page">
     <div class="page-hello diagnosis-hello">
       <div>
@@ -63,74 +63,31 @@
               :class="{ 'drag-over': isDragOver }"
               @click="triggerUpload"
             >
-              <div class="tooth-wrap" aria-hidden="true">
-                <div class="tooth-ring ring-1"></div>
-                <div class="tooth-ring ring-2"></div>
-                <div class="tooth-ring ring-3"></div>
-                <svg class="tooth-svg" viewBox="0 0 220 280" fill="none">
-                  <defs>
-                    <radialGradient id="toothBody" cx="50%" cy="30%" r="60%">
-                      <stop offset="0%" stop-color="#e4fff6" stop-opacity="0.98" />
-                      <stop offset="42%" stop-color="#67ffd0" stop-opacity="0.72" />
-                      <stop offset="72%" stop-color="#1bc5a2" stop-opacity="0.42" />
-                      <stop offset="100%" stop-color="#0a4d3e" stop-opacity="0.18" />
-                    </radialGradient>
-                    <linearGradient id="toothRoot" x1="50%" y1="0%" x2="50%" y2="100%">
-                      <stop offset="0%" stop-color="#2cfab5" stop-opacity="0.68" />
-                      <stop offset="100%" stop-color="#0a4d3e" stop-opacity="0.08" />
-                    </linearGradient>
-                    <filter id="toothGlow">
-                      <feGaussianBlur stdDeviation="7" result="blur" />
-                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
-                  </defs>
-
-                  <path
-                    d="M110 28c-22 0-39 16-41 37-3 22 4 43 16 64 7 13 13 24 17 35h16c4-11 10-22 17-35 12-21 19-42 16-64-2-21-19-37-41-37z"
-                    fill="url(#toothBody)"
-                    filter="url(#toothGlow)"
-                  />
-                  <path
-                    d="M91 161c-4 18-9 40-13 61-2 10 1 18 5 22"
-                    stroke="url(#toothRoot)"
-                    stroke-width="8"
-                    stroke-linecap="round"
-                  />
-                  <path
-                    d="M129 161c4 18 9 40 13 61 2 10-1 18-5 22"
-                    stroke="url(#toothRoot)"
-                    stroke-width="8"
-                    stroke-linecap="round"
-                  />
-                  <path
-                    d="M110 161c0 16 0 40 0 62"
-                    stroke="url(#toothRoot)"
-                    stroke-width="6"
-                    stroke-linecap="round"
-                  />
-                  <circle cx="64" cy="72" r="1.6" fill="#2cfab5" opacity="0.45" />
-                  <circle cx="162" cy="86" r="1.2" fill="#2cfab5" opacity="0.36" />
-                  <circle cx="78" cy="152" r="1" fill="#2cfab5" opacity="0.3" />
-                  <circle cx="148" cy="146" r="1.4" fill="#2cfab5" opacity="0.34" />
-                </svg>
-                <div class="floor-grid"></div>
-              </div>
-
-              <div class="empty-copy">
-                <div class="empty-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                    <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" />
-                  </svg>
+              <div class="empty-state-grid">
+                <div class="empty-visual" aria-hidden="true">
+                  <div class="empty-drop-chip">
+                    <span class="empty-drop-chip-dot"></span>
+                    <span>拖拽到此区域</span>
+                  </div>
                 </div>
-                <p class="empty-title">点击或拖拽上传口腔影像</p>
-                <p class="empty-hint">支持 JPG、PNG、DICOM，单个文件不超过 50MB</p>
-              </div>
 
-              <button class="upload-btn" type="button" @click.stop="triggerUpload">
-                <span>+</span>
-                <span>上传影像</span>
-              </button>
+                <div class="empty-copy">
+                  <div class="empty-kicker">AI 影像采集入口</div>
+                  <p class="empty-title">点击或拖拽上传口腔影像</p>
+                  <p class="empty-hint">支持 JPG、PNG、DICOM，上传后自动进入 AI 扫描流程。</p>
+
+                  <div class="empty-specs">
+                    <span class="empty-spec-chip">JPG / PNG / DICOM</span>
+                    <span class="empty-spec-chip">单文件 ≤ 50MB</span>
+                    <span class="empty-spec-chip">自动进入分析</span>
+                  </div>
+
+                  <button class="upload-btn" type="button" @click.stop="triggerUpload">
+                    <span class="upload-btn-icon">+</span>
+                    <span>上传影像</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div v-else-if="state === 'scanning'" class="scan-state">
@@ -153,65 +110,277 @@
             </div>
 
             <div v-else class="result-state">
-              <div class="result-box">
-                <img :src="resultImagePreview" alt="分析结果影像" class="stage-image" />
-                <div
-                  v-for="annotation in activeAnnotations"
-                  :key="annotation.id"
-                  class="annotation-tooth-wrap"
-                  :style="{
-                    left: `${annotation.x}%`,
-                    top: `${annotation.y}%`,
-                    '--id': annotation.id
-                  }"
-                  @mouseenter="hoveredAnno = annotation.id"
-                  @mouseleave="hoveredAnno = null"
-                >
-                  <svg class="annotation-tooth" viewBox="0 0 220 280" fill="none">
-                    <defs>
-                      <radialGradient :id="'toothBodyGrad-' + annotation.id" cx="50%" cy="30%" r="60%">
-                        <stop offset="0%" :stop-color="annotation.color" stop-opacity="0.8" />
-                        <stop offset="70%" :stop-color="annotation.color" stop-opacity="0.4" />
-                        <stop offset="100%" :stop-color="annotation.color" stop-opacity="0.1" />
-                      </radialGradient>
-                      <linearGradient :id="'toothRootGrad-' + annotation.id" x1="50%" y1="0%" x2="50%" y2="100%">
-                        <stop offset="0%" :stop-color="annotation.color" stop-opacity="0.6" />
-                        <stop offset="100%" :stop-color="annotation.color" stop-opacity="0.1" />
-                      </linearGradient>
-                      <filter :id="'toothGlow-' + annotation.id">
-                        <feGaussianBlur stdDeviation="8" result="blur" />
-                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                      </filter>
-                    </defs>
+              <div class="result-toolbar">
+                <div class="view-switch" role="tablist" aria-label="影像视图切换">
+                  <button
+                    v-for="mode in viewModes"
+                    :key="mode.key"
+                    class="view-switch-btn"
+                    :class="{ active: activeView === mode.key }"
+                    type="button"
+                    :aria-pressed="activeView === mode.key"
+                    @click="activeView = mode.key"
+                  >
+                    <span class="view-switch-icon" v-html="mode.icon"></span>
+                    <span>{{ mode.label }}</span>
+                  </button>
+                </div>
 
-                    <g :filter="'url(#toothGlow-' + annotation.id + ')'">
-                      <path
-                        d="M110 28c-22 0-39 16-41 37-3 22 4 43 16 64 7 13 13 24 17 35h16c4-11 10-22 17-35 12-21 19-42 16-64-2-21-19-37-41-37z"
-                        :fill="'url(#toothBodyGrad-' + annotation.id + ')'"
-                      />
-                      <path
-                        d="M91 161c-4 18-9 40-13 61-2 10 1 18 5 22"
-                        :stroke="'url(#toothRootGrad-' + annotation.id + ')'"
-                        stroke-width="8"
-                        stroke-linecap="round"
-                      />
-                      <path
-                        d="M129 161c4 18 9 40 13 61 2 10-1 18-5 22"
-                        :stroke="'url(#toothRootGrad-' + annotation.id + ')'"
-                        stroke-width="8"
-                        stroke-linecap="round"
-                      />
-                      <path
-                        d="M110 161c0 16 0 40 0 62"
-                        :stroke="'url(#toothRootGrad-' + annotation.id + ')'"
-                        stroke-width="6"
-                        stroke-linecap="round"
-                      />
-                    </g>
-                  </svg>
-                  <div v-if="hoveredAnno === annotation.id" class="annotation-tip">
-                    {{ annotation.label }}
+                <div class="view-note">
+                  <span class="view-note-label">{{ activeViewMeta.label }}</span>
+                  <p>{{ activeViewMeta.description }}</p>
+                </div>
+              </div>
+
+              <div class="result-box advanced-result-box">
+                <template v-if="activeView === 'compare'">
+                  <div class="compare-layout">
+                    <div class="compare-pane">
+                      <span class="compare-badge">原始影像</span>
+                      <img :src="imagePreview" alt="原始口腔影像" class="stage-image" />
+                    </div>
+
+                    <div class="compare-divider">
+                      <span>AI 对比</span>
+                    </div>
+
+                    <div class="compare-pane compare-pane-annotated">
+                      <span class="compare-badge compare-badge-accent">AI 标注</span>
+                      <template v-if="useContainedDemoCase">
+                        <div class="stage-media-shell compare-media-shell">
+                          <div class="stage-media-frame">
+                            <img :src="resultImagePreview" alt="AI 标注结果影像" class="stage-image stage-image-contained" />
+                            <div class="annotation-layer compare-overlay">
+                              <button
+                                v-for="annotation in activeAnnotations"
+                                :key="annotation.id"
+                                class="annotation-region"
+                                :class="{ focused: focusAnnotation?.id === annotation.id }"
+                                :style="annotationStyle(annotation)"
+                                type="button"
+                                @mouseenter="hoveredAnno = annotation.id"
+                                @mouseleave="hoveredAnno = null"
+                              >
+                                <span class="annotation-region-outline"></span>
+                                <span class="annotation-tag">
+                                  <span class="annotation-tag-id">{{ regionCode(annotation.id) }}</span>
+                                  <span class="annotation-tag-text">{{ annotation.finding }}</span>
+                                </span>
+                              </button>
+                            </div>
+
+                            <div class="stage-legend compare-legend">
+                              <div class="stage-legend-head">
+                                <span>风险图例</span>
+                                <small>编号与明细表同步</small>
+                              </div>
+                              <div class="stage-legend-list">
+                                <div v-for="item in annotationLegend" :key="item.key" class="stage-legend-item">
+                                  <span class="stage-legend-dot" :style="{ backgroundColor: item.color }"></span>
+                                  <span>{{ item.label }}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+
+                      <template v-else>
+                        <img :src="resultImagePreview" alt="AI 标注结果影像" class="stage-image" />
+                        <div class="annotation-layer compare-overlay">
+                          <button
+                            v-for="annotation in activeAnnotations"
+                            :key="annotation.id"
+                            class="annotation-region"
+                            :class="{ focused: focusAnnotation?.id === annotation.id }"
+                            :style="annotationStyle(annotation)"
+                            type="button"
+                            @mouseenter="hoveredAnno = annotation.id"
+                            @mouseleave="hoveredAnno = null"
+                          >
+                            <span class="annotation-region-outline"></span>
+                            <span class="annotation-tag">
+                              <span class="annotation-tag-id">{{ regionCode(annotation.id) }}</span>
+                              <span class="annotation-tag-text">{{ annotation.finding }}</span>
+                            </span>
+                          </button>
+                        </div>
+
+                        <div class="stage-legend compare-legend">
+                          <div class="stage-legend-head">
+                            <span>风险图例</span>
+                            <small>编号与明细表同步</small>
+                          </div>
+                          <div class="stage-legend-list">
+                            <div v-for="item in annotationLegend" :key="item.key" class="stage-legend-item">
+                              <span class="stage-legend-dot" :style="{ backgroundColor: item.color }"></span>
+                              <span>{{ item.label }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
                   </div>
+                </template>
+
+                <template v-else>
+                  <template v-if="useContainedDemoCase">
+                    <div class="stage-media-shell">
+                      <div class="stage-media-frame">
+                        <img
+                          :src="activeView === 'original' ? imagePreview : resultImagePreview"
+                          :alt="activeView === 'original' ? '原始口腔影像' : 'AI 诊断结果影像'"
+                          class="stage-image stage-image-contained"
+                        />
+
+                        <div v-if="activeView === 'annotation'" class="annotation-layer">
+                          <button
+                            v-for="annotation in activeAnnotations"
+                            :key="annotation.id"
+                            class="annotation-region"
+                            :class="{ focused: focusAnnotation?.id === annotation.id }"
+                            :style="annotationStyle(annotation)"
+                            type="button"
+                            @mouseenter="hoveredAnno = annotation.id"
+                            @mouseleave="hoveredAnno = null"
+                          >
+                            <span class="annotation-region-outline"></span>
+                            <span class="annotation-tag">
+                              <span class="annotation-tag-id">{{ regionCode(annotation.id) }}</span>
+                              <span class="annotation-tag-text">{{ annotation.finding }}</span>
+                            </span>
+                          </button>
+                        </div>
+
+                        <div v-if="activeView === 'heatmap'" class="heatmap-layer">
+                          <div
+                            v-for="annotation in activeAnnotations"
+                            :key="annotation.id"
+                            class="heat-cloud"
+                            :style="heatStyle(annotation)"
+                          ></div>
+                          <button
+                            v-for="annotation in activeAnnotations"
+                            :key="`heat-${annotation.id}`"
+                            class="heat-anchor"
+                            :style="heatAnchorStyle(annotation)"
+                            type="button"
+                            @mouseenter="hoveredAnno = annotation.id"
+                            @mouseleave="hoveredAnno = null"
+                          >
+                            {{ regionCode(annotation.id) }}
+                          </button>
+                        </div>
+
+                        <div v-if="activeView === 'annotation'" class="stage-legend">
+                          <div class="stage-legend-head">
+                            <span>风险图例</span>
+                            <small>编号与明细表同步</small>
+                          </div>
+                          <div class="stage-legend-list">
+                            <div v-for="item in annotationLegend" :key="item.key" class="stage-legend-item">
+                              <span class="stage-legend-dot" :style="{ backgroundColor: item.color }"></span>
+                              <span>{{ item.label }}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div v-if="activeView === 'heatmap'" class="heatmap-scale">
+                          <span>模型关注度</span>
+                          <div class="heatmap-scale-bar"></div>
+                          <div class="heatmap-scale-labels">
+                            <small>低</small>
+                            <small>高</small>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <template v-else>
+                    <img
+                      :src="activeView === 'original' ? imagePreview : resultImagePreview"
+                      :alt="activeView === 'original' ? '原始口腔影像' : 'AI 诊断结果影像'"
+                      class="stage-image"
+                    />
+
+                    <div v-if="activeView === 'annotation'" class="annotation-layer">
+                      <button
+                        v-for="annotation in activeAnnotations"
+                        :key="annotation.id"
+                        class="annotation-region"
+                        :class="{ focused: focusAnnotation?.id === annotation.id }"
+                        :style="annotationStyle(annotation)"
+                        type="button"
+                        @mouseenter="hoveredAnno = annotation.id"
+                        @mouseleave="hoveredAnno = null"
+                      >
+                        <span class="annotation-region-outline"></span>
+                        <span class="annotation-tag">
+                          <span class="annotation-tag-id">{{ regionCode(annotation.id) }}</span>
+                          <span class="annotation-tag-text">{{ annotation.finding }}</span>
+                        </span>
+                      </button>
+                    </div>
+
+                    <div v-if="activeView === 'heatmap'" class="heatmap-layer">
+                      <div
+                        v-for="annotation in activeAnnotations"
+                        :key="annotation.id"
+                        class="heat-cloud"
+                        :style="heatStyle(annotation)"
+                      ></div>
+                      <button
+                        v-for="annotation in activeAnnotations"
+                        :key="`heat-${annotation.id}`"
+                        class="heat-anchor"
+                        :style="heatAnchorStyle(annotation)"
+                        type="button"
+                        @mouseenter="hoveredAnno = annotation.id"
+                        @mouseleave="hoveredAnno = null"
+                      >
+                        {{ regionCode(annotation.id) }}
+                      </button>
+                    </div>
+
+                    <div v-if="activeView === 'annotation'" class="stage-legend">
+                      <div class="stage-legend-head">
+                        <span>风险图例</span>
+                        <small>编号与明细表同步</small>
+                      </div>
+                      <div class="stage-legend-list">
+                        <div v-for="item in annotationLegend" :key="item.key" class="stage-legend-item">
+                          <span class="stage-legend-dot" :style="{ backgroundColor: item.color }"></span>
+                          <span>{{ item.label }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div v-if="activeView === 'heatmap'" class="heatmap-scale">
+                      <span>模型关注度</span>
+                      <div class="heatmap-scale-bar"></div>
+                      <div class="heatmap-scale-labels">
+                        <small>低</small>
+                        <small>高</small>
+                      </div>
+                    </div>
+                  </template>
+                </template>
+
+                <div
+                  v-if="focusAnnotation && activeView !== 'original'"
+                  class="focus-card"
+                  :class="{ compare: activeView === 'compare' }"
+                >
+                  <div class="focus-card-head">
+                    <span class="focus-card-code">{{ regionCode(focusAnnotation.id) }}</span>
+                    <span class="focus-card-risk" :style="riskBadgeStyle(focusAnnotation.level)">
+                      {{ riskLabelFor(focusAnnotation.level) }}
+                    </span>
+                  </div>
+                  <strong>{{ focusAnnotation.finding }}</strong>
+                  <p>{{ focusAnnotation.tooth }} · {{ focusAnnotation.region }}</p>
+                  <small>置信度 {{ focusAnnotation.confidence.toFixed(1) }}%</small>
                 </div>
               </div>
             </div>
@@ -288,7 +457,7 @@
       <div class="right-column">
         <section class="panel side-panel">
           <div class="panel-head compact">
-            <div class="panel-title">AI 综合评估</div>
+            <div class="panel-title">综合风险指数</div>
             <button class="icon-btn" type="button" aria-label="说明">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
                 <circle cx="8" cy="8" r="7" />
@@ -304,10 +473,10 @@
                   <stop offset="0%" stop-color="#ff4757" />
                   <stop offset="35%" stop-color="#ff9f43" />
                   <stop offset="70%" stop-color="#ffd24a" />
-                  <stop offset="100%" stop-color="#2cfab5" />
+                  <stop offset="100%" stop-color="#35f8ff" />
                 </linearGradient>
               </defs>
-              <circle cx="60" cy="60" r="52" stroke="#173036" stroke-width="8" fill="none" />
+              <circle cx="60" cy="60" r="52" stroke="#102857" stroke-width="8" fill="none" />
               <circle
                 cx="60"
                 cy="60"
@@ -332,7 +501,7 @@
             {{
               state === 'result'
                 ? '存在多个需要处理的口腔问题，建议尽快结合临床情况制定治疗方案。'
-                : '上传影像后将生成 AI 风险评级与综合评估。'
+                : '上传影像后将生成 AI 风险评级与综合风险指数。'
             }}
           </p>
         </section>
@@ -344,7 +513,7 @@
 
           <div class="donut-wrap">
             <svg viewBox="0 0 120 120" class="donut-chart" aria-hidden="true">
-              <circle cx="60" cy="60" r="45" stroke="#173036" stroke-width="14" fill="none" />
+              <circle cx="60" cy="60" r="45" stroke="#102857" stroke-width="14" fill="none" />
               <circle
                 v-for="item in riskSegments"
                 v-show="state === 'result' && item.length > 0"
@@ -428,20 +597,79 @@
         </section>
       </div>
     </div>
+
+    <section class="panel detail-panel">
+      <div class="panel-head detail-head">
+        <div>
+          <div class="panel-title">异常区域明细</div>
+          <p class="panel-subtitle">编号与 AI 标注视图联动，便于复核异常区域、风险等级与处置建议。</p>
+        </div>
+        <span class="detail-count">{{ state === 'result' ? `${activeAnnotations.length} 项异常` : '等待分析' }}</span>
+      </div>
+
+      <div v-if="state === 'result'" class="detail-table-wrap">
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>编号</th>
+              <th>牙位 / 区域</th>
+              <th>疑似异常</th>
+              <th>风险等级</th>
+              <th>置信度</th>
+              <th>处理建议</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="annotation in activeAnnotations"
+              :key="`detail-${annotation.id}`"
+              :class="{ active: focusAnnotation?.id === annotation.id }"
+              @mouseenter="hoveredAnno = annotation.id"
+              @mouseleave="hoveredAnno = null"
+            >
+              <td>
+                <span class="table-code">{{ regionCode(annotation.id) }}</span>
+              </td>
+              <td>
+                <div class="table-main">{{ annotation.tooth }}</div>
+                <div class="table-sub">{{ annotation.region }}</div>
+              </td>
+              <td>{{ annotation.finding }}</td>
+              <td>
+                <span class="risk-badge" :style="riskBadgeStyle(annotation.level)">
+                  {{ riskLabelFor(annotation.level) }}
+                </span>
+              </td>
+              <td>{{ annotation.confidence.toFixed(1) }}%</td>
+              <td class="suggestion-cell">{{ annotation.recommendation }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-else class="detail-empty">
+        上传影像并完成 AI 分析后，将在此展示异常区域明细、风险等级与处理建议。
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue'
 import {
+  DEMO_CASES,
   MOCK_ANNOTATIONS,
   MOCK_RESULTS,
   RISK_COLORS,
+  RISK_LABELS,
   type AnalysisResults,
   type Annotation,
+  type DemoCase,
   type DiagState,
   type RiskLevel,
 } from './diagnosis'
+
+type ViewMode = 'annotation' | 'original' | 'heatmap' | 'compare'
 
 const state = ref<DiagState>('empty')
 const isDragOver = ref(false)
@@ -449,29 +677,50 @@ const imagePreview = ref('')
 const scanProgress = ref(0)
 const hoveredAnno = ref<number | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const activeView = ref<ViewMode>('annotation')
+const activeDemoCase = ref<DemoCase | null>(null)
 
-const SPECIAL_SCAN_FILE_NAME = '20_c1.jpg'
-const SPECIAL_RESULT_IMAGE_URL = '/20show.png'
-const specialUploadMatched = ref(false)
-
-const specialResults: AnalysisResults = {
-  ...MOCK_RESULTS,
-  anomalies: 6,
-  riskHigh: 2,
-  riskMedium: 1,
-  riskLow: 3,
-}
+const viewModes: Array<{ key: ViewMode; label: string; description: string; icon: string }> = [
+  {
+    key: 'annotation',
+    label: 'AI标注',
+    description: '默认显示异常区域编号、风险颜色标注与图例说明，便于快速定位病灶。',
+    icon: `<svg viewBox="0 0 18 18" fill="none"><path d="M3 13.5V4.5A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5v9A1.5 1.5 0 0 1 13.5 15h-9A1.5 1.5 0 0 1 3 13.5Z" stroke="currentColor" stroke-width="1.4"/><path d="M6 11.5 8 9.5l1.5 1.5L12 8.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  },
+  {
+    key: 'original',
+    label: '原始影像',
+    description: '保留原始口腔影像，用于人工复核和与 AI 结果进行基线对照。',
+    icon: `<svg viewBox="0 0 18 18" fill="none"><rect x="2.5" y="3" width="13" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="m5.5 11 2.2-2.2 1.8 1.8 2.8-3 1.2 1.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.2" cy="6.4" r="1.1" fill="currentColor"/></svg>`,
+  },
+  {
+    key: 'heatmap',
+    label: '热力图',
+    description: '以半透明渐变热区呈现模型关注区域，不遮挡原始影像关键结构。',
+    icon: `<svg viewBox="0 0 18 18" fill="none"><path d="M9 2.5c1.8 2 3.8 4.2 3.8 7a3.8 3.8 0 1 1-7.6 0c0-1.9 1-3.4 2.4-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="9" cy="10" r="1.8" fill="currentColor" fill-opacity=".45"/></svg>`,
+  },
+  {
+    key: 'compare',
+    label: '对比视图',
+    description: '并排展示原始影像与 AI 标注结果，便于赛题演示和临床沟通。',
+    icon: `<svg viewBox="0 0 18 18" fill="none"><rect x="2.5" y="3" width="5.5" height="12" rx="1.6" stroke="currentColor" stroke-width="1.4"/><rect x="10" y="3" width="5.5" height="12" rx="1.6" stroke="currentColor" stroke-width="1.4"/><path d="M9 4v10" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/></svg>`,
+  },
+]
 
 const activeResults = computed<AnalysisResults>(() =>
-  specialUploadMatched.value ? specialResults : MOCK_RESULTS,
+  activeDemoCase.value?.results ?? MOCK_RESULTS,
 )
 
 const activeAnnotations = computed<Annotation[]>(() =>
-  specialUploadMatched.value ? [] : MOCK_ANNOTATIONS,
+  activeDemoCase.value?.annotations ?? MOCK_ANNOTATIONS,
 )
 
 const resultImagePreview = computed(() =>
-  specialUploadMatched.value && state.value === 'result' ? SPECIAL_RESULT_IMAGE_URL : imagePreview.value,
+  activeDemoCase.value && state.value === 'result' ? activeDemoCase.value.resultImageUrl : imagePreview.value,
+)
+
+const useContainedDemoCase = computed(
+  () => state.value === 'result' && activeDemoCase.value?.displayMode === 'contain',
 )
 
 let previewObjectUrl: string | null = null
@@ -481,6 +730,9 @@ let finishTimerId = 0
 const scoreCircumference = 2 * Math.PI * 52
 const donutCircumference = 2 * Math.PI * 45
 const hasResult = computed(() => state.value === 'result')
+const activeViewMeta = computed(
+  () => viewModes.find((item) => item.key === activeView.value) ?? viewModes[0],
+)
 
 const stateLabel = computed(() => {
   switch (state.value) {
@@ -512,14 +764,19 @@ const riskLabel = computed(() => {
 })
 
 const totalRisk = computed(
-  () => activeResults.value.riskHigh + activeResults.value.riskMedium + activeResults.value.riskLow,
+  () =>
+    activeResults.value.riskHigh +
+    activeResults.value.riskMedium +
+    activeResults.value.riskLow +
+    activeResults.value.riskOther,
 )
 
 const riskLegend = computed(() => {
   const items = [
     { key: 'high', label: '高风险', count: activeResults.value.riskHigh, color: '#ff4757' },
     { key: 'medium', label: '中风险', count: activeResults.value.riskMedium, color: '#ff9f43' },
-    { key: 'low', label: '低风险', count: activeResults.value.riskLow, color: '#2cfab5' },
+    { key: 'low', label: '低风险', count: activeResults.value.riskLow, color: '#35f8ff' },
+    { key: 'other', label: '其他异常', count: activeResults.value.riskOther, color: '#a66bff' },
   ]
 
   return items.map((item) => ({
@@ -543,8 +800,63 @@ const riskSegments = computed(() => {
   })
 })
 
+const annotationLegend = computed(() => riskLegend.value.filter((item) => item.count > 0))
+
+const focusAnnotation = computed<Annotation | null>(() => {
+  if (!activeAnnotations.value.length) return null
+  return activeAnnotations.value.find((item) => item.id === hoveredAnno.value) ?? activeAnnotations.value[0]
+})
+
 function diagColor(level: RiskLevel) {
   return RISK_COLORS[level]
+}
+
+function riskLabelFor(level: RiskLevel) {
+  return RISK_LABELS[level]
+}
+
+function regionCode(id: number) {
+  return `#${String(id).padStart(2, '0')}`
+}
+
+function riskBadgeStyle(level: RiskLevel) {
+  const color = diagColor(level)
+
+  return {
+    color,
+    borderColor: `${color}33`,
+    background: `${color}1f`,
+  }
+}
+
+function annotationStyle(annotation: Annotation) {
+  return {
+    left: `${annotation.left}%`,
+    top: `${annotation.top}%`,
+    width: `${annotation.width}%`,
+    height: `${annotation.height}%`,
+    transform: `rotate(${annotation.rotate ?? 0}deg)`,
+    '--accent': diagColor(annotation.level),
+  }
+}
+
+function heatStyle(annotation: Annotation) {
+  return {
+    left: `${annotation.heatLeft}%`,
+    top: `${annotation.heatTop}%`,
+    width: `${annotation.heatWidth}%`,
+    height: `${annotation.heatHeight}%`,
+    opacity: annotation.heatOpacity,
+    '--heat': diagColor(annotation.level),
+  }
+}
+
+function heatAnchorStyle(annotation: Annotation) {
+  return {
+    left: `${annotation.heatLeft + annotation.heatWidth / 2}%`,
+    top: `${annotation.heatTop + annotation.heatHeight / 2}%`,
+    '--accent': diagColor(annotation.level),
+  }
 }
 
 function triggerUpload() {
@@ -576,7 +888,8 @@ function startScan(file: File) {
   cleanupAnimation()
   revokePreviewUrl()
   hoveredAnno.value = null
-  specialUploadMatched.value = isSpecialDemoUpload(file)
+  activeView.value = 'annotation'
+  activeDemoCase.value = resolveDemoCase(file)
   imagePreview.value = buildPreviewUrl(file)
   scanProgress.value = 0
   state.value = 'scanning'
@@ -611,8 +924,9 @@ function reset() {
   imagePreview.value = ''
   scanProgress.value = 0
   hoveredAnno.value = null
+  activeView.value = 'annotation'
   isDragOver.value = false
-  specialUploadMatched.value = false
+  activeDemoCase.value = null
 
   if (fileInput.value) {
     fileInput.value.value = ''
@@ -647,8 +961,9 @@ function buildPreviewUrl(file: File) {
   return createDicomPlaceholder(file.name)
 }
 
-function isSpecialDemoUpload(file: File) {
-  return file.name.trim().toLowerCase() === SPECIAL_SCAN_FILE_NAME
+function resolveDemoCase(file: File) {
+  const normalizedName = file.name.trim().toLowerCase()
+  return DEMO_CASES.find((item) => item.fileNames.includes(normalizedName)) ?? null
 }
 
 function createDicomPlaceholder(fileName: string) {
@@ -657,19 +972,19 @@ function createDicomPlaceholder(fileName: string) {
     <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
       <defs>
         <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#081519"/>
-          <stop offset="60%" stop-color="#0d252a"/>
-          <stop offset="100%" stop-color="#071014"/>
+          <stop offset="0%" stop-color="#08142b"/>
+          <stop offset="60%" stop-color="#0a1a3c"/>
+          <stop offset="100%" stop-color="#050d1d"/>
         </linearGradient>
       </defs>
       <rect width="1200" height="800" rx="36" fill="url(#bg)"/>
-      <rect x="96" y="96" width="1008" height="608" rx="28" fill="none" stroke="#2cfab5" stroke-opacity="0.24" stroke-width="3"/>
-      <circle cx="600" cy="325" r="118" fill="#2cfab5" fill-opacity="0.08" stroke="#2cfab5" stroke-opacity="0.5" stroke-width="3"/>
-      <path d="M600 232c-32 0-57 23-61 55-4 31 7 60 23 92 10 20 18 39 23 55h30c5-16 13-35 23-55 16-32 27-61 23-92-4-32-29-55-61-55z" fill="#9ef7d7" fill-opacity="0.2" stroke="#2cfab5" stroke-width="3"/>
-      <path d="M548 436c-8 33-19 93 3 125M652 436c8 33 19 93-3 125M600 436v136" stroke="#2cfab5" stroke-opacity="0.55" stroke-width="10" stroke-linecap="round"/>
-      <text x="600" y="182" fill="#e8fff5" font-size="34" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" text-anchor="middle">DICOM PREVIEW</text>
-      <text x="600" y="618" fill="#94c9b7" font-size="28" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" text-anchor="middle">${safeFileName}</text>
-      <text x="600" y="662" fill="#5d8f80" font-size="20" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" text-anchor="middle">当前页面为静态演示，占位图用于模拟 DICOM 导入效果</text>
+      <rect x="96" y="96" width="1008" height="608" rx="28" fill="none" stroke="#35f8ff" stroke-opacity="0.24" stroke-width="3"/>
+      <circle cx="600" cy="325" r="118" fill="#35f8ff" fill-opacity="0.08" stroke="#35f8ff" stroke-opacity="0.5" stroke-width="3"/>
+      <path d="M600 232c-32 0-57 23-61 55-4 31 7 60 23 92 10 20 18 39 23 55h30c5-16 13-35 23-55 16-32 27-61 23-92-4-32-29-55-61-55z" fill="#8effff" fill-opacity="0.2" stroke="#35f8ff" stroke-width="3"/>
+      <path d="M548 436c-8 33-19 93 3 125M652 436c8 33 19 93-3 125M600 436v136" stroke="#35f8ff" stroke-opacity="0.55" stroke-width="10" stroke-linecap="round"/>
+      <text x="600" y="182" fill="#f2f7ff" font-size="34" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" text-anchor="middle">DICOM PREVIEW</text>
+      <text x="600" y="618" fill="#b6c7e8" font-size="28" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" text-anchor="middle">${safeFileName}</text>
+      <text x="600" y="662" fill="#6f86b6" font-size="20" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" text-anchor="middle">当前页面为静态演示，占位图用于模拟 DICOM 导入效果</text>
     </svg>
   `
 
@@ -730,8 +1045,8 @@ onUnmounted(() => {
   min-height: 36px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: rgba(11, 36, 44, 0.52);
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(15, 31, 63, 0.52);
   color: var(--text-soft);
   font-size: 12px;
 }
@@ -762,15 +1077,15 @@ onUnmounted(() => {
 }
 
 .diag-btn-ghost {
-  background: rgba(46, 230, 200, 0.08);
-  border-color: rgba(46, 230, 200, 0.16);
+  background: rgba(0, 229, 255, 0.08);
+  border-color: rgba(0, 229, 255, 0.16);
   color: var(--brand-300);
 }
 
 .diag-btn-primary {
-  background: linear-gradient(135deg, #6fffd6, #2ee6c8);
+  background: linear-gradient(135deg, #69ffff, #35f8ff);
   color: #05211c;
-  box-shadow: 0 10px 26px rgba(46, 230, 200, 0.16);
+  box-shadow: 0 10px 26px rgba(0, 229, 255, 0.16);
 }
 
 .content-grid {
@@ -793,8 +1108,8 @@ onUnmounted(() => {
 
 .panel {
   border-radius: 18px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: linear-gradient(180deg, rgba(11, 36, 44, 0.76), rgba(6, 20, 24, 0.94));
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: linear-gradient(180deg, rgba(15, 31, 63, 0.76), rgba(6, 20, 24, 0.94));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
@@ -833,7 +1148,7 @@ onUnmounted(() => {
   bottom: 4px;
   width: 3px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #77ffdf, #2ee6c8);
+  background: linear-gradient(180deg, #6ccfff, #35f8ff);
 }
 
 .panel-subtitle,
@@ -855,21 +1170,21 @@ onUnmounted(() => {
   min-height: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(94, 234, 212, 0.14);
-  background: rgba(94, 234, 212, 0.05);
+  border: 1px solid rgba(112, 224, 255, 0.14);
+  background: rgba(112, 224, 255, 0.05);
   color: var(--text-soft);
   font-size: 12px;
 }
 
 .state-chip.scanning {
   color: var(--brand-300);
-  background: rgba(46, 230, 200, 0.12);
+  background: rgba(0, 229, 255, 0.12);
 }
 
 .state-chip.result {
   color: #073026;
   border-color: transparent;
-  background: linear-gradient(135deg, #82ffe0, #2ee6c8);
+  background: linear-gradient(135deg, #6ccfff, #35f8ff);
 }
 
 .icon-btn {
@@ -877,9 +1192,9 @@ onUnmounted(() => {
   place-items: center;
   width: 32px;
   height: 32px;
-  border: 1px solid rgba(94, 234, 212, 0.14);
+  border: 1px solid rgba(112, 224, 255, 0.14);
   border-radius: 10px;
-  background: rgba(46, 230, 200, 0.06);
+  background: rgba(0, 229, 255, 0.06);
   color: var(--brand-300);
   cursor: pointer;
 }
@@ -902,9 +1217,9 @@ onUnmounted(() => {
   min-height: 420px;
   padding: 32px 24px;
   border-radius: 16px;
-  border: 1px dashed rgba(46, 230, 200, 0.16);
+  border: 1px dashed rgba(0, 229, 255, 0.16);
   background:
-    radial-gradient(circle at 50% 24%, rgba(46, 230, 200, 0.08), transparent 36%),
+    radial-gradient(circle at 50% 24%, rgba(0, 229, 255, 0.08), transparent 36%),
     linear-gradient(180deg, rgba(5, 14, 17, 0.98), rgba(3, 9, 11, 0.98));
   overflow: hidden;
   cursor: pointer;
@@ -912,113 +1227,164 @@ onUnmounted(() => {
 }
 
 .empty-state.drag-over {
-  border-color: rgba(94, 234, 212, 0.4);
-  box-shadow: 0 0 32px rgba(46, 230, 200, 0.12);
+  border-color: rgba(112, 224, 255, 0.4);
+  box-shadow: 0 0 32px rgba(0, 229, 255, 0.12);
 }
 
-.tooth-wrap {
+.empty-state-grid {
   position: relative;
-  width: 220px;
-  height: 260px;
-  margin-bottom: 18px;
+  z-index: 1;
+  width: min(100%, 980px);
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 420px);
+  align-items: center;
+  justify-content: center;
+  gap: 42px;
 }
 
-.tooth-ring {
+.empty-visual {
+  position: relative;
+  min-height: 320px;
+  padding: 28px;
+  border-radius: 24px;
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(7, 20, 38, 0.08), rgba(2, 9, 20, 0.18)),
+    url('/backtooth.png') center center / cover no-repeat;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 20px 40px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.empty-visual::after {
+  content: '';
   position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(94, 234, 212, 0.14);
-  animation: pulseRing 3s ease-in-out infinite;
+  inset: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(112, 224, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(2, 9, 20, 0.06), transparent 38%, rgba(2, 9, 20, 0.12) 100%);
+  pointer-events: none;
 }
 
-.ring-1 {
-  width: 170px;
-  height: 170px;
-  top: 32px;
-  left: 25px;
-}
-
-.ring-2 {
-  width: 210px;
-  height: 210px;
-  top: 12px;
-  left: 5px;
-  animation-delay: .8s;
-}
-
-.ring-3 {
-  width: 250px;
-  height: 250px;
-  top: -8px;
-  left: -15px;
-  animation-delay: 1.6s;
-  opacity: .56;
-}
-
-.tooth-svg {
-  width: 100%;
-  height: 100%;
-  filter: drop-shadow(0 0 26px rgba(46, 230, 200, 0.24));
-  animation: floatTooth 4s ease-in-out infinite;
-}
-
-.floor-grid {
+.empty-drop-chip {
   position: absolute;
   left: 50%;
-  bottom: 4px;
-  width: 290px;
-  height: 56px;
+  bottom: 18px;
   transform: translateX(-50%);
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(112, 224, 255, 0.14);
+  background: rgba(3, 16, 32, 0.78);
+  backdrop-filter: blur(10px);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 1;
+}
+
+.empty-drop-chip-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background:
-    radial-gradient(ellipse at center, rgba(46, 230, 200, 0.1), transparent 70%),
-    repeating-radial-gradient(circle at center, transparent 0 22px, rgba(46, 230, 200, 0.08) 22px 23px);
+  background: #35f8ff;
+  box-shadow: 0 0 12px rgba(53, 248, 255, 0.82);
 }
 
 .empty-copy {
-  text-align: center;
+  text-align: left;
 }
 
-.empty-icon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  margin: 0 auto 10px;
+.empty-kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(112, 224, 255, 0.14);
+  background: rgba(0, 229, 255, 0.08);
   color: var(--brand-300);
-}
-
-.empty-icon svg {
-  width: 24px;
-  height: 24px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 
 .empty-title {
-  margin: 0 0 6px;
+  margin: 18px 0 10px;
   color: var(--text);
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .empty-hint {
   margin: 0;
-  color: var(--ink-3);
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.empty-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.empty-spec-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(112, 224, 255, 0.1);
+  background: rgba(15, 31, 63, 0.52);
+  color: var(--text-soft);
   font-size: 12px;
+  font-weight: 600;
 }
 
 .upload-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 18px;
-  min-height: 42px;
-  padding: 0 22px;
+  gap: 10px;
+  margin-top: 24px;
+  min-height: 46px;
+  padding: 0 24px;
   border-radius: 999px;
-  border: 1px solid rgba(46, 230, 200, 0.36);
-  background: rgba(46, 230, 200, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.24);
+  background: linear-gradient(135deg, rgba(105, 255, 255, 0.16), rgba(53, 248, 255, 0.08));
   color: var(--brand-300);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, filter .18s ease;
+}
+
+.upload-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(105, 255, 255, 0.42);
+  filter: brightness(1.06);
+}
+
+.upload-btn-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(105, 255, 255, 0.16);
+  color: #dffbff;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .scan-state,
@@ -1028,14 +1394,127 @@ onUnmounted(() => {
   gap: 16px;
 }
 
+.result-toolbar {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.view-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(8, 20, 44, 0.46);
+}
+
+.view-switch-btn {
+  min-width: 118px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color .18s ease, border-color .18s ease, background .18s ease, transform .18s ease;
+}
+
+.view-switch-btn:hover {
+  color: var(--text);
+  border-color: rgba(112, 224, 255, 0.14);
+  background: rgba(0, 229, 255, 0.06);
+}
+
+.view-switch-btn.active {
+  color: #05211c;
+  border-color: transparent;
+  background: linear-gradient(135deg, #7cf7ff, #35f8ff);
+  box-shadow: 0 8px 22px rgba(0, 229, 255, 0.16);
+}
+
+.view-switch-btn.active .view-switch-icon {
+  color: inherit;
+}
+
+.view-switch-icon {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  color: currentColor;
+}
+
+.view-switch-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.view-note {
+  flex: 1;
+  min-width: 260px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(112, 224, 255, 0.1);
+  background: linear-gradient(135deg, rgba(15, 31, 63, 0.52), rgba(6, 20, 24, 0.7));
+}
+
+.view-note-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--brand-300);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.view-note p {
+  margin: 6px 0 0;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .scan-box,
 .result-box {
   position: relative;
   min-height: 380px;
   overflow: hidden;
   border-radius: 16px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: #010709;
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: #020814;
+}
+
+.advanced-result-box {
+  min-height: 460px;
+}
+
+.advanced-result-box > .stage-image {
+  min-height: 460px;
+  max-height: 540px;
+}
+
+.stage-media-shell {
+  min-height: 460px;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.stage-media-frame {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
 }
 
 .stage-image {
@@ -1044,6 +1523,14 @@ onUnmounted(() => {
   min-height: 380px;
   max-height: 460px;
   object-fit: cover;
+}
+
+.stage-image-contained {
+  width: auto;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 508px;
+  object-fit: contain;
 }
 
 .scan-overlay {
@@ -1062,15 +1549,15 @@ onUnmounted(() => {
 
 .scan-line {
   height: 3px;
-  background: #2ee6c8;
-  box-shadow: 0 0 16px rgba(46, 230, 200, 0.85);
+  background: #35f8ff;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.85);
   animation: scanMove 2.4s ease-in-out infinite;
   z-index: 2;
 }
 
 .scan-trail {
   height: 120px;
-  background: linear-gradient(to bottom, rgba(46, 230, 200, 0.22), transparent 80%);
+  background: linear-gradient(to bottom, rgba(0, 229, 255, 0.22), transparent 80%);
   filter: blur(2px);
   animation: trailMove 2.4s ease-in-out infinite;
   z-index: 1;
@@ -1081,7 +1568,7 @@ onUnmounted(() => {
   width: 22px;
   height: 22px;
   border-style: solid;
-  border-color: #2ee6c8;
+  border-color: #35f8ff;
   border-width: 0;
   z-index: 3;
 }
@@ -1123,20 +1610,364 @@ onUnmounted(() => {
 .progress-bar {
   height: 6px;
   border-radius: 999px;
-  background: #173036;
+  background: #102857;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #2ee6c8, #8fffe1);
-  box-shadow: 0 0 16px rgba(46, 230, 200, 0.28);
+  background: linear-gradient(90deg, #35f8ff, #3f79ff);
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.28);
 }
 
 .progress-text {
   color: var(--brand-300);
   font-size: 12px;
+}
+
+.annotation-layer,
+.heatmap-layer,
+.compare-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.annotation-layer {
+  pointer-events: none;
+}
+
+.annotation-region {
+  position: absolute;
+  display: block;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.annotation-region-outline {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  border: 1.5px solid var(--accent);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 32%),
+    rgba(2, 9, 20, 0.14);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 0 18px color-mix(in srgb, var(--accent) 32%, transparent);
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.annotation-region:hover .annotation-region-outline,
+.annotation-region.focused .annotation-region-outline {
+  transform: scale(1.03);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 28%),
+    rgba(2, 9, 20, 0.2);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 0 24px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.annotation-tag {
+  position: absolute;
+  left: -2px;
+  bottom: calc(100% + 8px);
+  max-width: 210px;
+  padding: 5px 10px 5px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(112, 224, 255, 0.16);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(3, 16, 32, 0.92);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
+  white-space: nowrap;
+}
+
+.annotation-tag-id {
+  min-width: 34px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #07141c;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.annotation-tag-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stage-legend {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 180px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(3, 16, 32, 0.88);
+  backdrop-filter: blur(12px);
+}
+
+.stage-legend-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.stage-legend-head span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stage-legend-head small {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+
+.stage-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stage-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.stage-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.heatmap-layer {
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(2, 9, 20, 0.04), rgba(2, 9, 20, 0.16));
+  overflow: hidden;
+}
+
+.heat-cloud {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, var(--heat) 0%, color-mix(in srgb, var(--heat) 65%, transparent) 34%, transparent 76%);
+  filter: blur(14px);
+  mix-blend-mode: screen;
+}
+
+.heat-anchor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 34px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: rgba(3, 16, 32, 0.9);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: auto;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.heatmap-scale {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 154px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(3, 16, 32, 0.9);
+  backdrop-filter: blur(12px);
+}
+
+.heatmap-scale > span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.heatmap-scale-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #35f8ff, #64d3ff, #a66bff, #ffad4d, #ff5568);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.heatmap-scale-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.heatmap-scale-labels small {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+
+.compare-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+  min-height: 460px;
+}
+
+.compare-pane {
+  position: relative;
+  min-height: 460px;
+  overflow: hidden;
+}
+
+.compare-pane .stage-image {
+  height: 100%;
+  min-height: 460px;
+  max-height: none;
+}
+
+.compare-media-shell {
+  min-height: 460px;
+  padding: 14px;
+}
+
+.compare-pane .stage-image-contained {
+  max-height: 430px;
+}
+
+.compare-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.compare-divider span {
+  writing-mode: vertical-rl;
+}
+
+.compare-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 4;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(112, 224, 255, 0.14);
+  background: rgba(3, 16, 32, 0.86);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.compare-badge-accent {
+  color: #05211c;
+  border-color: transparent;
+  background: linear-gradient(135deg, #7cf7ff, #35f8ff);
+}
+
+.compare-legend {
+  top: 14px;
+  right: 14px;
+}
+
+.focus-card {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 6;
+  width: 228px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(3, 16, 32, 0.92);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.24);
+}
+
+.focus-card.compare {
+  left: auto;
+  right: 14px;
+}
+
+.focus-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.focus-card-code {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--brand-300);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.focus-card-risk,
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.focus-card strong {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.focus-card p {
+  margin: 6px 0 0;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.focus-card small {
+  display: block;
+  margin-top: 6px;
+  color: var(--ink-3);
+  font-size: 11px;
 }
 
 .annotation-tooth-wrap {
@@ -1169,8 +2000,8 @@ onUnmounted(() => {
   transform: translateX(-50%);
   padding: 6px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(94, 234, 212, 0.14);
-  background: rgba(3, 12, 15, 0.96);
+  border: 1px solid rgba(112, 224, 255, 0.14);
+  background: rgba(3, 16, 32, 0.96);
   color: var(--text);
   font-size: 12px;
   line-height: 1;
@@ -1195,8 +2026,8 @@ onUnmounted(() => {
   gap: 8px;
   padding: 14px;
   border-radius: 14px;
-  border: 1px solid rgba(94, 234, 212, 0.08);
-  background: rgba(11, 36, 44, 0.42);
+  border: 1px solid rgba(112, 224, 255, 0.08);
+  background: rgba(15, 31, 63, 0.42);
 }
 
 .summary-card.warning {
@@ -1248,6 +2079,113 @@ onUnmounted(() => {
   color: var(--ink-3);
   font-size: 11px;
   line-height: 1.6;
+}
+
+.detail-panel {
+  padding: 20px;
+}
+
+.detail-head {
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.detail-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(112, 224, 255, 0.14);
+  background: rgba(15, 31, 63, 0.42);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.detail-table-wrap {
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(112, 224, 255, 0.08);
+  background: rgba(8, 20, 44, 0.38);
+}
+
+.detail-table {
+  width: 100%;
+  min-width: 960px;
+  border-collapse: collapse;
+}
+
+.detail-table thead th {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(112, 224, 255, 0.08);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  background: rgba(3, 16, 32, 0.72);
+}
+
+.detail-table tbody td {
+  padding: 16px;
+  border-bottom: 1px solid rgba(112, 224, 255, 0.05);
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.6;
+  vertical-align: top;
+}
+
+.detail-table tbody tr {
+  transition: background .18s ease;
+}
+
+.detail-table tbody tr:hover,
+.detail-table tbody tr.active {
+  background: rgba(0, 229, 255, 0.05);
+}
+
+.detail-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--brand-300);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.table-main {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.table-sub {
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.suggestion-cell {
+  min-width: 260px;
+}
+
+.detail-empty {
+  padding: 34px 18px;
+  border-radius: 16px;
+  border: 1px dashed rgba(112, 224, 255, 0.12);
+  background: rgba(15, 31, 63, 0.22);
+  color: var(--ink-3);
+  font-size: 13px;
+  text-align: center;
 }
 
 .side-panel {
@@ -1307,8 +2245,8 @@ onUnmounted(() => {
 
 .risk-pill.pending {
   color: var(--text-soft);
-  background: rgba(94, 138, 130, 0.12);
-  border-color: rgba(94, 138, 130, 0.2);
+  background: rgba(111, 134, 182, 0.12);
+  border-color: rgba(111, 134, 182, 0.2);
 }
 
 .risk-pill.high-risk {
@@ -1325,8 +2263,8 @@ onUnmounted(() => {
 
 .risk-pill.low-risk {
   color: var(--brand-300);
-  background: rgba(46, 230, 200, 0.14);
-  border-color: rgba(46, 230, 200, 0.2);
+  background: rgba(0, 229, 255, 0.14);
+  border-color: rgba(0, 229, 255, 0.2);
 }
 
 .side-copy {
@@ -1388,8 +2326,8 @@ onUnmounted(() => {
   gap: 10px;
   padding: 11px 12px;
   border-radius: 12px;
-  background: rgba(11, 36, 44, 0.42);
-  border: 1px solid rgba(94, 234, 212, 0.06);
+  background: rgba(15, 31, 63, 0.42);
+  border: 1px solid rgba(112, 224, 255, 0.06);
   color: var(--text);
   font-size: 13px;
   line-height: 1.6;
@@ -1413,8 +2351,8 @@ onUnmounted(() => {
   margin-bottom: 16px;
   padding: 28px 14px;
   border-radius: 14px;
-  border: 1px dashed rgba(94, 234, 212, 0.12);
-  background: rgba(11, 36, 44, 0.22);
+  border: 1px dashed rgba(112, 224, 255, 0.12);
+  background: rgba(15, 31, 63, 0.22);
   color: var(--ink-3);
   font-size: 13px;
   text-align: center;
@@ -1424,8 +2362,8 @@ onUnmounted(() => {
   width: 100%;
   min-height: 42px;
   border-radius: 12px;
-  border: 1px solid rgba(46, 230, 200, 0.16);
-  background: rgba(46, 230, 200, 0.06);
+  border: 1px solid rgba(0, 229, 255, 0.16);
+  background: rgba(0, 229, 255, 0.06);
   color: var(--ink-3);
   font-size: 14px;
   font-weight: 600;
@@ -1434,8 +2372,8 @@ onUnmounted(() => {
 
 .report-btn:not(:disabled) {
   color: var(--brand-300);
-  border-color: rgba(46, 230, 200, 0.36);
-  background: linear-gradient(135deg, rgba(46, 230, 200, 0.14), rgba(46, 230, 200, 0.06));
+  border-color: rgba(0, 229, 255, 0.36);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.14), rgba(0, 229, 255, 0.06));
 }
 
 .report-btn:disabled {
@@ -1511,6 +2449,10 @@ onUnmounted(() => {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+   .view-note {
+    min-width: 100%;
+  }
 }
 
 @media (max-width: 920px) {
@@ -1526,6 +2468,54 @@ onUnmounted(() => {
   .right-column {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .empty-state-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .empty-copy {
+    text-align: center;
+  }
+
+  .empty-specs {
+    justify-content: center;
+  }
+
+  .upload-btn {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .view-switch {
+    width: 100%;
+  }
+
+  .view-switch-btn {
+    flex: 1 1 140px;
+  }
+
+  .compare-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compare-divider {
+    min-height: 34px;
+  }
+
+  .compare-divider span {
+    writing-mode: horizontal-tb;
+  }
+
+  .compare-pane,
+  .compare-pane .stage-image {
+    min-height: 320px;
+  }
+
+  .focus-card.compare {
+    left: 14px;
+    right: auto;
+  }
 }
 
 @media (max-width: 680px) {
@@ -1540,9 +2530,52 @@ onUnmounted(() => {
     min-height: 280px;
   }
 
+  .advanced-result-box,
+  .advanced-result-box > .stage-image,
+  .compare-pane,
+  .compare-pane .stage-image {
+    min-height: 300px;
+  }
+
   .panel-head {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .empty-state {
+    padding: 24px 18px;
+  }
+
+  .empty-visual {
+    min-height: 276px;
+    padding: 22px 18px;
+  }
+
+  .empty-tooth-svg {
+    width: 184px;
+    height: 222px;
+  }
+
+  .empty-title {
+    font-size: 24px;
+  }
+
+  .stage-legend,
+  .heatmap-scale,
+  .focus-card {
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+
+  .compare-legend {
+    left: 12px;
+    right: 12px;
+  }
+
+  .annotation-tag {
+    max-width: 180px;
+  }
 }
 </style>
+

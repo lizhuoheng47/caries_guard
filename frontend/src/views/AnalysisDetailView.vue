@@ -108,7 +108,7 @@
                   <text
                     :x="item.bbox[0] + 10"
                     :y="Math.max(22, item.bbox[1] - 13)"
-                    fill="#03161c"
+                    fill="#061936"
                     font-size="12"
                     font-weight="700"
                   >
@@ -378,9 +378,9 @@ const overlayColor = (severity?: string) => {
       return '#f7a23a'
     case 'C1':
     case 'G1':
-      return '#5eead4'
+      return '#3f79ff'
     default:
-      return '#2ee6c8'
+      return '#35f8ff'
   }
 }
 
@@ -470,7 +470,7 @@ watch(taskId, () => {
   min-height: 420px;
   border-radius: 18px;
   overflow: hidden;
-  border: 1px solid rgba(94, 234, 212, 0.12);
+  border: 1px solid rgba(112, 224, 255, 0.12);
   background: linear-gradient(180deg, rgba(2, 19, 26, 0.92), rgba(1, 10, 14, 0.98));
 }
 
@@ -510,15 +510,15 @@ watch(taskId, () => {
   min-height: 36px;
   padding: 0 14px;
   border-radius: 12px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: rgba(11, 36, 44, 0.42);
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(15, 31, 63, 0.42);
   color: var(--text-soft);
   cursor: pointer;
 }
 
 .asset-pill.active {
-  border-color: rgba(46, 230, 200, 0.32);
-  background: rgba(46, 230, 200, 0.12);
+  border-color: rgba(0, 229, 255, 0.32);
+  background: rgba(0, 229, 255, 0.12);
   color: var(--accent);
 }
 
@@ -550,8 +550,8 @@ watch(taskId, () => {
   margin-top: 14px;
   padding: 14px;
   border-radius: 14px;
-  background: rgba(11, 36, 44, 0.46);
-  border: 1px solid rgba(94, 234, 212, 0.08);
+  background: rgba(15, 31, 63, 0.46);
+  border: 1px solid rgba(112, 224, 255, 0.08);
 }
 
 .lesion-card,
@@ -561,8 +561,8 @@ watch(taskId, () => {
 .evidence-panel {
   padding: 14px;
   border-radius: 16px;
-  border: 1px solid rgba(94, 234, 212, 0.08);
-  background: rgba(11, 36, 44, 0.42);
+  border: 1px solid rgba(112, 224, 255, 0.08);
+  background: rgba(15, 31, 63, 0.42);
 }
 
 .lesion-head,
@@ -622,13 +622,13 @@ watch(taskId, () => {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: rgba(94, 234, 212, 0.2);
-  box-shadow: 0 0 12px rgba(94, 234, 212, 0.18);
+  background: rgba(112, 224, 255, 0.2);
+  box-shadow: 0 0 12px rgba(112, 224, 255, 0.18);
 }
 
-.timeline-marker.completed { background: #2ee6c8; }
+.timeline-marker.completed { background: #35f8ff; }
 .timeline-marker.current { background: #f7a23a; }
-.timeline-marker.pending { background: #5e8a82; }
+.timeline-marker.pending { background: #6f86b6; }
 
 .timeline-body {
   display: grid;
@@ -641,3 +641,4 @@ watch(taskId, () => {
   }
 }
 </style>
+

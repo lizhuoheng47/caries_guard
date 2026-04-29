@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="dashboard">
     <!-- Header -->
     <header class="page-header">
@@ -59,12 +59,12 @@
           <svg :viewBox="`0 0 ${trendW} ${trendH}`" preserveAspectRatio="none" class="trend-svg">
             <defs>
               <linearGradient id="trendGradA" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stop-color="#2ee6c8" stop-opacity="0.45"/>
-                <stop offset="100%" stop-color="#2ee6c8" stop-opacity="0"/>
+                <stop offset="0%" stop-color="#35f8ff" stop-opacity="0.45"/>
+                <stop offset="100%" stop-color="#35f8ff" stop-opacity="0"/>
               </linearGradient>
               <linearGradient id="trendGradB" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stop-color="#5eead4" stop-opacity="0.25"/>
-                <stop offset="100%" stop-color="#5eead4" stop-opacity="0"/>
+                <stop offset="0%" stop-color="#3f79ff" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#3f79ff" stop-opacity="0"/>
               </linearGradient>
             </defs>
 
@@ -81,8 +81,8 @@
             <path :d="areaB" fill="url(#trendGradB)"/>
 
             <!-- Lines -->
-            <path :d="lineA" stroke="#2ee6c8" stroke-width="2" fill="none" stroke-linejoin="round" filter="url(#glowA)"/>
-            <path :d="lineB" stroke="#5eead4" stroke-width="1.6" fill="none" stroke-linejoin="round" stroke-dasharray="3 3" opacity="0.7"/>
+            <path :d="lineA" stroke="#35f8ff" stroke-width="2" fill="none" stroke-linejoin="round" filter="url(#glowA)"/>
+            <path :d="lineB" stroke="#3f79ff" stroke-width="1.6" fill="none" stroke-linejoin="round" stroke-dasharray="3 3" opacity="0.7"/>
 
             <filter id="glowA" x="-5%" y="-5%" width="110%" height="120%">
               <feGaussianBlur stdDeviation="2" result="b"/>
@@ -91,7 +91,7 @@
 
             <!-- Dots A -->
             <g>
-              <circle v-for="(p, i) in pointsA" :key="i" :cx="p.x" :cy="p.y" r="3.5" fill="#0b242c" stroke="#2ee6c8" stroke-width="1.8"/>
+              <circle v-for="(p, i) in pointsA" :key="i" :cx="p.x" :cy="p.y" r="3.5" fill="#081b3f" stroke="#35f8ff" stroke-width="1.8"/>
             </g>
 
             <!-- X labels -->
@@ -290,10 +290,10 @@ const areaB = computed(() => `${lineB.value} L ${pointsB.value[pointsB.value.len
 
 /* ===== Donut math ===== */
 const donutData = [
-  { name: '龋齿', pct: 45, color: '#2ee6c8' },
+  { name: '龋齿', pct: 45, color: '#35f8ff' },
   { name: '牙周病', pct: 25, color: '#9b6bff' },
   { name: '根尖周病', pct: 20, color: '#f7a23a' },
-  { name: '其他', pct: 10, color: '#5eead4' },
+  { name: '其他', pct: 10, color: '#3f79ff' },
 ]
 const donutCirc = 2 * Math.PI * 78
 const donutSegs = computed(() => {
@@ -327,7 +327,7 @@ const donutSegs = computed(() => {
   font-size: 26px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: #f5fffb;
+  color: #f7fbff;
 }
 
 .header-actions {
@@ -342,9 +342,9 @@ const donutSegs = computed(() => {
   height: 36px;
   padding: 0 16px;
   border-radius: 8px;
-  border: 1px solid rgba(94, 234, 212, 0.22);
-  background: rgba(11, 36, 44, 0.65);
-  color: #e8fff8;
+  border: 1px solid rgba(112, 224, 255, 0.22);
+  background: rgba(15, 31, 63, 0.65);
+  color: #f2f7ff;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -352,14 +352,14 @@ const donutSegs = computed(() => {
 }
 
 .btn svg { width: 16px; height: 16px; }
-.btn:hover { border-color: rgba(94, 234, 212, 0.55); transform: translateY(-1px); }
-.btn-ghost { color: #9bc6bd; }
+.btn:hover { border-color: rgba(112, 224, 255, 0.55); transform: translateY(-1px); }
+.btn-ghost { color: #c5d8f7; }
 
 .btn-primary {
-  border-color: rgba(46, 230, 200, 0.6);
-  background: linear-gradient(135deg, rgba(46, 230, 200, 0.22), rgba(46, 230, 200, 0.08));
-  color: #2ee6c8;
-  box-shadow: 0 0 18px rgba(46, 230, 200, 0.18), inset 0 0 18px rgba(46, 230, 200, 0.05);
+  border-color: rgba(0, 229, 255, 0.6);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.22), rgba(0, 229, 255, 0.08));
+  color: #35f8ff;
+  box-shadow: 0 0 18px rgba(0, 229, 255, 0.18), inset 0 0 18px rgba(0, 229, 255, 0.05);
 }
 
 /* Stat cards */
@@ -373,9 +373,9 @@ const donutSegs = computed(() => {
   position: relative;
   padding: 18px 20px 18px 20px;
   border-radius: 14px;
-  border: 1px solid rgba(94, 234, 212, 0.1);
+  border: 1px solid rgba(112, 224, 255, 0.1);
   background:
-    linear-gradient(180deg, rgba(13, 38, 47, 0.7), rgba(8, 23, 28, 0.85));
+    linear-gradient(180deg, rgba(18, 41, 75, 0.7), rgba(10, 18, 40, 0.85));
   display: flex;
   gap: 14px;
   overflow: hidden;
@@ -388,10 +388,10 @@ const donutSegs = computed(() => {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent-line, rgba(46, 230, 200, 0.45)), transparent);
+  background: linear-gradient(90deg, transparent, var(--accent-line, rgba(0, 229, 255, 0.45)), transparent);
 }
 
-.stat-mint { --accent-line: rgba(46, 230, 200, 0.55); --accent-color: #2ee6c8; }
+.stat-mint { --accent-line: rgba(0, 229, 255, 0.55); --accent-color: #35f8ff; }
 .stat-violet { --accent-line: rgba(155, 107, 255, 0.55); --accent-color: #9b6bff; }
 .stat-rose { --accent-line: rgba(255, 99, 110, 0.55); --accent-color: #ff636e; }
 
@@ -403,16 +403,16 @@ const donutSegs = computed(() => {
   display: grid;
   place-items: center;
   background: rgba(0,0,0,0.25);
-  border: 1px solid color-mix(in oklab, var(--accent-color, #2ee6c8) 35%, transparent);
-  color: var(--accent-color, #2ee6c8);
-  filter: drop-shadow(0 0 8px color-mix(in oklab, var(--accent-color, #2ee6c8) 35%, transparent));
+  border: 1px solid color-mix(in oklab, var(--accent-color, #35f8ff) 35%, transparent);
+  color: var(--accent-color, #35f8ff);
+  filter: drop-shadow(0 0 8px color-mix(in oklab, var(--accent-color, #35f8ff) 35%, transparent));
 }
 
 .stat-icon svg,
 .stat-icon :deep(svg) { width: 20px; height: 20px; }
 
 .stat-body { flex: 1; min-width: 0; }
-.stat-label { font-size: 12px; color: #9bc6bd; letter-spacing: 1px; }
+.stat-label { font-size: 12px; color: #c5d8f7; letter-spacing: 1px; }
 
 .stat-value {
   margin-top: 4px;
@@ -425,26 +425,26 @@ const donutSegs = computed(() => {
   font-size: 28px;
   font-weight: 800;
   letter-spacing: 0.5px;
-  color: #f5fffb;
-  text-shadow: 0 0 14px color-mix(in oklab, var(--accent-color, #2ee6c8) 40%, transparent);
+  color: #f7fbff;
+  text-shadow: 0 0 14px color-mix(in oklab, var(--accent-color, #35f8ff) 40%, transparent);
 }
 
-.stat-value .unit { font-size: 13px; color: #9bc6bd; }
+.stat-value .unit { font-size: 13px; color: #c5d8f7; }
 
 .stat-trend {
   margin-top: 6px;
   font-size: 11px;
-  color: #5e8a82;
+  color: #6f86b6;
 }
 
-.stat-trend .up { color: var(--accent-color, #2ee6c8); margin-left: 4px; }
+.stat-trend .up { color: var(--accent-color, #35f8ff); margin-left: 4px; }
 
 /* Card baseline */
 .card {
   position: relative;
   border-radius: 14px;
-  border: 1px solid rgba(94, 234, 212, 0.1);
-  background: linear-gradient(180deg, rgba(13, 38, 47, 0.65), rgba(8, 23, 28, 0.85));
+  border: 1px solid rgba(112, 224, 255, 0.1);
+  background: linear-gradient(180deg, rgba(18, 41, 75, 0.65), rgba(10, 18, 40, 0.85));
   padding: 18px 20px;
 }
 
@@ -462,7 +462,7 @@ const donutSegs = computed(() => {
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 1px;
-  color: #e8fff8;
+  color: #f2f7ff;
 }
 
 .title-bar {
@@ -476,7 +476,7 @@ const donutSegs = computed(() => {
 .seg {
   display: flex;
   border-radius: 8px;
-  border: 1px solid rgba(94, 234, 212, 0.15);
+  border: 1px solid rgba(112, 224, 255, 0.15);
   padding: 2px;
   background: rgba(0,0,0,0.25);
 }
@@ -484,7 +484,7 @@ const donutSegs = computed(() => {
 .seg button {
   border: 0;
   background: transparent;
-  color: #9bc6bd;
+  color: #c5d8f7;
   font-size: 12px;
   padding: 4px 12px;
   border-radius: 6px;
@@ -492,8 +492,8 @@ const donutSegs = computed(() => {
 }
 
 .seg button.active {
-  background: rgba(46, 230, 200, 0.18);
-  color: #2ee6c8;
+  background: rgba(0, 229, 255, 0.18);
+  color: #35f8ff;
 }
 
 /* Row */
@@ -507,11 +507,11 @@ const donutSegs = computed(() => {
 .trend-wrap { width: 100%; height: 250px; }
 .trend-svg { width: 100%; height: 100%; }
 .grid-lines line {
-  stroke: rgba(94, 234, 212, 0.06);
+  stroke: rgba(112, 224, 255, 0.06);
   stroke-width: 1;
 }
 .grid-labels text {
-  fill: #5e8a82;
+  fill: #6f86b6;
   font-size: 10px;
   font-family: inherit;
 }
@@ -519,7 +519,7 @@ const donutSegs = computed(() => {
 .legend {
   text-align: center;
   font-size: 11px;
-  color: #9bc6bd;
+  color: #c5d8f7;
   margin-top: 4px;
 }
 
@@ -531,8 +531,8 @@ const donutSegs = computed(() => {
   margin-right: 4px;
 }
 
-.dot-a { background: #2ee6c8; box-shadow: 0 0 4px #2ee6c8; }
-.dot-b { background: #5eead4; opacity: 0.7; }
+.dot-a { background: #35f8ff; box-shadow: 0 0 4px #35f8ff; }
+.dot-b { background: #3f79ff; opacity: 0.7; }
 
 /* Donut */
 .donut-wrap {
@@ -549,13 +549,13 @@ const donutSegs = computed(() => {
 }
 
 .donut-num {
-  fill: #f5fffb;
+  fill: #f7fbff;
   font-size: 24px;
   font-weight: 800;
 }
 
 .donut-cap {
-  fill: #9bc6bd;
+  fill: #c5d8f7;
   font-size: 11px;
 }
 
@@ -582,7 +582,7 @@ const donutSegs = computed(() => {
 }
 
 .legend-name { flex: 1; }
-.legend-val { color: #f5fffb; font-weight: 600; }
+.legend-val { color: #f7fbff; font-weight: 600; }
 
 /* Cases table */
 .case-table {
@@ -598,23 +598,23 @@ const donutSegs = computed(() => {
 }
 
 .case-table th {
-  color: #5e8a82;
+  color: #6f86b6;
   font-weight: 500;
   letter-spacing: 1px;
-  border-bottom: 1px solid rgba(94, 234, 212, 0.08);
+  border-bottom: 1px solid rgba(112, 224, 255, 0.08);
 }
 
 .case-table tbody tr {
-  border-bottom: 1px solid rgba(94, 234, 212, 0.04);
+  border-bottom: 1px solid rgba(112, 224, 255, 0.04);
   transition: background 0.18s ease;
 }
 
 .case-table tbody tr:hover {
-  background: rgba(46, 230, 200, 0.03);
+  background: rgba(0, 229, 255, 0.03);
 }
 
 .case-table td { color: #c5e2dc; }
-.case-table td.patient { color: #e8fff8; font-weight: 600; }
+.case-table td.patient { color: #f2f7ff; font-weight: 600; }
 
 .risk-tag {
   display: inline-block;
@@ -637,9 +637,9 @@ const donutSegs = computed(() => {
 }
 
 .risk-low {
-  color: #2ee6c8;
-  background: rgba(46, 230, 200, 0.12);
-  border: 1px solid rgba(46, 230, 200, 0.4);
+  color: #35f8ff;
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.4);
 }
 
 .op-col { width: 60px; }
@@ -648,15 +648,16 @@ const donutSegs = computed(() => {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  border: 1px solid rgba(46, 230, 200, 0.3);
-  background: rgba(46, 230, 200, 0.08);
-  color: #2ee6c8;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  background: rgba(0, 229, 255, 0.08);
+  color: #35f8ff;
   display: grid;
   place-items: center;
   cursor: pointer;
   transition: background 0.18s ease;
 }
 
-.row-btn:hover { background: rgba(46, 230, 200, 0.18); }
+.row-btn:hover { background: rgba(0, 229, 255, 0.18); }
 .row-btn svg { width: 14px; height: 14px; }
 </style>
+

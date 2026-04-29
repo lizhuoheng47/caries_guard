@@ -1,12 +1,10 @@
 <template>
   <div class="dent-shell">
-    <!-- Background atmosphere -->
     <div class="bg-space"></div>
     <div class="bg-grid"></div>
     <div class="bg-glow bg-glow-a"></div>
     <div class="bg-glow bg-glow-b"></div>
 
-    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">
@@ -45,25 +43,27 @@
 
       <div class="sidebar-footer">
         <slot name="footer">
-          <div class="footer-card">
+          <div class="footer-card" @click="openUserCenter">
             <div class="footer-avatar">
-              <svg viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="9" r="3.5" stroke="currentColor" stroke-width="1.6" />
-                <path d="M5 20c1.5-3.6 4-5 7-5s5.5 1.4 7 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-              </svg>
+              <span>{{ userInitials }}</span>
             </div>
             <div class="footer-meta">
-              <div class="footer-title">口腔影像科</div>
+              <div class="footer-title">{{ displayName }}</div>
+              <div class="footer-sub">{{ displayRole }}</div>
             </div>
-            <svg class="footer-chev" viewBox="0 0 16 16" fill="none">
-              <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <button class="footer-logout" type="button" aria-label="退出登录" title="退出登录" @click.stop="logout">
+              <svg viewBox="0 0 18 18" fill="none">
+                <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5v9A1.5 1.5 0 0 0 4.5 15H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M10 12.5 14 9l-4-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M14 9H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
+              <span>退出</span>
+            </button>
           </div>
         </slot>
       </div>
     </aside>
 
-    <!-- Main page area -->
     <section class="main">
       <slot></slot>
     </section>
@@ -71,8 +71,31 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
 defineProps<{ active: string }>()
 defineEmits<{ (e: 'navigate', key: string): void }>()
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+const displayName = computed(() => authStore.user?.nickname || authStore.user?.username || '当前用户')
+const displayRole = computed(() => authStore.user?.roles?.[0] || authStore.user?.userTypeCode || '已登录')
+const userInitials = computed(() => {
+  const source = authStore.user?.nickname || authStore.user?.username || 'U'
+  return source.trim().slice(0, 2).toUpperCase()
+})
+
+const openUserCenter = () => {
+  void router.push('/user-center')
+}
+
+const logout = async () => {
+  authStore.logout()
+  await router.replace('/login')
+}
 
 const menu = [
   {
@@ -110,16 +133,16 @@ const menu = [
 
 <style scoped>
 .dent-shell {
-  --bg-deep: #02141a;
-  --bg-mid: #051d24;
-  --panel: rgba(11, 36, 44, 0.72);
-  --panel-edge: rgba(94, 234, 212, 0.18);
-  --text: #e8fff8;
-  --text-soft: #9bc6bd;
-  --text-dim: #5e8a82;
-  --accent: #2ee6c8;
-  --accent-2: #5eead4;
-  --accent-warm: rgba(46, 230, 200, 0.12);
+  --bg-deep: #020914;
+  --bg-mid: #031020;
+  --panel: rgba(15, 31, 63, 0.72);
+  --panel-edge: rgba(112, 224, 255, 0.18);
+  --text: #f2f7ff;
+  --text-soft: #c5d8f7;
+  --text-dim: #6f86b6;
+  --accent: #35f8ff;
+  --accent-2: #3f79ff;
+  --accent-warm: rgba(0, 229, 255, 0.12);
   position: relative;
   display: flex;
   width: 100%;
@@ -135,9 +158,9 @@ const menu = [
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 8% 0%, rgba(46, 230, 200, 0.12), transparent 42%),
-    radial-gradient(ellipse at 100% 100%, rgba(94, 234, 212, 0.07), transparent 50%),
-    linear-gradient(180deg, #03161c 0%, #020c12 60%, #010a10 100%);
+    radial-gradient(ellipse at 8% 0%, rgba(0, 229, 255, 0.12), transparent 42%),
+    radial-gradient(ellipse at 100% 100%, rgba(63, 121, 255, 0.09), transparent 50%),
+    linear-gradient(180deg, #061936 0%, #031020 60%, #020914 100%);
   z-index: 0;
 }
 
@@ -145,8 +168,8 @@ const menu = [
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(94, 234, 212, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(94, 234, 212, 0.045) 1px, transparent 1px);
+    linear-gradient(rgba(75, 201, 255, 0.044) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(75, 201, 255, 0.044) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(ellipse at 50% 50%, #000 0%, transparent 88%);
   z-index: 0;
@@ -166,7 +189,7 @@ const menu = [
 .bg-glow-a {
   top: -200px;
   left: 200px;
-  background: rgba(46, 230, 200, 0.22);
+  background: rgba(0, 229, 255, 0.22);
 }
 
 .bg-glow-b {
@@ -175,7 +198,6 @@ const menu = [
   background: rgba(120, 86, 255, 0.18);
 }
 
-/* Sidebar */
 .sidebar {
   position: relative;
   z-index: 2;
@@ -185,8 +207,8 @@ const menu = [
   display: flex;
   flex-direction: column;
   gap: 22px;
-  background: linear-gradient(180deg, rgba(7, 28, 35, 0.85), rgba(3, 14, 18, 0.95));
-  border-right: 1px solid rgba(94, 234, 212, 0.08);
+  background: linear-gradient(180deg, rgba(10, 24, 52, 0.88), rgba(3, 12, 28, 0.96));
+  border-right: 1px solid rgba(112, 224, 255, 0.08);
   backdrop-filter: blur(14px);
 }
 
@@ -195,7 +217,7 @@ const menu = [
   align-items: center;
   gap: 12px;
   padding: 8px 6px 18px;
-  border-bottom: 1px solid rgba(94, 234, 212, 0.07);
+  border-bottom: 1px solid rgba(112, 224, 255, 0.07);
 }
 
 .brand-mark {
@@ -204,7 +226,7 @@ const menu = [
   display: grid;
   place-items: center;
   color: var(--accent);
-  filter: drop-shadow(0 0 10px rgba(46, 230, 200, 0.55));
+  filter: drop-shadow(0 0 10px rgba(0, 229, 255, 0.55));
 }
 
 .brand-mark svg {
@@ -216,7 +238,7 @@ const menu = [
   font-size: 19px;
   font-weight: 800;
   letter-spacing: 0.5px;
-  color: #f5fffb;
+  color: #f7fbff;
   line-height: 1.1;
 }
 
@@ -252,13 +274,13 @@ const menu = [
 
 .menu-item:hover {
   color: var(--text);
-  background: rgba(46, 230, 200, 0.05);
+  background: rgba(0, 229, 255, 0.05);
 }
 
 .menu-item.active {
   color: var(--accent);
-  background: linear-gradient(90deg, rgba(46, 230, 200, 0.18), rgba(46, 230, 200, 0.02));
-  box-shadow: inset 0 0 24px rgba(46, 230, 200, 0.06);
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.16), rgba(63, 121, 255, 0.04));
+  box-shadow: inset 0 0 24px rgba(0, 229, 255, 0.08);
 }
 
 .menu-item.active .menu-indicator {
@@ -303,29 +325,28 @@ const menu = [
   gap: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: rgba(11, 36, 44, 0.65);
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(15, 31, 63, 0.65);
   cursor: pointer;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .footer-card:hover {
-  border-color: rgba(94, 234, 212, 0.28);
+  border-color: rgba(112, 224, 255, 0.28);
+  background: rgba(15, 31, 63, 0.82);
 }
 
 .footer-avatar {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: rgba(46, 230, 200, 0.1);
+  background: rgba(0, 229, 255, 0.1);
   color: var(--accent);
-}
-
-.footer-avatar svg {
-  width: 18px;
-  height: 18px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .footer-meta {
@@ -337,15 +358,49 @@ const menu = [
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.footer-chev {
-  width: 14px;
-  height: 14px;
+.footer-sub {
+  margin-top: 2px;
+  font-size: 11px;
   color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Main */
+.footer-logout {
+  min-width: 68px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0 10px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(8, 20, 44, 0.52);
+  color: var(--text-soft);
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.footer-logout:hover {
+  border-color: rgba(112, 224, 255, 0.28);
+  background: rgba(255, 99, 110, 0.12);
+  color: #ffd3d8;
+}
+
+.footer-logout svg {
+  width: 16px;
+  height: 16px;
+}
+
 .main {
   position: relative;
   z-index: 1;

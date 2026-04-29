@@ -706,8 +706,8 @@ watch([selectedGrade, selectedTags, clinicalNote], () => {
 .review-queue-item {
   padding: 14px;
   border-radius: 16px;
-  border: 1px solid rgba(94, 234, 212, 0.08);
-  background: rgba(11, 36, 44, 0.42);
+  border: 1px solid rgba(112, 224, 255, 0.08);
+  background: rgba(15, 31, 63, 0.42);
   color: var(--text);
   cursor: pointer;
   text-align: left;
@@ -716,8 +716,8 @@ watch([selectedGrade, selectedTags, clinicalNote], () => {
 
 .review-queue-item:hover,
 .review-queue-item.active {
-  border-color: rgba(46, 230, 200, 0.28);
-  background: rgba(46, 230, 200, 0.12);
+  border-color: rgba(0, 229, 255, 0.28);
+  background: rgba(0, 229, 255, 0.12);
 }
 
 .review-queue-head,
@@ -749,7 +749,7 @@ watch([selectedGrade, selectedTags, clinicalNote], () => {
   border-radius: 20px;
   overflow: hidden;
   background: linear-gradient(180deg, #07141a, #020b10);
-  border: 1px solid rgba(94, 234, 212, 0.12);
+  border: 1px solid rgba(112, 224, 255, 0.12);
 }
 
 .review-image,
@@ -806,7 +806,7 @@ watch([selectedGrade, selectedTags, clinicalNote], () => {
 }
 
 .review-box-doctor::before {
-  border: 2px dashed #2ee6c8;
+  border: 2px dashed #35f8ff;
 }
 
 .review-box-label {
@@ -818,7 +818,7 @@ watch([selectedGrade, selectedTags, clinicalNote], () => {
   font-family: Consolas, 'JetBrains Mono', monospace;
   font-size: 10px;
   font-weight: 700;
-  color: #03161c;
+  color: #061936;
 }
 
 .review-box-ai .review-box-label {
@@ -826,7 +826,7 @@ watch([selectedGrade, selectedTags, clinicalNote], () => {
 }
 
 .review-box-doctor .review-box-label {
-  background: #2ee6c8;
+  background: #35f8ff;
 }
 
 .review-stage-badges {
@@ -848,8 +848,8 @@ watch([selectedGrade, selectedTags, clinicalNote], () => {
 .review-split-card {
   padding: 16px;
   border-radius: 18px;
-  border: 1px solid rgba(94, 234, 212, 0.08);
-  background: rgba(11, 36, 44, 0.42);
+  border: 1px solid rgba(112, 224, 255, 0.08);
+  background: rgba(15, 31, 63, 0.42);
 }
 
 .review-grade-pill {
@@ -868,7 +868,7 @@ watch([selectedGrade, selectedTags, clinicalNote], () => {
 }
 
 .review-grade-pill.active {
-  background: rgba(46, 230, 200, 0.14);
+  background: rgba(0, 229, 255, 0.14);
   color: var(--accent);
 }
 
@@ -904,3 +904,4 @@ watch([selectedGrade, selectedTags, clinicalNote], () => {
   }
 }
 </style>
+

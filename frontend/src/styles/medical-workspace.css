@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  color: var(--text, #e8fff8);
+  color: var(--text, #f2f7ff);
 }
 
 .med-hero {
@@ -25,7 +25,7 @@
   font-size: 11px;
   letter-spacing: 1.4px;
   text-transform: uppercase;
-  color: var(--text-dim, #5e8a82);
+  color: var(--text-dim, #6f86b6);
 }
 
 .med-title {
@@ -34,7 +34,7 @@
   line-height: 1.05;
   font-weight: 800;
   letter-spacing: 0.6px;
-  color: var(--text, #e8fff8);
+  color: var(--text, #f2f7ff);
 }
 
 .med-subtitle {
@@ -42,7 +42,7 @@
   margin: 0;
   font-size: 13px;
   line-height: 1.65;
-  color: var(--text-soft, #9bc6bd);
+  color: var(--text-soft, #c5d8f7);
 }
 
 .med-chip-row,
@@ -63,18 +63,18 @@
   min-height: 28px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(94, 234, 212, 0.16);
-  background: rgba(11, 36, 44, 0.62);
-  color: var(--text-soft, #9bc6bd);
+  border: 1px solid rgba(112, 224, 255, 0.16);
+  background: rgba(15, 31, 63, 0.62);
+  color: var(--text-soft, #c5d8f7);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.7px;
 }
 
 .med-chip--accent {
-  border-color: rgba(46, 230, 200, 0.34);
-  background: rgba(46, 230, 200, 0.12);
-  color: var(--accent, #2ee6c8);
+  border-color: rgba(0, 229, 255, 0.34);
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--accent, #35f8ff);
 }
 
 .med-chip--warn {
@@ -90,9 +90,9 @@
 }
 
 .med-chip--ok {
-  border-color: rgba(46, 230, 200, 0.34);
-  background: rgba(46, 230, 200, 0.12);
-  color: #2ee6c8;
+  border-color: rgba(0, 229, 255, 0.34);
+  background: rgba(0, 229, 255, 0.12);
+  color: #35f8ff;
 }
 
 .med-btn {
@@ -103,9 +103,9 @@
   min-height: 38px;
   padding: 0 16px;
   border-radius: 12px;
-  border: 1px solid rgba(94, 234, 212, 0.18);
-  background: rgba(11, 36, 44, 0.66);
-  color: var(--text, #e8fff8);
+  border: 1px solid rgba(112, 224, 255, 0.18);
+  background: rgba(15, 31, 63, 0.66);
+  color: var(--text, #f2f7ff);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.3px;
@@ -115,7 +115,7 @@
 
 .med-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: rgba(94, 234, 212, 0.32);
+  border-color: rgba(112, 224, 255, 0.32);
 }
 
 .med-btn:disabled {
@@ -124,14 +124,14 @@
 }
 
 .med-btn--primary {
-  border-color: rgba(46, 230, 200, 0.42);
-  background: linear-gradient(135deg, rgba(46, 230, 200, 0.2), rgba(46, 230, 200, 0.08));
-  color: var(--accent, #2ee6c8);
-  box-shadow: 0 0 20px rgba(46, 230, 200, 0.14);
+  border-color: rgba(0, 229, 255, 0.42);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(0, 229, 255, 0.08));
+  color: var(--accent, #35f8ff);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.14);
 }
 
 .med-btn--ghost {
-  color: var(--text-soft, #9bc6bd);
+  color: var(--text-soft, #c5d8f7);
 }
 
 .med-btn--danger {
@@ -150,8 +150,8 @@
 .med-card {
   position: relative;
   border-radius: 18px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: linear-gradient(180deg, rgba(13, 38, 47, 0.78), rgba(8, 23, 28, 0.9));
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: linear-gradient(180deg, rgba(18, 41, 75, 0.78), rgba(10, 18, 40, 0.9));
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
   overflow: hidden;
 }
@@ -161,7 +161,7 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(94, 234, 212, 0.24), transparent);
+  background: linear-gradient(90deg, transparent, rgba(112, 224, 255, 0.24), transparent);
   pointer-events: none;
 }
 
@@ -185,7 +185,7 @@
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 1px;
-  color: var(--text, #e8fff8);
+  color: var(--text, #f2f7ff);
 }
 
 .med-section-title::before {
@@ -193,15 +193,15 @@
   width: 3px;
   height: 14px;
   border-radius: 999px;
-  background: var(--accent, #2ee6c8);
-  box-shadow: 0 0 10px var(--accent, #2ee6c8);
+  background: var(--accent, #35f8ff);
+  box-shadow: 0 0 10px var(--accent, #35f8ff);
 }
 
 .med-meta,
 .med-mono {
   font-size: 11px;
   letter-spacing: 0.5px;
-  color: var(--text-dim, #5e8a82);
+  color: var(--text-dim, #6f86b6);
 }
 
 .med-mono {
@@ -215,9 +215,9 @@
   min-height: 42px;
   padding: 0 14px;
   border-radius: 14px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: rgba(4, 18, 24, 0.86);
-  color: var(--text-soft, #9bc6bd);
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(8, 20, 44, 0.86);
+  color: var(--text-soft, #c5d8f7);
 }
 
 .med-search input,
@@ -228,7 +228,7 @@
   border: 0;
   outline: none;
   background: transparent;
-  color: var(--text, #e8fff8);
+  color: var(--text, #f2f7ff);
   font: inherit;
 }
 
@@ -249,9 +249,9 @@
   min-height: 34px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: rgba(11, 36, 44, 0.42);
-  color: var(--text-soft, #9bc6bd);
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(15, 31, 63, 0.42);
+  color: var(--text-soft, #c5d8f7);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -260,9 +260,9 @@
 
 .med-tab.is-active,
 .med-tab:hover {
-  border-color: rgba(46, 230, 200, 0.3);
-  background: rgba(46, 230, 200, 0.12);
-  color: var(--accent, #2ee6c8);
+  border-color: rgba(0, 229, 255, 0.3);
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--accent, #35f8ff);
 }
 
 .med-metric-grid {
@@ -274,13 +274,13 @@
 .med-metric-card {
   padding: 16px;
   border-radius: 16px;
-  border: 1px solid rgba(94, 234, 212, 0.08);
-  background: rgba(11, 36, 44, 0.42);
+  border: 1px solid rgba(112, 224, 255, 0.08);
+  background: rgba(15, 31, 63, 0.42);
 }
 
 .med-metric-label {
   font-size: 11px;
-  color: var(--text-dim, #5e8a82);
+  color: var(--text-dim, #6f86b6);
   letter-spacing: 1px;
   text-transform: uppercase;
 }
@@ -290,13 +290,13 @@
   font-size: 28px;
   font-weight: 800;
   line-height: 1;
-  color: var(--text, #e8fff8);
+  color: var(--text, #f2f7ff);
 }
 
 .med-metric-caption {
   margin-top: 8px;
   font-size: 12px;
-  color: var(--text-soft, #9bc6bd);
+  color: var(--text-soft, #c5d8f7);
 }
 
 .med-grid-2,
@@ -328,28 +328,28 @@
 }
 
 .med-table th {
-  color: var(--text-dim, #5e8a82);
+  color: var(--text-dim, #6f86b6);
   font-weight: 600;
   letter-spacing: 1px;
-  border-bottom: 1px solid rgba(94, 234, 212, 0.08);
+  border-bottom: 1px solid rgba(112, 224, 255, 0.08);
 }
 
 .med-table tbody tr {
-  border-bottom: 1px solid rgba(94, 234, 212, 0.05);
+  border-bottom: 1px solid rgba(112, 224, 255, 0.05);
   transition: background .18s ease;
 }
 
 .med-table tbody tr:hover {
-  background: rgba(46, 230, 200, 0.04);
+  background: rgba(0, 229, 255, 0.04);
 }
 
 .med-empty {
   padding: 28px 22px;
   text-align: center;
   border-radius: 16px;
-  border: 1px dashed rgba(94, 234, 212, 0.16);
-  color: var(--text-dim, #5e8a82);
-  background: rgba(4, 18, 24, 0.42);
+  border: 1px dashed rgba(112, 224, 255, 0.16);
+  color: var(--text-dim, #6f86b6);
+  background: rgba(8, 20, 44, 0.42);
 }
 
 .med-list,
@@ -367,12 +367,12 @@
 }
 
 .med-kv-key {
-  color: var(--text-dim, #5e8a82);
+  color: var(--text-dim, #6f86b6);
   font-size: 12px;
 }
 
 .med-kv-value {
-  color: var(--text, #e8fff8);
+  color: var(--text, #f2f7ff);
   font-size: 12px;
   text-align: right;
 }
@@ -389,7 +389,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #2ee6c8, #5eead4);
+  background: linear-gradient(90deg, #35f8ff, #3f79ff);
 }
 
 .med-pill-toggle {
@@ -398,8 +398,8 @@
   gap: 6px;
   padding: 6px;
   border-radius: 16px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: rgba(4, 18, 24, 0.82);
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(8, 20, 44, 0.82);
 }
 
 .med-pill-toggle button {
@@ -408,15 +408,15 @@
   border-radius: 12px;
   border: 0;
   background: transparent;
-  color: var(--text-soft, #9bc6bd);
+  color: var(--text-soft, #c5d8f7);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .med-pill-toggle button.is-on {
-  background: rgba(46, 230, 200, 0.12);
-  color: var(--accent, #2ee6c8);
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--accent, #35f8ff);
 }
 
 .med-input-wrap,
@@ -432,9 +432,9 @@
   min-height: 44px;
   padding: 0 14px;
   border-radius: 14px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: rgba(4, 18, 24, 0.86);
-  color: var(--text, #e8fff8);
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(8, 20, 44, 0.86);
+  color: var(--text, #f2f7ff);
 }
 
 .med-textarea {
@@ -445,7 +445,7 @@
 
 .med-range {
   width: 100%;
-  accent-color: #2ee6c8;
+  accent-color: #35f8ff;
 }
 
 .med-toggle-row {
@@ -454,7 +454,7 @@
   gap: 14px;
   align-items: center;
   padding: 14px 0;
-  border-bottom: 1px solid rgba(94, 234, 212, 0.06);
+  border-bottom: 1px solid rgba(112, 224, 255, 0.06);
 }
 
 .med-toggle-row:last-child {
@@ -466,8 +466,8 @@
   width: 52px;
   height: 30px;
   border-radius: 999px;
-  border: 1px solid rgba(94, 234, 212, 0.18);
-  background: rgba(4, 18, 24, 0.9);
+  border: 1px solid rgba(112, 224, 255, 0.18);
+  background: rgba(8, 20, 44, 0.9);
   cursor: pointer;
   transition: background .18s ease, border-color .18s ease;
 }
@@ -480,26 +480,26 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #d6f7ee;
+  background: #eaf3ff;
   transition: transform .18s ease;
 }
 
 .med-switch.is-on {
-  background: rgba(46, 230, 200, 0.2);
-  border-color: rgba(46, 230, 200, 0.42);
+  background: rgba(0, 229, 255, 0.2);
+  border-color: rgba(0, 229, 255, 0.42);
 }
 
 .med-switch.is-on::after {
   transform: translateX(22px);
-  background: #2ee6c8;
+  background: #35f8ff;
 }
 
 .med-note {
   padding: 14px 16px;
   border-radius: 14px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: rgba(4, 18, 24, 0.65);
-  color: var(--text-soft, #9bc6bd);
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(8, 20, 44, 0.65);
+  color: var(--text-soft, #c5d8f7);
   font-size: 12px;
   line-height: 1.7;
 }
@@ -525,3 +525,4 @@
     font-size: 24px;
   }
 }
+

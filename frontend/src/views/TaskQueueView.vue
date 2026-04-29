@@ -325,7 +325,7 @@ const uncertaintyColor = (value?: number) => {
   const normalized = Number(value || 0)
   if (normalized >= settings.value.riskAlertThreshold) return 'linear-gradient(90deg, #ff636e, #f7a23a)'
   if (normalized >= settings.value.riskAlertThreshold * 0.7) return 'linear-gradient(90deg, #f7a23a, #f7d63a)'
-  return 'linear-gradient(90deg, #2ee6c8, #5eead4)'
+  return 'linear-gradient(90deg, #35f8ff, #3f79ff)'
 }
 
 const filteredTasks = computed(() => {
@@ -369,8 +369,8 @@ const displayEnd = computed(() => Math.min(pageNo.value * 10, total.value))
 
 const statusSummary = computed(() => [
   { key: 'review', label: '待复核', count: reviewCount.value, color: '#f7a23a' },
-  { key: 'running', label: '运行中', count: runningCount.value, color: '#5eead4' },
-  { key: 'done', label: '已完成', count: tasks.value.filter((task) => normalizeStatus(task.taskStatusCode) === 'SUCCESS').length, color: '#2ee6c8' },
+  { key: 'running', label: '运行中', count: runningCount.value, color: '#3f79ff' },
+  { key: 'done', label: '已完成', count: tasks.value.filter((task) => normalizeStatus(task.taskStatusCode) === 'SUCCESS').length, color: '#35f8ff' },
   { key: 'failed', label: '失败', count: tasks.value.filter((task) => normalizeStatus(task.taskStatusCode) === 'FAILED').length, color: '#ff636e' },
 ])
 
@@ -487,16 +487,16 @@ onUnmounted(() => {
 .queue-item {
   padding: 18px;
   border-radius: 18px;
-  border: 1px solid rgba(94, 234, 212, 0.08);
-  background: rgba(11, 36, 44, 0.42);
+  border: 1px solid rgba(112, 224, 255, 0.08);
+  background: rgba(15, 31, 63, 0.42);
   cursor: pointer;
   transition: transform .18s ease, border-color .18s ease, background .18s ease;
 }
 
 .queue-item:hover {
   transform: translateY(-2px);
-  border-color: rgba(94, 234, 212, 0.2);
-  background: rgba(11, 36, 44, 0.58);
+  border-color: rgba(112, 224, 255, 0.2);
+  background: rgba(15, 31, 63, 0.58);
 }
 
 .queue-item-head {
@@ -573,7 +573,7 @@ onUnmounted(() => {
 .queue-footer {
   margin-top: 18px;
   padding-top: 14px;
-  border-top: 1px solid rgba(94, 234, 212, 0.08);
+  border-top: 1px solid rgba(112, 224, 255, 0.08);
 }
 
 .queue-side-stack {
@@ -584,8 +584,8 @@ onUnmounted(() => {
 .queue-highlight {
   padding: 20px;
   border-radius: 18px;
-  border: 1px solid rgba(46, 230, 200, 0.16);
-  background: radial-gradient(circle at top right, rgba(46, 230, 200, 0.18), transparent 46%), rgba(11, 36, 44, 0.52);
+  border: 1px solid rgba(0, 229, 255, 0.16);
+  background: radial-gradient(circle at top right, rgba(0, 229, 255, 0.18), transparent 46%), rgba(15, 31, 63, 0.52);
 }
 
 .queue-highlight-cap {
@@ -665,3 +665,4 @@ onUnmounted(() => {
   }
 }
 </style>
+

@@ -263,9 +263,9 @@ const overlayColor = (severity?: string) => {
       return '#f7a23a'
     case 'C1':
     case 'G1':
-      return '#5eead4'
+      return '#3f79ff'
     default:
-      return '#2ee6c8'
+      return '#35f8ff'
   }
 }
 
@@ -474,8 +474,8 @@ watch(() => route.fullPath, () => {
 .report-doc {
   padding: 28px;
   border-radius: 24px;
-  background: linear-gradient(180deg, rgba(250, 255, 252, 0.98), rgba(236, 248, 243, 0.96));
-  color: #113239;
+  background: linear-gradient(180deg, rgba(18, 41, 75, 0.92), rgba(10, 18, 40, 0.96));
+  color: #f2f7ff;
 }
 
 .report-head {
@@ -484,7 +484,7 @@ watch(() => route.fullPath, () => {
   gap: 18px;
   align-items: flex-start;
   padding-bottom: 22px;
-  border-bottom: 1px solid rgba(17, 50, 57, 0.12);
+  border-bottom: 1px solid rgba(112, 224, 255, 0.12);
 }
 
 .report-head h2 {
@@ -499,7 +499,7 @@ watch(() => route.fullPath, () => {
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
-  color: rgba(17, 50, 57, 0.62);
+  color: rgba(197, 216, 247, 0.62);
   font-size: 12px;
 }
 
@@ -515,8 +515,8 @@ watch(() => route.fullPath, () => {
   border-radius: 14px;
   display: grid;
   place-items: center;
-  background: rgba(46, 230, 200, 0.16);
-  color: #00a893;
+  background: rgba(0, 229, 255, 0.16);
+  color: #21cdfd;
 }
 
 .report-sign-title {
@@ -543,8 +543,8 @@ watch(() => route.fullPath, () => {
 .report-note {
   padding: 16px;
   border-radius: 18px;
-  border: 1px solid rgba(17, 50, 57, 0.1);
-  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: rgba(15, 31, 63, 0.72);
 }
 
 .report-info-card strong,
@@ -571,8 +571,8 @@ watch(() => route.fullPath, () => {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: rgba(46, 230, 200, 0.14);
-  color: #00a893;
+  background: rgba(0, 229, 255, 0.14);
+  color: #35f8ff;
   font-weight: 800;
 }
 
@@ -586,8 +586,8 @@ watch(() => route.fullPath, () => {
   min-height: 360px;
   border-radius: 20px;
   overflow: hidden;
-  background: linear-gradient(180deg, #dfeee8, #f7fbf9);
-  border: 1px solid rgba(17, 50, 57, 0.08);
+  background: linear-gradient(180deg, #061936, #031020);
+  border: 1px solid rgba(112, 224, 255, 0.08);
 }
 
 .report-image {
@@ -616,7 +616,7 @@ watch(() => route.fullPath, () => {
   margin: 0;
   font-size: 14px;
   line-height: 1.8;
-  color: rgba(17, 50, 57, 0.82);
+  color: rgba(216, 229, 251, 0.82);
 }
 
 .report-paragraph {
@@ -645,7 +645,7 @@ watch(() => route.fullPath, () => {
   font-size: 11px;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: rgba(17, 50, 57, 0.52);
+  color: rgba(197, 216, 247, 0.52);
 }
 
 @media (max-width: 1080px) {
@@ -686,3 +686,4 @@ watch(() => route.fullPath, () => {
   }
 }
 </style>
+

@@ -299,7 +299,7 @@ const uncertaintyColor = (value?: number) => {
   const normalized = Number(value || 0)
   if (normalized >= 0.35) return 'linear-gradient(90deg, #ff636e, #f7a23a)'
   if (normalized >= 0.2) return 'linear-gradient(90deg, #f7a23a, #f7d63a)'
-  return 'linear-gradient(90deg, #2ee6c8, #5eead4)'
+  return 'linear-gradient(90deg, #35f8ff, #3f79ff)'
 }
 
 const reviewCount = computed(() => store.tasks.items.filter((item) => item.status === 'REVIEW').length)
@@ -580,8 +580,8 @@ const submitNewCase = async () => {
 
 .case-card {
   border-radius: 20px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
-  background: linear-gradient(180deg, rgba(13, 38, 47, 0.76), rgba(8, 23, 28, 0.92));
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  background: linear-gradient(180deg, rgba(18, 41, 75, 0.76), rgba(10, 18, 40, 0.92));
   overflow: hidden;
   cursor: pointer;
   transition: transform .18s ease, border-color .18s ease;
@@ -589,7 +589,7 @@ const submitNewCase = async () => {
 
 .case-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(94, 234, 212, 0.26);
+  border-color: rgba(112, 224, 255, 0.26);
 }
 
 .case-visual {
@@ -606,11 +606,11 @@ const submitNewCase = async () => {
 }
 
 .case-visual-backdrop {
-  background: radial-gradient(circle at top left, rgba(46, 230, 200, 0.22), transparent 42%), linear-gradient(180deg, #03131a, #071b22);
+  background: radial-gradient(circle at top left, rgba(0, 229, 255, 0.22), transparent 42%), linear-gradient(180deg, #06142e, #09162f);
 }
 
 .case-visual-grid {
-  background-image: linear-gradient(rgba(94, 234, 212, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(94, 234, 212, 0.08) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(112, 224, 255, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(112, 224, 255, 0.08) 1px, transparent 1px);
   background-size: 26px 26px;
   mask-image: radial-gradient(circle at 50% 50%, #000 35%, transparent 90%);
 }
@@ -621,7 +621,7 @@ const submitNewCase = async () => {
   top: 28px;
   left: 40px;
   border-radius: 50%;
-  background: rgba(46, 230, 200, 0.18);
+  background: rgba(0, 229, 255, 0.18);
   filter: blur(50px);
 }
 
@@ -631,7 +631,7 @@ const submitNewCase = async () => {
   top: 10px;
   right: -40px;
   border-radius: 50%;
-  background: rgba(94, 234, 212, 0.16);
+  background: rgba(112, 224, 255, 0.16);
   filter: blur(60px);
 }
 
@@ -709,7 +709,7 @@ const submitNewCase = async () => {
 .case-modal-mask {
   position: fixed;
   inset: 0;
-  background: rgba(1, 12, 16, 0.66);
+  background: rgba(2, 9, 20, 0.66);
   backdrop-filter: blur(12px);
   display: grid;
   place-items: center;
@@ -737,8 +737,8 @@ const submitNewCase = async () => {
   min-height: 160px;
   padding: 20px;
   border-radius: 18px;
-  border: 1.5px dashed rgba(46, 230, 200, 0.26);
-  background: linear-gradient(180deg, rgba(46, 230, 200, 0.08), rgba(4, 18, 24, 0.66));
+  border: 1.5px dashed rgba(0, 229, 255, 0.26);
+  background: linear-gradient(180deg, rgba(0, 229, 255, 0.08), rgba(8, 20, 44, 0.66));
   color: var(--text-soft);
   cursor: pointer;
   transition: all .18s ease;
@@ -746,8 +746,8 @@ const submitNewCase = async () => {
 
 .case-dropzone.active,
 .case-dropzone:hover {
-  border-color: rgba(46, 230, 200, 0.46);
-  background: linear-gradient(180deg, rgba(46, 230, 200, 0.12), rgba(4, 18, 24, 0.74));
+  border-color: rgba(0, 229, 255, 0.46);
+  background: linear-gradient(180deg, rgba(0, 229, 255, 0.12), rgba(8, 20, 44, 0.74));
 }
 
 .case-dropzone-title {
@@ -803,3 +803,4 @@ const submitNewCase = async () => {
   }
 }
 </style>
+
