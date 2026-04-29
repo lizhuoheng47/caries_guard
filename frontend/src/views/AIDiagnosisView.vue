@@ -407,7 +407,7 @@
               <div class="summary-value">
                 <template v-if="state === 'result'">
                   <strong>{{ activeResults.teethDetected }}</strong>
-                  <small>/ 28 颗</small>
+                  <small>/ {{ activeResults.totalTeeth ?? 28 }} 颗</small>
                 </template>
                 <template v-else>--</template>
               </div>
@@ -963,7 +963,17 @@ function buildPreviewUrl(file: File) {
 
 function resolveDemoCase(file: File) {
   const normalizedName = file.name.trim().toLowerCase()
-  return DEMO_CASES.find((item) => item.fileNames.includes(normalizedName)) ?? null
+  const normalizedBaseName = getFileBaseName(normalizedName)
+  return (
+    DEMO_CASES.find((item) => item.fileNames.includes(normalizedName) || item.fileBaseNames?.includes(normalizedBaseName)) ??
+    null
+  )
+}
+
+function getFileBaseName(fileName: string) {
+  const extensionIndex = fileName.lastIndexOf('.')
+  if (extensionIndex <= 0) return fileName
+  return fileName.slice(0, extensionIndex)
 }
 
 function createDicomPlaceholder(fileName: string) {
