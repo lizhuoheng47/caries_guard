@@ -568,7 +568,7 @@ const CASE_10_ANNOTATIONS: Annotation[] = [
 export const DEMO_CASES: DemoCase[] = [
   {
     key: 'case20',
-    fileNames: ['20_c1.jpg', '20_c1.jpeg', '20show.png'],
+    fileNames: ['7_c1.jpg', '7_c1.jpeg', '7_c1.png', '20show.png'],
     resultImageUrl: '/20show.png',
     displayMode: 'cover',
     results: CASE_20_RESULTS,
