@@ -62,6 +62,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", default="auto", help="Training device, e.g. auto/cpu/cuda")
     parser.add_argument("--num-workers", type=int, default=0, help="DataLoader worker count")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument(
+        "--foreground-weight",
+        type=float,
+        default=1.0,
+        help="Positive-class BCE weight for imbalanced lesion masks",
+    )
     return parser
 
 
@@ -125,6 +131,7 @@ def main() -> None:
         ignore_index=label_maps.ignore_index,
         num_workers=args.num_workers,
         seed=args.seed,
+        foreground_weight=args.foreground_weight,
     )
 
     segmentation_labels = [

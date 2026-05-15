@@ -1,0 +1,18 @@
+{
+  "dataset_manifest": "training/outputs/datasets/traindata/train.jsonl",
+  "val_manifest": "training/outputs/datasets/traindata/val.jsonl",
+  "class_map": "assets/datasets/caries_v1/meta/class_map.json",
+  "preprocess_config": "E:\\caries_guard\\backend-python\\assets\\models\\configs\\preprocess.yaml",
+  "output_dir": "training/outputs/runs/traindata_seg_20260503_mask01_fg40",
+  "epochs": 20,
+  "batch_size": 4,
+  "lr": 0.001,
+  "input_size": [
+    256,
+    256
+  ],
+  "device": "cpu",
+  "num_workers": 0,
+  "seed": 42,
+  "foreground_weight": 40.0
+}

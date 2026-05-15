@@ -251,8 +251,17 @@ def _segmentation_loss(
     logits: torch.Tensor,
     targets: torch.Tensor,
     valid_mask: torch.Tensor,
+    foreground_weight: float = 1.0,
 ) -> torch.Tensor:
-    loss_map = functional.binary_cross_entropy_with_logits(logits, targets, reduction="none")
+    pos_weight = None
+    if foreground_weight > 1.0:
+        pos_weight = torch.tensor(float(foreground_weight), dtype=logits.dtype, device=logits.device)
+    loss_map = functional.binary_cross_entropy_with_logits(
+        logits,
+        targets,
+        reduction="none",
+        pos_weight=pos_weight,
+    )
     valid_sum = valid_mask.sum().clamp_min(1.0)
     bce = (loss_map * valid_mask).sum() / valid_sum
 
@@ -443,6 +452,7 @@ def train_segmentation(
     ignore_index: int,
     num_workers: int,
     seed: int,
+    foreground_weight: float = 1.0,
 ) -> dict[str, Any]:
     seed_everything(seed)
     device = resolve_device(device_name)
@@ -488,7 +498,7 @@ def train_segmentation(
 
             optimizer.zero_grad(set_to_none=True)
             logits = model(images)
-            loss = _segmentation_loss(logits, masks, valid_masks)
+            loss = _segmentation_loss(logits, masks, valid_masks, foreground_weight=foreground_weight)
             loss.backward()
             optimizer.step()
 
@@ -501,6 +511,7 @@ def train_segmentation(
             model=model,
             data_loader=val_loader,
             device=device,
+            foreground_weight=foreground_weight,
         )
 
         epoch_summary = {
@@ -553,6 +564,7 @@ def evaluate_segmentation_model(
     model: nn.Module,
     data_loader: DataLoader,
     device: torch.device,
+    foreground_weight: float = 1.0,
 ) -> tuple[dict[str, Any], np.ndarray]:
     model.eval()
     running_loss = 0.0
@@ -565,7 +577,7 @@ def evaluate_segmentation_model(
         valid_masks = valid_masks.to(device)
 
         logits = model(images)
-        loss = _segmentation_loss(logits, masks, valid_masks)
+        loss = _segmentation_loss(logits, masks, valid_masks, foreground_weight=foreground_weight)
         batch_size_value = int(images.shape[0])
         running_loss += float(loss.item()) * batch_size_value
         sample_count += batch_size_value

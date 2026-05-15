@@ -216,14 +216,22 @@ def scan_dataset(dataset_dir: Path) -> dict[str, Any]:
     if not dataset_dir.is_dir():
         raise FileNotFoundError(f"dataset directory does not exist: {dataset_dir}")
 
-    raw_images = sorted(path for path in dataset_dir.glob("*.png") if not path.name.lower().endswith("-mask.png"))
+    image_extensions = {".png", ".jpg", ".jpeg"}
+    raw_images = sorted(
+        path
+        for path in dataset_dir.iterdir()
+        if path.is_file()
+        and path.suffix.lower() in image_extensions
+        and not path.name.lower().endswith("-mask.png")
+    )
     mask_files = sorted(dataset_dir.glob("*-mask.png"))
     mask_lookup = {path.name.lower(): path for path in mask_files}
+    raw_stems = {path.stem.lower() for path in raw_images}
     valid_pairs: list[PairRecord] = []
     skipped: list[dict[str, Any]] = []
 
     for image_path in raw_images:
-        expected_mask_name = f"{image_path.stem}-mask{image_path.suffix}".lower()
+        expected_mask_name = f"{image_path.stem}-mask.png".lower()
         mask_path = mask_lookup.get(expected_mask_name)
         if mask_path is None:
             skipped.append({"entryType": "image", "file": image_path.name, "reason": "missing_mask"})
@@ -257,10 +265,9 @@ def scan_dataset(dataset_dir: Path) -> dict[str, Any]:
             )
         )
 
-    raw_names = {path.name.lower() for path in raw_images}
     for mask_path in mask_files:
-        image_name = f"{mask_path.stem[:-5]}{mask_path.suffix}".lower()
-        if image_name not in raw_names:
+        image_stem = mask_path.name[: -len("-mask.png")].lower()
+        if image_stem not in raw_stems:
             skipped.append({"entryType": "mask", "file": mask_path.name, "reason": "missing_image"})
 
     if len(valid_pairs) < 2:

@@ -1,0 +1,17 @@
+{
+  "labels": [
+    "BACKGROUND",
+    "CARIES_LESION"
+  ],
+  "matrix": [
+    [
+      100011,
+      159821
+    ],
+    [
+      5,
+      2307
+    ]
+  ],
+  "total": 262144
+}

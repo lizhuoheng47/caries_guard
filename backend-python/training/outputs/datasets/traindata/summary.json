@@ -1,0 +1,66 @@
+{
+  "datasetDir": "E:\\caries_guard\\data\\traindata",
+  "classMap": "assets/datasets/caries_v1/meta/class_map.json",
+  "seed": 42,
+  "valRatio": 0.2,
+  "totalPairs": 22,
+  "trainCount": 18,
+  "valCount": 4,
+  "skippedCount": 6,
+  "gradeCounts": {
+    "C1": 6,
+    "C2": 11,
+    "C3": 5
+  },
+  "trainGradeCounts": {
+    "C1": 5,
+    "C2": 9,
+    "C3": 4
+  },
+  "valGradeCounts": {
+    "C1": 1,
+    "C2": 2,
+    "C3": 1
+  },
+  "convertedMaskDir": "training/outputs/datasets/traindata/masks_class_id",
+  "maskEncoding": {
+    "backgroundValue": 0,
+    "foregroundValue": 1,
+    "sourceForegroundValue": 255,
+    "ignoreIndex": 255
+  },
+  "skipped": [
+    {
+      "file": "0012-c1-t.png",
+      "reason": "missing_mask",
+      "expectedMask": "0012-c1-t-mask.png"
+    },
+    {
+      "file": "0013-c1-t.png",
+      "reason": "missing_mask",
+      "expectedMask": "0013-c1-t-mask.png"
+    },
+    {
+      "file": "0014-c1-t.png",
+      "reason": "missing_mask",
+      "expectedMask": "0014-c1-t-mask.png"
+    },
+    {
+      "file": "0014-c2-t.png",
+      "reason": "missing_mask",
+      "expectedMask": "0014-c2-t-mask.png"
+    },
+    {
+      "file": "0015-c1-t.png",
+      "reason": "missing_mask",
+      "expectedMask": "0015-c1-t-mask.png"
+    },
+    {
+      "file": "0015-c2-t.png",
+      "reason": "missing_mask",
+      "expectedMask": "0015-c2-t-mask.png"
+    }
+  ],
+  "trainManifest": "training/outputs/datasets/traindata/train.jsonl",
+  "valManifest": "training/outputs/datasets/traindata/val.jsonl"
+}

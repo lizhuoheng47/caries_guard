@@ -253,17 +253,6 @@ VITE_USE_MOCK=true
 - 复核工作台前端已经可用，但如果后端没有返回足够的复核队列数据，前端会基于分析任务列表展示复核入口。
 - Python 默认推荐使用 `mock` 运行模式进行开发联调；`real` 只适合在模型、回调链路和知识库依赖都准备好后启用。
 
-## 文档入口
-
-- [项目概览](Documents/01_项目概览.md)
-- [功能说明](Documents/02_功能说明.md)
-- [部署与运行](Documents/03_部署与运行.md)
-- [接口与集成说明](Documents/04_接口与集成说明.md)
-- [数据字典](Documents/05_数据字典.md)
-- [UI 页面与前后端接口映射表](UI页面与前后端接口映射表.md)
-- [Java 后端说明](backend-java/README.md)
-- [Python 后端说明](backend-python/README.md)
-
 ## 运行建议
 
 - 开发 / 演示优先使用 Python `mock` 模式。
