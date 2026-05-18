@@ -3,9 +3,19 @@ export interface LoginUserDTO {
   username: string;
   nickName?: string;
   nickname?: string;
+  realNameMasked?: string;
+  deptId?: number;
+  userNo?: string;
+  phoneMasked?: string;
+  emailMasked?: string;
+  avatarUrl?: string;
   roleCodes?: string[];
   orgId: number;
   userTypeCode?: string;
+  genderCode?: string;
+  certificateNoMasked?: string;
+  lastLoginAt?: string;
+  status?: string;
 }
 
 export interface LoginResponseDTO {
@@ -21,9 +31,19 @@ export interface CurrentUserDTO {
   username: string;
   nickName?: string;
   nickname?: string;
+  realNameMasked?: string;
+  deptId?: number;
+  userNo?: string;
+  phoneMasked?: string;
+  emailMasked?: string;
+  avatarUrl?: string;
   roleCodes?: string[];
   orgId: number;
   userTypeCode?: string;
+  genderCode?: string;
+  certificateNoMasked?: string;
+  lastLoginAt?: string;
+  status?: string;
 }
 
 export interface MenuNodeDTO {

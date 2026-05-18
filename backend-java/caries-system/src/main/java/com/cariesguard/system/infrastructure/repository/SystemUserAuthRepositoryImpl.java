@@ -53,10 +53,19 @@ public class SystemUserAuthRepositoryImpl implements SystemUserAuthRepository {
         return new SystemUserAuthModel(
                 user.getId(),
                 user.getOrgId(),
+                user.getDeptId(),
+                user.getUserNo(),
                 user.getUsername(),
                 user.getPasswordHash(),
                 user.getNickName() != null ? user.getNickName() : user.getRealNameMasked(),
+                user.getRealNameMasked(),
+                user.getPhoneMasked(),
+                user.getEmailMasked(),
+                user.getAvatarUrl(),
                 user.getUserTypeCode(),
+                user.getGenderCode(),
+                user.getCertificateNoMasked(),
+                user.getLastLoginAt(),
                 user.getStatus(),
                 roleCodes);
     }

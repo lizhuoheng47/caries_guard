@@ -41,15 +41,15 @@
         </div>
 
         <div class="hero-meta">
-          <div class="hello">欢迎回来，<span class="name">陈医生</span></div>
+          <div class="hello">欢迎回来，<span class="name">{{ displayName }}</span></div>
           <div class="role">
-            <span class="role-tag">口腔影像科</span>
-            <span class="role-tag role-tag-soft">主任医师</span>
-            <span class="role-tag role-tag-soft">执业证 2018</span>
+            <span class="role-tag">{{ userTypeLabel }}</span>
+            <span class="role-tag role-tag-soft">{{ primaryRoleLabel }}</span>
+            <span class="role-tag role-tag-soft">工号 {{ user.userNo || '--' }}</span>
           </div>
           <div class="motto">
             <span class="motto-line"></span>
-            用科技守护每一份微笑
+            当前展示信息均来自后端用户档案
           </div>
         </div>
       </div>
@@ -68,66 +68,46 @@
           <div class="shield-ground"></div>
         </div>
         <div class="security">
-          <div class="sec-cap">账户安全等级</div>
-          <div class="sec-level">安全</div>
-          <div class="sec-time">上次登录：2024-06-01 14:30</div>
-          <button class="sec-btn">
-            安全中心
-            <svg viewBox="0 0 16 16" fill="none">
-              <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+          <div class="sec-cap">账户状态</div>
+          <div class="sec-level">{{ accountStatusLabel }}</div>
+          <div class="sec-time">上次登录：{{ formatDateTime(user.lastLoginAt) }}</div>
+          <div class="sec-btn">机构 ID {{ user.orgId }}</div>
         </div>
       </div>
     </div>
 
-    <!-- Two-column: 成就 + 团队/活动 -->
     <div class="row-2col">
-      <!-- Achievements -->
-      <div class="card achv-card">
+      <div class="card summary-card">
         <div class="card-head">
-          <div class="card-title"><span class="title-bar"></span>个人成就</div>
-          <span class="head-sub">已获 6 / 12</span>
+          <div class="card-title"><span class="title-bar"></span>账号摘要</div>
+          <span class="head-sub">来自后端 /auth/me</span>
         </div>
-        <div class="achv-grid">
-          <div v-for="a in achievements" :key="a.key" class="achv-item" :class="{ locked: a.locked }">
-            <div class="achv-medal" :class="`m-${a.tone}`">
-              <span v-html="a.icon"></span>
-            </div>
-            <div class="achv-name">{{ a.name }}</div>
-            <div class="achv-cap">{{ a.cap }}</div>
+        <div class="summary-grid">
+          <div v-for="item in summaryItems" :key="item.k" class="summary-item">
+            <div class="summary-label">{{ item.k }}</div>
+            <div class="summary-value">{{ item.v }}</div>
           </div>
         </div>
       </div>
 
-      <!-- Activity timeline -->
       <div class="card timeline-card">
         <div class="card-head">
-          <div class="card-title"><span class="title-bar"></span>近期动态</div>
-          <a class="head-link" href="javascript:void(0)">查看全部</a>
+          <div class="card-title"><span class="title-bar"></span>登录与安全</div>
+          <span class="head-sub">实时用户标识</span>
         </div>
-        <ul class="timeline">
-          <li v-for="(t, i) in timeline" :key="i" :class="`t-${t.tone}`">
-            <span class="t-dot"></span>
-            <div class="t-body">
-              <div class="t-text">{{ t.text }}</div>
-              <div class="t-time">{{ t.time }}</div>
-            </div>
+        <ul class="info-list">
+          <li v-for="item in securityItems" :key="item.k" class="info-item">
+            <span class="info-key">{{ item.k }}</span>
+            <span class="info-val">{{ item.v }}</span>
           </li>
         </ul>
       </div>
     </div>
 
-    <!-- Profile detail card -->
     <div class="card profile-card">
       <div class="card-head">
         <div class="card-title"><span class="title-bar"></span>个人资料</div>
-        <button class="edit-btn">
-          <svg viewBox="0 0 14 14" fill="none">
-            <path d="M9 2l3 3-7 7H2V9l7-7Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
-          </svg>
-          编辑
-        </button>
+        <span class="head-sub">数据库脱敏展示</span>
       </div>
       <div class="profile-grid">
         <div v-for="f in profile" :key="f.k" class="profile-field">
@@ -137,7 +117,6 @@
       </div>
     </div>
 
-    <!-- Quick actions -->
     <div class="card actions-card">
       <div class="card-head">
         <div class="card-title"><span class="title-bar"></span>快捷操作</div>
@@ -159,35 +138,103 @@
 </template>
 
 <script setup lang="ts">
-const achievements = [
-  { key: 'a1', name: '诊断新手', cap: '完成 100 例', tone: 'mint', locked: false, icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1 3-6Z" fill="currentColor"/></svg>` },
-  { key: 'a2', name: '精准诊断', cap: '准确率 ≥95%', tone: 'cyan', locked: false, icon: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>` },
-  { key: 'a3', name: '勤勉医者', cap: '连续 30 天', tone: 'amber', locked: false, icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 3a4 4 0 0 1 4 4c0 4-4 7-4 7s-4-3-4-7a4 4 0 0 1 4-4Z" fill="currentColor"/><path d="M5 21c2-3 5-4 7-4s5 1 7 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg>` },
-  { key: 'a4', name: '专家审核', cap: '复核 500 例', tone: 'violet', locked: false, icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 7l8-4 8 4-8 4-8-4Z" fill="currentColor"/><path d="M4 12l8 4 8-4M4 17l8 4 8-4" stroke="currentColor" stroke-width="1.7" fill="none"/></svg>` },
-  { key: 'a5', name: '夜诊达人', cap: '夜间值班 50 次', tone: 'mint', locked: false, icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M19 14a8 8 0 1 1-9-9 6 6 0 0 0 9 9Z" fill="currentColor"/></svg>` },
-  { key: 'a6', name: '影像大师', cap: '完成 1000 例', tone: 'cyan', locked: false, icon: `<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="11" r="2" fill="currentColor"/><path d="M3 17l5-4 4 3 4-5 5 5" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg>` },
-  { key: 'a7', name: '协作之星', cap: '团队会诊 20 次', tone: 'amber', locked: true, icon: `<svg viewBox="0 0 24 24" fill="none"><circle cx="8" cy="9" r="3" stroke="currentColor" stroke-width="1.7"/><circle cx="16" cy="9" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M3 19c.5-3 2.5-5 5-5s4.5 2 5 5M13 19c.5-3 2.5-5 5-5s4.5 2 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg>` },
-  { key: 'a8', name: '科研先锋', cap: '发表论文 5 篇', tone: 'violet', locked: true, icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M6 3h9l4 4v14H6V3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3v5h5" stroke="currentColor" stroke-width="1.7"/></svg>` },
-]
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import type { User } from '@/models/auth'
 
-const timeline = [
-  { tone: 'mint',   text: '完成全景片诊断 · 患者王**', time: '今天 14:30' },
-  { tone: 'amber',  text: '复核高风险病例 · 患者张**', time: '今天 11:20' },
-  { tone: 'cyan',   text: '导出本周诊断数据报表', time: '昨天 18:05' },
-  { tone: 'violet', text: '参与多学科会诊 · 罕见病例 #287', time: '昨天 09:40' },
-  { tone: 'mint',   text: '更新个人偏好设置', time: '2 天前' },
-]
+const authStore = useAuthStore()
 
-const profile = [
-  { k: '医师姓名',  v: '陈** 主任' },
-  { k: '工号',      v: 'D-20180312' },
-  { k: '所属科室',  v: '口腔影像科' },
-  { k: '联系电话',  v: '138****6688' },
-  { k: '电子邮箱',  v: 'chen****@dentai.com' },
-  { k: '执业地点',  v: '上海市第一人民医院' },
-  { k: '加入时间',  v: '2018-03-12' },
-  { k: '账户状态',  v: '活跃' },
-]
+const emptyUser: User = {
+  id: 0,
+  username: '--',
+  nickname: '--',
+  realNameMasked: '--',
+  deptId: undefined,
+  userNo: '--',
+  phoneMasked: '--',
+  emailMasked: '--',
+  avatarUrl: '',
+  roles: [],
+  orgId: 0,
+  userTypeCode: undefined,
+  genderCode: undefined,
+  certificateNoMasked: '--',
+  lastLoginAt: undefined,
+  status: undefined,
+}
+
+const user = computed(() => authStore.user ?? emptyUser)
+
+const mapUserTypeLabel = (value?: string) => {
+  if (value === 'ADMIN') return '系统管理员'
+  if (value === 'ORG_ADMIN') return '机构管理员'
+  if (value === 'DOCTOR') return '医生'
+  if (value === 'SCREENER') return '筛查员'
+  if (value === 'PATIENT') return '患者'
+  return value || '--'
+}
+
+const mapGenderLabel = (value?: string) => {
+  if (value === 'MALE') return '男'
+  if (value === 'FEMALE') return '女'
+  if (value === 'UNKNOWN') return '未知'
+  return value || '--'
+}
+
+const mapRoleLabel = (value?: string) => {
+  if (value === 'SYS_ADMIN' || value === 'ADMIN' || value === 'ROLE_ADMIN') return '系统管理员'
+  if (value === 'ORG_ADMIN' || value === 'ROLE_ORG_ADMIN') return '机构管理员'
+  if (value === 'DOCTOR' || value === 'ROLE_DOCTOR') return '医生'
+  if (value === 'SCREENER' || value === 'ROLE_SCREENER') return '筛查员'
+  return value || '--'
+}
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '--'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+const displayName = computed(() => user.value.realNameMasked || user.value.nickname || user.value.username || '--')
+const userTypeLabel = computed(() => mapUserTypeLabel(user.value.userTypeCode))
+const primaryRoleLabel = computed(() => mapRoleLabel(user.value.roles?.[0]))
+const accountStatusLabel = computed(() => {
+  if (user.value.status === 'ACTIVE') return '正常'
+  if (user.value.status === 'DISABLED') return '禁用'
+  return user.value.status || '--'
+})
+
+const summaryItems = computed(() => [
+  { k: '登录账号', v: user.value.username || '--' },
+  { k: '展示名称', v: displayName.value },
+  { k: '用户类型', v: userTypeLabel.value },
+  { k: '主角色', v: primaryRoleLabel.value },
+])
+
+const securityItems = computed(() => [
+  { k: '用户 ID', v: String(user.value.id || '--') },
+  { k: '机构 ID', v: String(user.value.orgId || '--') },
+  { k: '部门 ID', v: user.value.deptId ? String(user.value.deptId) : '--' },
+  { k: '上次登录', v: formatDateTime(user.value.lastLoginAt) },
+])
+
+const profile = computed(() => [
+  { k: '姓名', v: displayName.value },
+  { k: '昵称', v: user.value.nickname || '--' },
+  { k: '工号', v: user.value.userNo || '--' },
+  { k: '联系电话', v: user.value.phoneMasked || '--' },
+  { k: '电子邮箱', v: user.value.emailMasked || '--' },
+  { k: '性别', v: mapGenderLabel(user.value.genderCode) },
+  { k: '证件号', v: user.value.certificateNoMasked || '--' },
+  { k: '角色列表', v: user.value.roles?.length ? user.value.roles.map(mapRoleLabel).join(' / ') : '--' },
+])
 
 const actions = [
   { key: 'sec',    tone: 'mint',   title: '账户安全', sub: '管理账号与安全设置',
@@ -287,50 +334,21 @@ const actions = [
 .head-sub { font-size: 11px; color: #6f86b6; }
 .head-link { font-size: 11px; color: #35f8ff; text-decoration: none; }
 
-/* Achievements */
-.achv-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.achv-item { position: relative; padding: 14px 8px 12px; border-radius: 10px; border: 1px solid rgba(112, 224, 255, 0.08); background: rgba(15, 31, 63, 0.45); text-align: center; transition: transform .18s ease, border-color .18s ease; }
-.achv-item:hover { transform: translateY(-2px); border-color: rgba(112, 224, 255, 0.25); }
-.achv-item.locked { opacity: 0.45; filter: grayscale(0.6); }
-.achv-medal {
-  width: 44px; height: 44px;
-  margin: 0 auto 8px;
-  border-radius: 50%;
-  display: grid; place-items: center;
-  background: rgba(0,0,0,0.25);
-  border: 1.5px solid var(--mt, #35f8ff);
-  color: var(--mt, #35f8ff);
-  filter: drop-shadow(0 0 8px var(--mt, #35f8ff));
-}
-.achv-medal :deep(svg), .achv-medal svg { width: 22px; height: 22px; }
-.m-mint   { --mt: #35f8ff; }
-.m-cyan   { --mt: #3f79ff; }
-.m-amber  { --mt: #f7a23a; }
-.m-violet { --mt: #9b6bff; }
-.achv-name { font-size: 12px; font-weight: 700; color: #f7fbff; }
-.achv-cap { font-size: 10px; color: #6f86b6; margin-top: 3px; }
+.summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.summary-item { padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(112, 224, 255, 0.08); background: rgba(15, 31, 63, 0.45); }
+.summary-label { font-size: 11px; color: #6f86b6; letter-spacing: 1px; }
+.summary-value { margin-top: 6px; font-size: 18px; font-weight: 700; color: #f7fbff; }
 
-/* Timeline */
-.timeline { list-style: none; margin: 0; padding: 0 0 0 12px; position: relative; }
-.timeline::before { content: ""; position: absolute; left: 4px; top: 4px; bottom: 4px; width: 1px; background: linear-gradient(180deg, rgba(112, 224, 255, 0.05), rgba(112, 224, 255, 0.3), rgba(112, 224, 255, 0.05)); }
-.timeline li { position: relative; padding: 8px 0 12px 16px; display: flex; align-items: flex-start; gap: 10px; }
-.t-dot { position: absolute; left: -3px; top: 12px; width: 9px; height: 9px; border-radius: 50%; background: var(--td, #35f8ff); box-shadow: 0 0 8px var(--td, #35f8ff); border: 2px solid #061936; }
-.t-mint   { --td: #35f8ff; }
-.t-cyan   { --td: #3f79ff; }
-.t-amber  { --td: #f7a23a; }
-.t-violet { --td: #9b6bff; }
-.t-body { flex: 1; }
-.t-text { font-size: 12px; color: #f2f7ff; line-height: 1.5; }
-.t-time { font-size: 10px; color: #6f86b6; margin-top: 2px; }
+.info-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.info-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 10px; background: rgba(15, 31, 63, 0.45); border: 1px solid rgba(112, 224, 255, 0.08); }
+.info-key { font-size: 12px; color: #6f86b6; }
+.info-val { font-size: 13px; color: #f2f7ff; font-weight: 600; text-align: right; }
 
 /* Profile */
 .profile-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 22px; }
 .profile-field { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; border-bottom: 1px dashed rgba(112, 224, 255, 0.08); }
 .pf-label { font-size: 11px; color: #6f86b6; letter-spacing: 1px; }
 .pf-value { font-size: 13px; color: #f2f7ff; font-weight: 600; }
-
-.edit-btn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 14px; border: 1px solid rgba(0, 229, 255, 0.3); background: rgba(0, 229, 255, 0.06); color: #35f8ff; font-size: 11px; font-weight: 600; cursor: pointer; }
-.edit-btn svg { width: 12px; height: 12px; }
 
 /* Actions */
 .actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }

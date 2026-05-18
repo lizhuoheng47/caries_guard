@@ -8,11 +8,13 @@ import com.cariesguard.dashboard.app.DashboardCorrectionFeedbackAppService;
 import com.cariesguard.dashboard.app.DashboardFollowupStatsAppService;
 import com.cariesguard.dashboard.app.DashboardOverviewAppService;
 import com.cariesguard.dashboard.app.DashboardRiskStatsAppService;
+import com.cariesguard.dashboard.app.DashboardReportAppService;
 import com.cariesguard.dashboard.app.DashboardTrendAppService;
 import com.cariesguard.dashboard.interfaces.vo.BacklogSummaryVO;
 import com.cariesguard.dashboard.interfaces.vo.CaseStatusDistributionVO;
 import com.cariesguard.dashboard.interfaces.vo.CorrectionFeedbackStatsVO;
 import com.cariesguard.dashboard.interfaces.vo.DashboardOverviewVO;
+import com.cariesguard.dashboard.interfaces.vo.DashboardReportVO;
 import com.cariesguard.dashboard.interfaces.vo.FollowupTaskSummaryVO;
 import com.cariesguard.dashboard.interfaces.vo.RiskLevelDistributionVO;
 import com.cariesguard.dashboard.interfaces.vo.DashboardTrendPointVO;
@@ -37,6 +39,7 @@ public class DashboardController {
     private final DashboardTrendAppService dashboardTrendAppService;
     private final DashboardCorrectionFeedbackAppService dashboardCorrectionFeedbackAppService;
     private final DashboardNeuralAppService dashboardNeuralAppService;
+    private final DashboardReportAppService dashboardReportAppService;
 
     public DashboardController(DashboardOverviewAppService dashboardOverviewAppService,
                                DashboardCaseStatsAppService dashboardCaseStatsAppService,
@@ -45,7 +48,8 @@ public class DashboardController {
                                DashboardBacklogAppService dashboardBacklogAppService,
                                DashboardTrendAppService dashboardTrendAppService,
                                DashboardCorrectionFeedbackAppService dashboardCorrectionFeedbackAppService,
-                               DashboardNeuralAppService dashboardNeuralAppService) {
+                               DashboardNeuralAppService dashboardNeuralAppService,
+                               DashboardReportAppService dashboardReportAppService) {
         this.dashboardOverviewAppService = dashboardOverviewAppService;
         this.dashboardCaseStatsAppService = dashboardCaseStatsAppService;
         this.dashboardRiskStatsAppService = dashboardRiskStatsAppService;
@@ -54,6 +58,13 @@ public class DashboardController {
         this.dashboardTrendAppService = dashboardTrendAppService;
         this.dashboardCorrectionFeedbackAppService = dashboardCorrectionFeedbackAppService;
         this.dashboardNeuralAppService = dashboardNeuralAppService;
+        this.dashboardReportAppService = dashboardReportAppService;
+    }
+
+    @GetMapping("/api/v1/dashboard/report")
+    @RequirePermission("dashboard:view")
+    public ApiResponse<DashboardReportVO> getReportDashboard() {
+        return ApiResponse.success(dashboardReportAppService.getCurrentDoctorReport(), TraceIdUtils.currentTraceId());
     }
 
     @GetMapping("/api/v1/dashboard/ai-neural")

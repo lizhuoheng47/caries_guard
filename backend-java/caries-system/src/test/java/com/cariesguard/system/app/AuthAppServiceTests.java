@@ -17,6 +17,7 @@ import com.cariesguard.system.interfaces.vo.CurrentUserVO;
 import com.cariesguard.system.interfaces.vo.CurrentUserPermissionsVO;
 import com.cariesguard.system.interfaces.vo.LoginTokenVO;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -73,10 +74,19 @@ class AuthAppServiceTests {
         SystemUserAuthModel user = new SystemUserAuthModel(
                 100001L,
                 100001L,
+                100001L,
+                "U100001",
                 "admin",
                 "hash",
                 "Admin",
+                "Admin",
+                "138****0000",
+                "admin@demo.local",
+                null,
                 "ADMIN",
+                "UNKNOWN",
+                "310***********0001",
+                LocalDateTime.of(2026, 5, 18, 9, 0),
                 "ACTIVE",
                 List.of("SYS_ADMIN"));
         LoginCommand command = new LoginCommand();
@@ -108,10 +118,19 @@ class AuthAppServiceTests {
         SystemUserAuthModel user = new SystemUserAuthModel(
                 100001L,
                 100001L,
+                100001L,
+                "U100001",
                 "admin",
                 "hash",
                 "Admin",
+                "Admin",
+                "138****0000",
+                "admin@demo.local",
+                null,
                 "ADMIN",
+                "UNKNOWN",
+                "310***********0001",
+                LocalDateTime.of(2026, 5, 18, 9, 0),
                 "ACTIVE",
                 List.of("SYS_ADMIN"));
         AuthenticatedUser principal = new AuthenticatedUser(
@@ -137,6 +156,9 @@ class AuthAppServiceTests {
         assertThat(result.roles()).containsExactly("SYS_ADMIN");
         assertThat(result.permissions()).containsExactly("system:user:list", "patient:create");
         assertThat(result.nickName()).isEqualTo("Admin");
+        assertThat(result.userNo()).isEqualTo("U100001");
+        assertThat(result.phoneMasked()).isEqualTo("138****0000");
+        assertThat(result.status()).isEqualTo("ACTIVE");
         assertThat(result.competitionModeEnabled()).isFalse();
     }
 
@@ -152,10 +174,19 @@ class AuthAppServiceTests {
         SystemUserAuthModel user = new SystemUserAuthModel(
                 100001L,
                 100001L,
+                100001L,
+                "U100001",
                 "admin",
                 "hash",
                 "Admin",
+                "Admin",
+                "138****0000",
+                "admin@demo.local",
+                null,
                 "ADMIN",
+                "UNKNOWN",
+                "310***********0001",
+                LocalDateTime.of(2026, 5, 18, 9, 0),
                 "ACTIVE",
                 List.of("SYS_ADMIN"));
         AuthenticatedUser principal = new AuthenticatedUser(
@@ -195,10 +226,19 @@ class AuthAppServiceTests {
         SystemUserAuthModel user = new SystemUserAuthModel(
                 100001L,
                 100001L,
+                100001L,
+                "U100001",
                 "admin",
                 "hash",
                 "Admin",
+                "Admin",
+                "138****0000",
+                "admin@demo.local",
+                null,
                 "ADMIN",
+                "UNKNOWN",
+                "310***********0001",
+                LocalDateTime.of(2026, 5, 18, 9, 0),
                 "ACTIVE",
                 List.of("SYS_ADMIN"));
         AuthenticatedUser principal = new AuthenticatedUser(

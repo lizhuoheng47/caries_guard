@@ -1011,6 +1011,306 @@ WHERE NOT EXISTS (
       AND deleted_flag = 0
 );
 
+INSERT INTO sys_user (
+    id,
+    dept_id,
+    user_no,
+    username,
+    password_hash,
+    real_name_enc,
+    real_name_hash,
+    real_name_masked,
+    nick_name,
+    user_type_code,
+    gender_code,
+    phone_enc,
+    phone_hash,
+    phone_masked,
+    email_enc,
+    email_hash,
+    email_masked,
+    avatar_url,
+    certificate_type_code,
+    certificate_no_enc,
+    certificate_no_hash,
+    certificate_no_masked,
+    last_login_at,
+    pwd_updated_at,
+    org_id,
+    status,
+    deleted_flag,
+    remark,
+    created_by,
+    created_at,
+    updated_by,
+    updated_at
+)
+SELECT
+    100201,
+    100001,
+    'DOC-001',
+    'demo_doctor_01',
+    '$2a$10$yS.8v.20r1tGz2z4uJ84M.LOKL2c3a3T/4Gv9xS7a8L.D8bF8LwU.',
+    'DEMO_DOCTOR_01_ENC',
+    'DEMO_DOCTOR_01_HASH',
+    'Dr. Chen',
+    'Dr. Chen',
+    'DOCTOR',
+    'FEMALE',
+    NULL,
+    NULL,
+    '138****1001',
+    NULL,
+    NULL,
+    'demo_doctor_01@demo.local',
+    NULL,
+    'LICENSE',
+    NULL,
+    NULL,
+    'DOC-2026-1001',
+    NULL,
+    CURRENT_TIMESTAMP,
+    100001,
+    'ACTIVE',
+    0,
+    'Default demo doctor seed',
+    100001,
+    CURRENT_TIMESTAMP,
+    100001,
+    CURRENT_TIMESTAMP
+FROM DUAL
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM sys_user
+    WHERE username = 'demo_doctor_01'
+      AND deleted_flag = 0
+);
+
+INSERT INTO sys_user (
+    id,
+    dept_id,
+    user_no,
+    username,
+    password_hash,
+    real_name_enc,
+    real_name_hash,
+    real_name_masked,
+    nick_name,
+    user_type_code,
+    gender_code,
+    phone_enc,
+    phone_hash,
+    phone_masked,
+    email_enc,
+    email_hash,
+    email_masked,
+    avatar_url,
+    certificate_type_code,
+    certificate_no_enc,
+    certificate_no_hash,
+    certificate_no_masked,
+    last_login_at,
+    pwd_updated_at,
+    org_id,
+    status,
+    deleted_flag,
+    remark,
+    created_by,
+    created_at,
+    updated_by,
+    updated_at
+)
+SELECT
+    100202,
+    100001,
+    'DOC-002',
+    'demo_doctor_02',
+    '$2a$10$yS.8v.20r1tGz2z4uJ84M.LOKL2c3a3T/4Gv9xS7a8L.D8bF8LwU.',
+    'DEMO_DOCTOR_02_ENC',
+    'DEMO_DOCTOR_02_HASH',
+    'Dr. Li',
+    'Dr. Li',
+    'DOCTOR',
+    'MALE',
+    NULL,
+    NULL,
+    '138****1002',
+    NULL,
+    NULL,
+    'demo_doctor_02@demo.local',
+    NULL,
+    'LICENSE',
+    NULL,
+    NULL,
+    'DOC-2026-1002',
+    NULL,
+    CURRENT_TIMESTAMP,
+    100001,
+    'ACTIVE',
+    0,
+    'Default demo doctor seed',
+    100001,
+    CURRENT_TIMESTAMP,
+    100001,
+    CURRENT_TIMESTAMP
+FROM DUAL
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM sys_user
+    WHERE username = 'demo_doctor_02'
+      AND deleted_flag = 0
+);
+
+INSERT INTO sys_user (
+    id,
+    dept_id,
+    user_no,
+    username,
+    password_hash,
+    real_name_enc,
+    real_name_hash,
+    real_name_masked,
+    nick_name,
+    user_type_code,
+    gender_code,
+    phone_enc,
+    phone_hash,
+    phone_masked,
+    email_enc,
+    email_hash,
+    email_masked,
+    avatar_url,
+    certificate_type_code,
+    certificate_no_enc,
+    certificate_no_hash,
+    certificate_no_masked,
+    last_login_at,
+    pwd_updated_at,
+    org_id,
+    status,
+    deleted_flag,
+    remark,
+    created_by,
+    created_at,
+    updated_by,
+    updated_at
+)
+SELECT
+    100203,
+    100001,
+    'DOC-003',
+    'demo_doctor_03',
+    '$2a$10$yS.8v.20r1tGz2z4uJ84M.LOKL2c3a3T/4Gv9xS7a8L.D8bF8LwU.',
+    'DEMO_DOCTOR_03_ENC',
+    'DEMO_DOCTOR_03_HASH',
+    'Dr. Wang',
+    'Dr. Wang',
+    'DOCTOR',
+    'FEMALE',
+    NULL,
+    NULL,
+    '138****1003',
+    NULL,
+    NULL,
+    'demo_doctor_03@demo.local',
+    NULL,
+    'LICENSE',
+    NULL,
+    NULL,
+    'DOC-2026-1003',
+    NULL,
+    CURRENT_TIMESTAMP,
+    100001,
+    'ACTIVE',
+    0,
+    'Default demo doctor seed',
+    100001,
+    CURRENT_TIMESTAMP,
+    100001,
+    CURRENT_TIMESTAMP
+FROM DUAL
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM sys_user
+    WHERE username = 'demo_doctor_03'
+      AND deleted_flag = 0
+);
+
+INSERT INTO sys_user (
+    id,
+    dept_id,
+    user_no,
+    username,
+    password_hash,
+    real_name_enc,
+    real_name_hash,
+    real_name_masked,
+    nick_name,
+    user_type_code,
+    gender_code,
+    phone_enc,
+    phone_hash,
+    phone_masked,
+    email_enc,
+    email_hash,
+    email_masked,
+    avatar_url,
+    certificate_type_code,
+    certificate_no_enc,
+    certificate_no_hash,
+    certificate_no_masked,
+    last_login_at,
+    pwd_updated_at,
+    org_id,
+    status,
+    deleted_flag,
+    remark,
+    created_by,
+    created_at,
+    updated_by,
+    updated_at
+)
+SELECT
+    100204,
+    100001,
+    'DOC-004',
+    'demo_doctor_04',
+    '$2a$10$yS.8v.20r1tGz2z4uJ84M.LOKL2c3a3T/4Gv9xS7a8L.D8bF8LwU.',
+    'DEMO_DOCTOR_04_ENC',
+    'DEMO_DOCTOR_04_HASH',
+    'Dr. Zhao',
+    'Dr. Zhao',
+    'DOCTOR',
+    'FEMALE',
+    NULL,
+    NULL,
+    '138****1004',
+    NULL,
+    NULL,
+    'demo_doctor_04@demo.local',
+    NULL,
+    'LICENSE',
+    NULL,
+    NULL,
+    'DOC-2026-1004',
+    NULL,
+    CURRENT_TIMESTAMP,
+    100001,
+    'ACTIVE',
+    0,
+    'Default demo doctor seed',
+    100001,
+    CURRENT_TIMESTAMP,
+    100001,
+    CURRENT_TIMESTAMP
+FROM DUAL
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM sys_user
+    WHERE username = 'demo_doctor_04'
+      AND deleted_flag = 0
+);
+
 INSERT INTO sys_user_role (
     id,
     user_id,
@@ -1375,6 +1675,12 @@ INSERT IGNORE INTO sys_role (
     (100101, 'ORG_ADMIN', 'Organization Administrator', 2, 'ORG', '1', 100001, 'ACTIVE', 0, 'Default business role seed', 100001, CURRENT_TIMESTAMP, 100001, CURRENT_TIMESTAMP),
     (100102, 'DOCTOR', 'Doctor', 3, 'SELF', '1', 100001, 'ACTIVE', 0, 'Default business role seed', 100001, CURRENT_TIMESTAMP, 100001, CURRENT_TIMESTAMP),
     (100103, 'SCREENER', 'Screener', 4, 'SELF', '1', 100001, 'ACTIVE', 0, 'Default business role seed', 100001, CURRENT_TIMESTAMP, 100001, CURRENT_TIMESTAMP);
+
+INSERT IGNORE INTO sys_user_role (id, user_id, role_id, org_id, deleted_flag, created_by, created_at) VALUES
+    (100201, 100201, 100102, 100001, 0, 100001, CURRENT_TIMESTAMP),
+    (100202, 100202, 100102, 100001, 0, 100001, CURRENT_TIMESTAMP),
+    (100203, 100203, 100102, 100001, 0, 100001, CURRENT_TIMESTAMP),
+    (100204, 100204, 100102, 100001, 0, 100001, CURRENT_TIMESTAMP);
 
 INSERT IGNORE INTO sys_menu (
     id, parent_id, menu_name, menu_type_code, route_path, component_path, permission_code,

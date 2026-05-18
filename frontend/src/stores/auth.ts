@@ -22,7 +22,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = authTokens.accessToken;
       localStorage.setItem('token', this.token);
       this.user = res.data.user ? AuthAdapter.toUser(res.data.user) : this.user;
-      await this.fetchUserInfo({ requireUserRefresh: !res.data.user });
+      await this.fetchUserInfo({ requireUserRefresh: true });
     },
     
     async fetchUserInfo(options?: { requireUserRefresh?: boolean; logoutOnFailure?: boolean }) {

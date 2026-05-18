@@ -202,8 +202,11 @@ npm run dev
 
 ## Default Account
 
-- Username: `admin`
-- Password: `123456`
+- `admin` / `123456` - system administrator, user no `U100001`
+- `demo_doctor_01` / `123456` - doctor, user no `DOC-001`, name `Dr. Chen`
+- `demo_doctor_02` / `123456` - doctor, user no `DOC-002`, name `Dr. Li`
+- `demo_doctor_03` / `123456` - doctor, user no `DOC-003`, name `Dr. Wang`
+- `demo_doctor_04` / `123456` - doctor, user no `DOC-004`, name `Dr. Zhao`
 
 ## Development Commands
 

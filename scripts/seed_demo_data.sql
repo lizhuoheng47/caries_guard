@@ -2,7 +2,7 @@
 -- CariesGuard Competition Mode - Master Seed Data
 -- ---------------------------------------------------------
 -- Description: Unconditionally resets and provisions the 
--- fixed demo entities: 1 Org, 2 Doctors, 2 Patients, 
+-- fixed demo entities: 1 Org, 4 Doctors, 2 Patients,
 -- 2 Cases (1 Low Uncertainty, 1 High Uncertainty), 
 -- plus simulated imagery & AI results.
 -- Idempotency: Executes top-down deletions to clear targets, 
@@ -23,7 +23,8 @@ DELETE FROM `med_case_status_log` WHERE `case_id` IN (3001, 3002);
 DELETE FROM `med_case` WHERE `id` IN (3001, 3002);
 DELETE FROM `med_visit` WHERE `id` IN (3001, 3002);
 DELETE FROM `pat_patient` WHERE `id` IN (2001, 2002);
-DELETE FROM `sys_user` WHERE `id` IN (1001, 1002);
+DELETE FROM `sys_user_role` WHERE `user_id` IN (1001, 1002, 1003, 1004);
+DELETE FROM `sys_user` WHERE `id` IN (1001, 1002, 1003, 1004);
 DELETE FROM `sys_dept` WHERE `id` = 100001;
 
 -- 2. [PROVISION] Organization
@@ -36,16 +37,30 @@ INSERT INTO `sys_dept` (
 -- Note: 'password_hash' relies on Bcrypt representation of '123456'.
 -- 'real_name_enc' uses a placeholder. The system will either gracefully fall back or you must update this string.
 INSERT INTO `sys_user` (
-  `id`, `user_no`, `username`, `password_hash`, 
+  `id`, `dept_id`, `user_no`, `username`, `password_hash`,
   `real_name_enc`, `real_name_hash`, `real_name_masked`,
-  `nick_name`, `user_type_code`, `org_id`, `status`, `deleted_flag`
+  `nick_name`, `user_type_code`, `gender_code`, `phone_masked`, `email_masked`, `certificate_no_masked`, `org_id`, `status`, `deleted_flag`
 ) VALUES 
-(1001, 'DOC-001', 'demo_doctor_01', '$2a$10$yS.8v.20r1tGz2z4uJ84M.LOKL2c3a3T/4Gv9xS7a8L.D8bF8LwU.',
- 'U2FsdGVkX19DEMO_CIPHER_A', 'HASH_A', 'Dr. Smith (Demo)', 
- 'Dr. Smith (Demo)', 'DOCTOR', 100001, 'ACTIVE', 0),
-(1002, 'DOC-002', 'demo_doctor_02', '$2a$10$yS.8v.20r1tGz2z4uJ84M.LOKL2c3a3T/4Gv9xS7a8L.D8bF8LwU.',
- 'U2FsdGVkX19DEMO_CIPHER_B', 'HASH_B', 'Dr. Lee (Demo Control)', 
- 'Dr. Lee (Demo Control)', 'DOCTOR', 100001, 'ACTIVE', 0);
+(1001, 100001, 'DOC-001', 'demo_doctor_01', '$2a$10$yS.8v.20r1tGz2z4uJ84M.LOKL2c3a3T/4Gv9xS7a8L.D8bF8LwU.',
+ 'U2FsdGVkX19DEMO_CIPHER_A', 'HASH_A', 'Dr. Chen',
+ 'Dr. Chen', 'DOCTOR', 'FEMALE', '138****2001', 'demo_doctor_01@demo.local', 'DOC-2026-2001', 100001, 'ACTIVE', 0),
+(1002, 100001, 'DOC-002', 'demo_doctor_02', '$2a$10$yS.8v.20r1tGz2z4uJ84M.LOKL2c3a3T/4Gv9xS7a8L.D8bF8LwU.',
+ 'U2FsdGVkX19DEMO_CIPHER_B', 'HASH_B', 'Dr. Li',
+ 'Dr. Li', 'DOCTOR', 'MALE', '138****2002', 'demo_doctor_02@demo.local', 'DOC-2026-2002', 100001, 'ACTIVE', 0),
+(1003, 100001, 'DOC-003', 'demo_doctor_03', '$2a$10$yS.8v.20r1tGz2z4uJ84M.LOKL2c3a3T/4Gv9xS7a8L.D8bF8LwU.',
+ 'U2FsdGVkX19DEMO_CIPHER_C', 'HASH_C', 'Dr. Wang',
+ 'Dr. Wang', 'DOCTOR', 'FEMALE', '138****2003', 'demo_doctor_03@demo.local', 'DOC-2026-2003', 100001, 'ACTIVE', 0),
+(1004, 100001, 'DOC-004', 'demo_doctor_04', '$2a$10$yS.8v.20r1tGz2z4uJ84M.LOKL2c3a3T/4Gv9xS7a8L.D8bF8LwU.',
+ 'U2FsdGVkX19DEMO_CIPHER_D', 'HASH_D', 'Dr. Zhao',
+ 'Dr. Zhao', 'DOCTOR', 'FEMALE', '138****2004', 'demo_doctor_04@demo.local', 'DOC-2026-2004', 100001, 'ACTIVE', 0);
+
+INSERT INTO `sys_user_role` (
+  `id`, `user_id`, `role_id`, `org_id`, `deleted_flag`, `created_by`, `created_at`
+) VALUES
+(1101, 1001, 100102, 100001, 0, 100001, NOW()),
+(1102, 1002, 100102, 100001, 0, 100001, NOW()),
+(1103, 1003, 100102, 100001, 0, 100001, NOW()),
+(1104, 1004, 100102, 100001, 0, 100001, NOW());
 
 -- 4. [PROVISION] Patients
 INSERT INTO `pat_patient` (
