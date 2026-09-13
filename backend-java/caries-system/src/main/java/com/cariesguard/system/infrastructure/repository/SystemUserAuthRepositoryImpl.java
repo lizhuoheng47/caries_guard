@@ -2,6 +2,7 @@ package com.cariesguard.system.infrastructure.repository;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.cariesguard.system.domain.model.SystemUserAuthModel;
+import com.cariesguard.system.domain.model.PasswordResetEmailModel;
 import com.cariesguard.system.domain.repository.SystemUserAuthRepository;
 import com.cariesguard.system.infrastructure.dataobject.SysUserDO;
 import com.cariesguard.system.infrastructure.mapper.SysRoleMapper;
@@ -41,10 +42,32 @@ public class SystemUserAuthRepositoryImpl implements SystemUserAuthRepository {
     }
 
     @Override
+    public Optional<PasswordResetEmailModel> findPasswordResetEmail(Long userId) {
+        SysUserDO user = sysUserMapper.selectById(userId);
+        if (user == null
+                || !Long.valueOf(0L).equals(user.getDeletedFlag())
+                || user.getEmailEnc() == null
+                || user.getEmailEnc().isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.of(new PasswordResetEmailModel(user.getEmailEnc(), user.getEmailMasked()));
+    }
+
+    @Override
     public void markLoginSuccess(Long userId, LocalDateTime loginTime) {
         SysUserDO update = new SysUserDO();
         update.setId(userId);
         update.setLastLoginAt(loginTime);
+        sysUserMapper.updateById(update);
+    }
+
+    @Override
+    public void updatePassword(Long userId, String passwordHash, LocalDateTime updatedAt) {
+        SysUserDO update = new SysUserDO();
+        update.setId(userId);
+        update.setPasswordHash(passwordHash);
+        update.setPwdUpdatedAt(updatedAt);
+        update.setUpdatedAt(updatedAt);
         sysUserMapper.updateById(update);
     }
 

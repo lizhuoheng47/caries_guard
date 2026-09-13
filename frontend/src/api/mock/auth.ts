@@ -1,5 +1,10 @@
 import type { ApiResponse } from '../dto/base';
 import type { LoginResponseDTO, CurrentUserDTO, PermissionDTO } from '../dto/auth';
+import type {
+  PasswordResetConfirmDTO,
+  PasswordResetConfirmPayload,
+  PasswordResetRequestDTO,
+} from '../auth';
 
 export const mockAuthApi = {
   login(): Promise<ApiResponse<LoginResponseDTO>> {
@@ -29,6 +34,33 @@ export const mockAuthApi = {
           status: 'ACTIVE',
         }
       }
+    });
+  },
+
+  requestPasswordReset(_username: string): Promise<ApiResponse<PasswordResetRequestDTO>> {
+    return Promise.resolve({
+      code: '00000',
+      message: 'success',
+      data: {
+        message: 'If the account is eligible, a password reset code has been created.',
+        expiresInSeconds: 600,
+        deliveryMasked: 'LOCAL_DEVELOPMENT',
+        developmentCode: '246810',
+      },
+    });
+  },
+
+  confirmPasswordReset(data: PasswordResetConfirmPayload): Promise<ApiResponse<PasswordResetConfirmDTO>> {
+    if (data.verificationCode !== '246810') {
+      return Promise.reject(new Error('验证码错误或已过期'));
+    }
+    return Promise.resolve({
+      code: '00000',
+      message: 'success',
+      data: {
+        reset: true,
+        message: 'Password has been reset. Please sign in with the new password.',
+      },
     });
   },
 

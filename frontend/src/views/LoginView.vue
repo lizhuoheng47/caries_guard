@@ -206,7 +206,7 @@
           </button>
         </label>
 
-        <a class="forgot" href="javascript:void(0)">忘记密码?</a>
+        <button class="forgot" type="button" :disabled="loading" @click="openPasswordReset">忘记密码？</button>
 
         <button class="enter-btn" type="submit" :disabled="loading">
           <span>{{ loading ? '登录中' : '进入系统' }}</span>
@@ -222,6 +222,85 @@
         </div>
       </form>
     </section>
+
+    <div
+      v-if="resetDialogOpen"
+      class="reset-overlay"
+      role="presentation"
+      @mousedown.self="closePasswordReset"
+    >
+      <section class="reset-dialog" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+        <button class="reset-close" type="button" aria-label="关闭" :disabled="resetLoading" @click="closePasswordReset">×</button>
+        <p class="reset-kicker">ACCOUNT RECOVERY</p>
+        <h2 id="reset-title">重置密码</h2>
+        <p class="reset-description">
+          输入用户名获取 6 位一次性验证码。验证码 10 分钟内有效，连续输错 5 次后失效。
+        </p>
+
+        <label class="reset-field">
+          <span>用户名</span>
+          <input v-model="resetForm.username" autocomplete="username" :disabled="resetCodeRequested || resetLoading" />
+        </label>
+
+        <button
+          v-if="!resetCodeRequested"
+          class="reset-primary"
+          type="button"
+          :disabled="resetLoading"
+          @click="requestResetCode"
+        >
+          {{ resetLoading ? '正在生成验证码…' : '获取验证码' }}
+        </button>
+
+        <template v-else>
+          <div v-if="developmentCode" class="development-code">
+            <span>本地开发验证码</span>
+            <strong>{{ developmentCode }}</strong>
+            <small>仅开发环境显示，正式环境必须关闭。</small>
+          </div>
+          <p v-else class="delivery-tip">验证码已发送至账号绑定的联系方式 {{ deliveryMasked || '' }}</p>
+
+          <label class="reset-field">
+            <span>验证码</span>
+            <input
+              v-model="resetForm.verificationCode"
+              inputmode="numeric"
+              maxlength="6"
+              autocomplete="one-time-code"
+              placeholder="请输入 6 位数字"
+              :disabled="resetLoading"
+              @input="normalizeResetCode"
+            />
+          </label>
+          <label class="reset-field">
+            <span>新密码</span>
+            <input
+              v-model="resetForm.newPassword"
+              type="password"
+              autocomplete="new-password"
+              placeholder="至少 8 位，包含字母和数字"
+              :disabled="resetLoading"
+            />
+          </label>
+          <label class="reset-field">
+            <span>确认新密码</span>
+            <input
+              v-model="resetForm.confirmPassword"
+              type="password"
+              autocomplete="new-password"
+              :disabled="resetLoading"
+              @keyup.enter="confirmPasswordReset"
+            />
+          </label>
+          <div class="reset-actions">
+            <button class="reset-secondary" type="button" :disabled="resetLoading" @click="requestResetCode">重新获取</button>
+            <button class="reset-primary" type="button" :disabled="resetLoading" @click="confirmPasswordReset">
+              {{ resetLoading ? '正在重置…' : '确认重置' }}
+            </button>
+          </div>
+        </template>
+      </section>
+    </div>
   </main>
 </template>
 
@@ -229,6 +308,7 @@
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiClientError } from '@/api/request'
+import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
 import { loadWorkspaceSettings } from '@/utils/workbenchSettings'
@@ -246,6 +326,99 @@ const form = reactive({
 const focused = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
+const resetDialogOpen = ref(false)
+const resetLoading = ref(false)
+const resetCodeRequested = ref(false)
+const developmentCode = ref('')
+const deliveryMasked = ref('')
+const resetForm = reactive({
+  username: '',
+  verificationCode: '',
+  newPassword: '',
+  confirmPassword: '',
+})
+
+const openPasswordReset = () => {
+  resetForm.username = form.username.trim()
+  resetForm.verificationCode = ''
+  resetForm.newPassword = ''
+  resetForm.confirmPassword = ''
+  developmentCode.value = ''
+  deliveryMasked.value = ''
+  resetCodeRequested.value = false
+  resetDialogOpen.value = true
+}
+
+const closePasswordReset = () => {
+  if (!resetLoading.value) resetDialogOpen.value = false
+}
+
+const normalizeResetCode = () => {
+  resetForm.verificationCode = resetForm.verificationCode.replace(/\D/g, '').slice(0, 6)
+}
+
+const passwordResetErrorMessage = (error: unknown) => {
+  const normalized = error instanceof ApiClientError ? error : null
+  if (normalized?.code === 'A0410') return '验证码错误、已过期或尝试次数过多，请重新获取。'
+  if (normalized?.code === 'A0411') return '当前环境未启用密码重置功能。'
+  if (normalized?.code === 'A0412' || normalized?.code === 'B0001') return normalized.message
+  if (normalized?.isNetworkError) return '无法连接后端，请确认 Java 服务已经启动。'
+  return error instanceof Error ? error.message : '密码重置失败，请稍后重试。'
+}
+
+const requestResetCode = async () => {
+  const username = resetForm.username.trim()
+  if (!username) {
+    notificationStore.warning('请输入用户名', '用户名不能为空。')
+    return
+  }
+  resetLoading.value = true
+  try {
+    const response = await authApi.requestPasswordReset(username)
+    resetCodeRequested.value = true
+    developmentCode.value = response.data.developmentCode || ''
+    deliveryMasked.value = response.data.deliveryMasked || ''
+    resetForm.verificationCode = ''
+    notificationStore.success('验证码已生成', `验证码将在 ${Math.ceil(response.data.expiresInSeconds / 60)} 分钟后失效。`)
+  } catch (error) {
+    notificationStore.error('无法获取验证码', passwordResetErrorMessage(error))
+  } finally {
+    resetLoading.value = false
+  }
+}
+
+const confirmPasswordReset = async () => {
+  const password = resetForm.newPassword
+  if (!/^\d{6}$/.test(resetForm.verificationCode)) {
+    notificationStore.warning('验证码格式错误', '请输入 6 位数字验证码。')
+    return
+  }
+  if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    notificationStore.warning('新密码不符合要求', '密码至少 8 位，并且必须同时包含字母和数字。')
+    return
+  }
+  if (password !== resetForm.confirmPassword) {
+    notificationStore.warning('两次密码不一致', '请重新确认新密码。')
+    return
+  }
+  resetLoading.value = true
+  try {
+    await authApi.confirmPasswordReset({
+      username: resetForm.username.trim(),
+      verificationCode: resetForm.verificationCode,
+      newPassword: password,
+      confirmPassword: resetForm.confirmPassword,
+    })
+    form.username = resetForm.username.trim()
+    form.password = password
+    resetDialogOpen.value = false
+    notificationStore.success('密码重置成功', '新密码已填入登录框，可以直接登录。')
+  } catch (error) {
+    notificationStore.error('密码重置失败', passwordResetErrorMessage(error))
+  } finally {
+    resetLoading.value = false
+  }
+}
 
 const particles = Array.from({ length: 58 }, (_, index) => {
   const seed = index + 1
@@ -803,10 +976,174 @@ const onSubmit = async () => {
   font-size: 17px;
   font-weight: 700;
   text-decoration: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
 .forgot:hover {
   color: #37f8ff;
+}
+
+.forgot:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+.reset-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(1, 7, 18, .78);
+  backdrop-filter: blur(12px);
+}
+
+.reset-dialog {
+  position: relative;
+  width: min(520px, calc(100vw - 48px));
+  box-sizing: border-box;
+  padding: 38px 42px 40px;
+  border: 1px solid rgba(76, 230, 255, .58);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 88% 5%, rgba(0, 229, 255, .2), transparent 30%),
+    linear-gradient(145deg, rgba(23, 57, 96, .98), rgba(5, 16, 37, .99));
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .58), 0 0 32px rgba(0, 229, 255, .16);
+}
+
+.reset-close {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  border: 0;
+  background: transparent;
+  color: rgba(229, 241, 255, .72);
+  font-size: 30px;
+  cursor: pointer;
+}
+
+.reset-kicker {
+  margin: 0 0 8px;
+  color: #35efff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2.4px;
+}
+
+.reset-dialog h2 {
+  margin: 0;
+  color: #f5fbff;
+  font-size: 30px;
+}
+
+.reset-description {
+  margin: 12px 0 24px;
+  color: rgba(215, 231, 250, .7);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.reset-field {
+  display: block;
+  margin-top: 16px;
+}
+
+.reset-field span {
+  display: block;
+  margin-bottom: 7px;
+  color: rgba(224, 239, 255, .82);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.reset-field input {
+  width: 100%;
+  height: 48px;
+  box-sizing: border-box;
+  padding: 0 15px;
+  border: 1px solid rgba(84, 196, 238, .34);
+  border-radius: 11px;
+  outline: none;
+  background: rgba(8, 25, 52, .82);
+  color: #f1f8ff;
+  font-size: 16px;
+}
+
+.reset-field input:focus {
+  border-color: #32e8ff;
+  box-shadow: 0 0 0 3px rgba(50, 232, 255, .12);
+}
+
+.development-code {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 196, 72, .44);
+  border-radius: 12px;
+  background: rgba(255, 174, 37, .08);
+}
+
+.development-code span,
+.development-code small {
+  display: block;
+  color: rgba(255, 232, 184, .72);
+  font-size: 12px;
+}
+
+.development-code strong {
+  display: block;
+  margin: 5px 0;
+  color: #ffd278;
+  font-size: 26px;
+  letter-spacing: 7px;
+}
+
+.delivery-tip {
+  color: rgba(205, 232, 255, .78);
+  font-size: 13px;
+}
+
+.reset-actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.reset-primary,
+.reset-secondary {
+  height: 48px;
+  margin-top: 22px;
+  border-radius: 11px;
+  color: #f7fbff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.reset-primary {
+  border: 0;
+  background: linear-gradient(100deg, #21dff5, #426dff 64%, #7457ff);
+  box-shadow: 0 0 22px rgba(0, 211, 255, .28);
+}
+
+.reset-secondary {
+  border: 1px solid rgba(112, 210, 255, .35);
+  background: rgba(21, 51, 88, .78);
+}
+
+.reset-actions .reset-primary,
+.reset-actions .reset-secondary {
+  margin-top: 0;
+}
+
+.reset-primary:disabled,
+.reset-secondary:disabled,
+.reset-close:disabled {
+  cursor: wait;
+  opacity: .55;
 }
 
 .enter-btn {

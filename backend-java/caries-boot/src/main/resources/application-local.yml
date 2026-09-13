@@ -13,6 +13,12 @@
     port: ${CARIES_RABBIT_PORT:5672}
     username: ${CARIES_RABBIT_USERNAME:guest}
     password: ${CARIES_RABBIT_PASSWORD:guest}
+  mail:
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -74,3 +80,10 @@ caries:
         failed-routing-key: ${CARIES_ANALYSIS_FAILED_ROUTING_KEY:analysis.failed}
   competition:
     enabled: ${CARIES_COMPETITION_MODE_ENABLED:false}
+  password-reset:
+    enabled: ${CARIES_PASSWORD_RESET_ENABLED:true}
+    development-code-enabled: ${CARIES_PASSWORD_RESET_DEV_CODE_ENABLED:true}
+    delivery-mode: ${CARIES_PASSWORD_RESET_DELIVERY_MODE:LOCAL}
+    mail-from: ${CARIES_PASSWORD_RESET_MAIL_FROM:}
+    code-ttl-minutes: ${CARIES_PASSWORD_RESET_CODE_TTL_MINUTES:10}
+    max-attempts: ${CARIES_PASSWORD_RESET_MAX_ATTEMPTS:5}

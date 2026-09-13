@@ -38,6 +38,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 "/api/v1/auth/login",
+                                "/api/v1/auth/password-reset/**",
                                 "/api/v1/system/ping",
                                 "/api/v1/files/*/content",
                                 "/api/v1/internal/ai/callbacks/**",
