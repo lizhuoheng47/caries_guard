@@ -156,19 +156,6 @@ export interface CreateCaseImageResponse {
   qualityStatusCode: string;
 }
 
-export interface SaveImageQualityCheckPayload {
-  checkTypeCode?: string;
-  checkResultCode?: string;
-  qualityScore?: number;
-  blurScore?: number;
-  exposureScore?: number;
-  integrityScore?: number;
-  occlusionScore?: number;
-  issueCodes?: string[];
-  suggestionText?: string;
-  remark?: string;
-}
-
 export interface CreateAnalysisPayload {
   caseId: string;
   patientId: string;
@@ -272,17 +259,6 @@ const mockCreateCaseImage = async (caseId: string, payload: CreateCaseImagePaylo
   return { code: '00000', message: 'success', data: { imageId, qualityStatusCode: 'PENDING' } }
 }
 
-const mockSaveImageQualityCheck = async (imageId: string) => {
-  return {
-    code: '00000',
-    message: 'success',
-    data: {
-      imageId,
-      qualityStatusCode: 'PASS',
-    },
-  }
-}
-
 const mockCreateAnalysis = async (caseId: string, payload: CreateAnalysisPayload): Promise<ApiResponse<CreateAnalysisResponse>> => {
   const cases = readRecords<MockCaseRecord>('cases')
   const patients = readRecords<MockPatientRecord>('patients')
@@ -347,11 +323,6 @@ export const casePortalApi = {
   createCaseImage(caseId: string, payload: CreateCaseImagePayload): Promise<ApiResponse<CreateCaseImageResponse>> {
     if (USE_MOCK) return mockCreateCaseImage(caseId, payload)
     return request.post(`/cases/${caseId}/images`, payload);
-  },
-
-  saveImageQualityCheck(imageId: string, payload: SaveImageQualityCheckPayload) {
-    if (USE_MOCK) return mockSaveImageQualityCheck(imageId)
-    return request.post(`/images/${imageId}/quality-checks`, payload);
   },
 
   createAnalysis(caseId: string, payload: CreateAnalysisPayload): Promise<ApiResponse<CreateAnalysisResponse>> {

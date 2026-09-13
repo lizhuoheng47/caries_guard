@@ -95,7 +95,7 @@ public class AnalysisTaskAppService {
                 Boolean.TRUE.equals(command.forceRetryFlag()));
 
         List<AnalysisImageModel> images = analysisCommandRepository.listCaseImages(command.caseId()).stream()
-                .filter(item -> "PASS".equals(item.qualityStatusCode()))
+                .filter(analysisTaskDomainService::isEligibleForPipeline)
                 .toList();
         analysisTaskDomainService.ensureAnalyzableImagesExist(images);
 
@@ -114,8 +114,8 @@ public class AnalysisTaskAppService {
                 medicalCase.orgId(), "ACTIVE", operator.getUserId(),
                 null));
         caseCommandAppService.transitionStatus(command.caseId(), new CaseStatusTransitionCommand(
-                "ANALYZING", "QC_PASSED",
-                defaultRemark(command.remark(), "AI task created: " + taskNo)));
+                "ANALYZING", "AI_PIPELINE_QUALITY_GATE",
+                defaultRemark(command.remark(), "AI task created; quality gate delegated to inference pipeline: " + taskNo)));
         analysisTaskEventPublisher.publishRequested(new AnalysisRequestedEvent(taskId, taskNo, "QUEUEING", payloadJson));
         return new AnalysisTaskVO(taskId, taskNo, "QUEUEING", taskTypeCode, modelVersion, null, LocalDateTime.now(), null, null, null, null);
     }
@@ -133,7 +133,7 @@ public class AnalysisTaskAppService {
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Case does not exist"));
 
         List<AnalysisImageModel> images = analysisCommandRepository.listCaseImages(originalTask.caseId()).stream()
-                .filter(item -> "PASS".equals(item.qualityStatusCode()))
+                .filter(analysisTaskDomainService::isEligibleForPipeline)
                 .toList();
         analysisTaskDomainService.ensureAnalyzableImagesExist(images);
 

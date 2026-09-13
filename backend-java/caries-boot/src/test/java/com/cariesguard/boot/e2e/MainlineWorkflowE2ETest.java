@@ -141,7 +141,7 @@ class MainlineWorkflowE2ETest extends AnalysisReportE2EBaseTest {
                 WHERE case_id = ?
                   AND from_status_code = 'QC_PENDING'
                   AND to_status_code = 'ANALYZING'
-                  AND change_reason_code = 'QC_PASSED'
+                  AND change_reason_code = 'AI_PIPELINE_QUALITY_GATE'
                 """, caseId)).isEqualTo(1);
 
         JsonNode callback = callbackSuccess(analysisTask, visualAssetAttachmentId);

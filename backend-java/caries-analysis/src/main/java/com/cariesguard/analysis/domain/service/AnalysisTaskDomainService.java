@@ -30,9 +30,19 @@ public class AnalysisTaskDomainService {
         }
     }
 
-    public void ensureAnalyzableImagesExist(List<AnalysisImageModel> qualityPassedImages) {
-        if (qualityPassedImages == null || qualityPassedImages.isEmpty()) {
-            throw new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Case has no quality-approved image");
+    public boolean isEligibleForPipeline(AnalysisImageModel image) {
+        if (image == null || !StringUtils.hasText(image.qualityStatusCode())) {
+            return false;
+        }
+        String status = image.qualityStatusCode().trim().toUpperCase();
+        // PENDING means that the authoritative quality gate still has to run in
+        // the Python pipeline. Browser clients must never promote it to PASS.
+        return "PENDING".equals(status) || "PASS".equals(status);
+    }
+
+    public void ensureAnalyzableImagesExist(List<AnalysisImageModel> pipelineEligibleImages) {
+        if (pipelineEligibleImages == null || pipelineEligibleImages.isEmpty()) {
+            throw new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Case has no pending or quality-approved image");
         }
     }
 

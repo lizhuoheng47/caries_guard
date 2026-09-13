@@ -99,7 +99,28 @@ class AnalysisTaskAppServiceTests {
         assertThat(result.taskStatusCode()).isEqualTo("QUEUEING");
         verify(anaTaskRecordRepository).save(any());
         verify(analysisTaskEventPublisher).publishRequested(any());
-        verify(caseCommandAppService).transitionStatus(eq(3001L), any());
+        ArgumentCaptor<CaseStatusTransitionCommand> transitionCaptor = ArgumentCaptor.forClass(CaseStatusTransitionCommand.class);
+        verify(caseCommandAppService).transitionStatus(eq(3001L), transitionCaptor.capture());
+        assertThat(transitionCaptor.getValue().reasonCode()).isEqualTo("AI_PIPELINE_QUALITY_GATE");
+    }
+
+    @Test
+    void createTaskShouldDelegatePendingImageQualityToInferencePipeline() {
+        AnalysisTaskAppService appService = createService();
+        setCurrentUser(new AuthenticatedUser(100001L, 100001L, "admin", "hash", "Admin", true, List.of("SYS_ADMIN")));
+        when(analysisCommandRepository.findCase(3001L)).thenReturn(Optional.of(
+                new AnalysisCaseModel(3001L, "CASE1", 2001L, 100001L, "QC_PENDING")));
+        when(analysisCommandRepository.findPatient(2001L)).thenReturn(Optional.of(
+                new AnalysisPatientModel(2001L, 12, "MALE")));
+        when(analysisCommandRepository.listCaseImages(3001L)).thenReturn(List.of(
+                new AnalysisImageModel(5001L, 3001L, 4001L, "PANORAMIC", "PENDING", "caries-image", "attachments/x.jpg")));
+        when(anaTaskRecordRepository.existsRunningTaskByCaseId(3001L)).thenReturn(false);
+
+        AnalysisTaskVO result = appService.createTask(new CreateAnalysisTaskCommand(3001L, 2001L, false, "INFERENCE", null));
+
+        assertThat(result.taskStatusCode()).isEqualTo("QUEUEING");
+        verify(anaTaskRecordRepository).save(any());
+        verify(analysisTaskEventPublisher).publishRequested(any());
     }
 
     @Test
@@ -126,7 +147,7 @@ class AnalysisTaskAppServiceTests {
     }
 
     @Test
-    void createTaskShouldRejectNoApprovedImage() {
+    void createTaskShouldRejectRejectedImage() {
         AnalysisTaskAppService appService = createService();
         setCurrentUser(new AuthenticatedUser(100001L, 100001L, "admin", "hash", "Admin", true, List.of("SYS_ADMIN")));
         when(analysisCommandRepository.findCase(3001L)).thenReturn(Optional.of(

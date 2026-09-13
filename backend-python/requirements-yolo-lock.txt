@@ -1,0 +1,7 @@
+# Reproducible Windows training environment for DENTEX detection.
+# Install the CUDA 12.4 PyTorch wheel first, then install the remaining packages.
+torch==2.5.1
+torchvision==0.20.1
+numpy==1.26.4
+opencv-python==4.10.0.84
+ultralytics==8.3.186

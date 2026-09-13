@@ -16,7 +16,8 @@ public record AnalysisVisualAssetVO(
     private static final Map<String, String> ASSET_TYPE_LABELS = Map.of(
             "HEATMAP", "Heatmap",
             "MASK", "Mask",
-            "OVERLAY", "Overlay"
+            "OVERLAY", "Overlay",
+            "PREVIEW", "DICOM Preview"
     );
 
     public AnalysisVisualAssetVO(String assetTypeCode,

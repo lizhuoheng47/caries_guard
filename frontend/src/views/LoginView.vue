@@ -307,7 +307,6 @@ const onSubmit = async () => {
     const defaultRedirect =
       defaultLanding === 'cases' ? '/cases'
       : defaultLanding === 'analysis' ? '/analysis'
-      : defaultLanding === 'ai-diagnosis' ? '/ai-diagnosis'
       : '/dashboard'
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : defaultRedirect
     await router.push(redirect)

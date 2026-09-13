@@ -17,25 +17,34 @@
       <div class="med-action-row">
         <span class="med-chip" :class="gradeClass(detail?.summary.grade)">{{ detail?.summary.grade || '--' }}</span>
         <span class="med-chip" :class="statusClass(detail?.task.status)">{{ detail?.task.status || 'PENDING' }}</span>
-        <button class="med-btn med-btn--ghost" @click="openReport" :disabled="!detail">
+        <button class="med-btn med-btn--ghost" @click="openReport" :disabled="!canOpenResult">
           <AppIcon name="report" :size="14" />
           生成报告
         </button>
-        <button class="med-btn med-btn--primary" @click="openReview" :disabled="!detail">
+        <button class="med-btn med-btn--primary" @click="openReview" :disabled="!canOpenResult">
           <AppIcon name="check" :size="14" />
           进入复核
         </button>
       </div>
     </section>
 
-    <section v-if="loading" class="med-card">
+    <section v-if="loading && !detail" class="med-card">
       <div class="med-card-inner med-empty">正在加载分析详情...</div>
     </section>
     <section v-else-if="!detail" class="med-card">
-      <div class="med-card-inner med-empty">未获取到分析详情。</div>
+      <div class="med-card-inner med-empty">{{ loadError || '未获取到分析详情。' }}</div>
     </section>
     <template v-else>
-      <section class="med-metric-grid">
+      <section v-if="taskInProgress" class="med-note detail-progress-note">
+        后端正在读取真实影像并执行质量门控与模型推理。本页每 2.5 秒刷新一次，完成前不会生成诊断结论。
+      </section>
+
+      <section v-if="taskFailed" class="med-note detail-error-note">
+        <strong>分析失败{{ detail.task.errorCode ? `（${detail.task.errorCode}）` : '' }}</strong>
+        <span>{{ detail.task.errorMessage || '后端未返回详细错误，请结合任务时间线和服务日志排查。' }}</span>
+      </section>
+
+      <section v-if="canOpenResult" class="med-metric-grid">
         <article class="med-card med-metric-card">
           <div class="med-metric-label">Confidence</div>
           <div class="med-metric-value">{{ formatPercent(detail.summary.confidence) }}</div>
@@ -58,11 +67,11 @@
         </article>
       </section>
 
-      <section v-if="confidenceWarning" class="med-note detail-warning">
+      <section v-if="canOpenResult && confidenceWarning" class="med-note detail-warning">
         当前结果置信度低于工作台阈值，建议结合复核工作台进行人工确认后再生成正式报告。
       </section>
 
-      <section class="detail-main-grid">
+      <section v-if="canOpenResult" class="detail-main-grid">
         <article class="med-card">
           <div class="med-card-inner">
             <div class="med-section-head">
@@ -169,7 +178,7 @@
         </aside>
       </section>
 
-      <section class="med-grid-2">
+      <section v-if="canOpenResult" class="med-grid-2">
         <article class="med-card">
           <div class="med-card-inner">
             <div class="med-section-head">
@@ -201,9 +210,12 @@
 
         <article class="med-card">
           <div class="med-card-inner">
-            <div class="med-section-head">
-              <h2 class="med-section-title">证据与建议</h2>
-              <span class="med-chip med-chip--accent">RAG</span>
+              <div class="med-section-head">
+                <h2 class="med-section-title">证据与建议</h2>
+                <span v-if="detail.summary.citations.length" class="med-chip med-chip--accent">
+                  RAG {{ detail.summary.knowledgeVersion || '' }}
+                </span>
+                <span v-else class="med-chip">未启用知识增强</span>
             </div>
             <div class="evidence-stack">
               <div class="evidence-panel">
@@ -232,7 +244,7 @@
       </section>
 
       <section class="med-grid-2">
-        <article class="med-card">
+        <article v-if="canOpenResult" class="med-card">
           <div class="med-card-inner">
             <div class="med-section-head">
               <h2 class="med-section-title">证据引用</h2>
@@ -245,7 +257,7 @@
                   <span v-if="citation.score != null" class="med-chip">{{ formatPercent(citation.score) }}</span>
                 </div>
                 <p>{{ citation.excerpt || '无摘要内容。' }}</p>
-                <div class="med-meta med-mono">{{ citation.sourceUri || 'mock://citation' }}</div>
+                <div v-if="citation.sourceUri" class="med-meta med-mono">{{ citation.sourceUri }}</div>
               </article>
             </div>
             <div v-else class="med-empty">暂无证据引用。</div>
@@ -279,7 +291,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
@@ -294,8 +306,13 @@ const { currentDetail, loading } = storeToRefs(analysisStore)
 
 const settings = loadWorkspaceSettings() as WorkspaceSettings
 const selectedVisualKey = ref('')
+const loadError = ref('')
 const taskId = computed(() => String(route.params.taskId || ''))
 const detail = computed(() => currentDetail.value)
+const normalizedTaskStatus = computed(() => String(detail.value?.task.status || '').toUpperCase())
+const taskInProgress = computed(() => ['QUEUEING', 'QUEUED', 'PENDING', 'PROCESSING', 'RUNNING'].includes(normalizedTaskStatus.value))
+const taskFailed = computed(() => normalizedTaskStatus.value === 'FAILED')
+const canOpenResult = computed(() => ['SUCCESS', 'DONE', 'REVIEW'].includes(normalizedTaskStatus.value))
 const annotationWidth = computed(() => detail.value?.summary.annotationImageWidth || 512)
 const annotationHeight = computed(() => detail.value?.summary.annotationImageHeight || 256)
 
@@ -401,12 +418,35 @@ const formatMillis = (value?: number) => {
   return `${(value / 1000).toFixed(2)}s`
 }
 
-const loadDetail = async () => {
+let pollTimer: number | undefined
+let isMounted = false
+
+const clearPollTimer = () => {
+  if (pollTimer !== undefined) {
+    window.clearTimeout(pollTimer)
+    pollTimer = undefined
+  }
+}
+
+const schedulePoll = () => {
+  clearPollTimer()
+  if (!isMounted || !taskInProgress.value) return
+  pollTimer = window.setTimeout(() => {
+    void loadDetail(true)
+  }, 2500)
+}
+
+const loadDetail = async (silent = false) => {
   if (!taskId.value) return
+  clearPollTimer()
   try {
-    await analysisStore.fetchDetail(taskId.value)
+    await analysisStore.fetchDetail(taskId.value, { silent })
+    loadError.value = ''
   } catch (error) {
     console.error('Failed to load analysis detail', error)
+    loadError.value = error instanceof Error ? error.message : '分析详情加载失败'
+  } finally {
+    schedulePoll()
   }
 }
 
@@ -426,11 +466,19 @@ watch(
 )
 
 onMounted(() => {
+  isMounted = true
   void loadDetail()
 })
 
 watch(taskId, () => {
+  analysisStore.clearDetail()
   void loadDetail()
+})
+
+onUnmounted(() => {
+  isMounted = false
+  clearPollTimer()
+  analysisStore.clearDetail()
 })
 </script>
 
@@ -446,6 +494,18 @@ watch(taskId, () => {
 .detail-warning {
   border-color: rgba(247, 162, 58, 0.24);
   background: rgba(247, 162, 58, 0.08);
+}
+
+.detail-progress-note {
+  border-color: rgba(53, 248, 255, 0.24);
+  background: rgba(53, 248, 255, 0.08);
+}
+
+.detail-error-note {
+  display: grid;
+  gap: 6px;
+  border-color: rgba(255, 99, 110, 0.28);
+  background: rgba(255, 99, 110, 0.08);
 }
 
 .detail-main-grid {

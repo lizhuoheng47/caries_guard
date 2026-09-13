@@ -233,6 +233,15 @@ class Settings:
     bucket_export: str = os.getenv("CG_BUCKET_EXPORT", "caries-export")
     bucket_knowledge: str = os.getenv("CG_BUCKET_KNOWLEDGE", "caries-knowledge")
     temp_dir: str = os.getenv("CG_TEMP_DIR", "/tmp/cariesguard")
+    local_segmentation_api_enabled: bool = bool_env("CG_LOCAL_SEGMENTATION_API_ENABLED", False)
+    local_segmentation_api_output_dir: str = os.getenv(
+        "CG_LOCAL_SEGMENTATION_API_OUTPUT_DIR",
+        str(_project_root() / "runtime-assets" / "segmentation"),
+    )
+    local_segmentation_api_max_bytes: int = int_env(
+        "CG_LOCAL_SEGMENTATION_API_MAX_BYTES",
+        25 * 1024 * 1024,
+    )
 
     allow_bucket_create: bool = bool_env("CG_MINIO_ALLOW_BUCKET_CREATE", False)
 

@@ -1,5 +1,11 @@
 export type DiagState = 'empty' | 'scanning' | 'result'
 
+/**
+ * @deprecated P0 disabled demo data below.
+ * Prepared cases and file-name matching are not part of the production path.
+ * This module remains temporarily as a visual-reference payload for P1.
+ */
+
 export type RiskLevel = 'high' | 'medium' | 'low' | 'other'
 
 export type DemoDisplayMode = 'cover' | 'contain'

@@ -71,6 +71,7 @@ class SegmentationPipeline:
         output_dir: Path,
         result: dict[str, Any],
     ) -> SegmentationResult:
+        output_dir.mkdir(parents=True, exist_ok=True)
         paths = self._paths(image, output_dir)
         mask_array = result.get("maskArray")
         if mask_array is None:
@@ -78,8 +79,6 @@ class SegmentationPipeline:
 
         mask_array = np.asarray(mask_array, dtype=np.uint8)
         regions = self._filter_regions(list(result.get("regions") or []))
-        if not regions:
-            raise ValueError("segmentation result has no usable regions")
 
         self._render_assets(
             image_path=image_path,
@@ -167,6 +166,7 @@ class SegmentationPipeline:
         cv2.imwrite(str(mask_path), mask)
 
         overlay = base.copy()
+        overlay[mask > 0] = (0, 0, 255)
         line_width = max(2, loaded.width // 300)
         for region in regions:
             bbox = region.get("bbox")
@@ -179,7 +179,10 @@ class SegmentationPipeline:
                 points = np.asarray(polygon, dtype=np.int32)
                 cv2.polylines(overlay, [points], isClosed=True, color=(0, 255, 255), thickness=line_width)
             tooth_code = str(region.get("toothCode") or region.get("tooth_code") or "").strip()
-            if tooth_code:
+            # Segmentation can run without a tooth detector. In that case the
+            # adapter uses UNKNOWN internally, which is useful metadata but not
+            # a meaningful label to paint over the radiograph.
+            if tooth_code and tooth_code.upper() != "UNKNOWN":
                 cv2.putText(
                     overlay,
                     tooth_code,
@@ -190,10 +193,15 @@ class SegmentationPipeline:
                     1,
                     cv2.LINE_AA,
                 )
-        blended = cv2.addWeighted(base, 0.72, overlay, 0.28, 0.0)
+        blended = cv2.addWeighted(base, 0.68, overlay, 0.32, 0.0)
         cv2.imwrite(str(overlay_path), blended)
 
         blurred = cv2.GaussianBlur(mask, (0, 0), sigmaX=max(2, loaded.width // 160))
         heat = cv2.applyColorMap(blurred, cv2.COLORMAP_JET)
-        heatmap = cv2.addWeighted(base, 0.6, heat, 0.4, 0.0)
+        alpha = (blurred.astype(np.float32) / 255.0 * 0.55)[:, :, None]
+        heatmap = np.clip(
+            base.astype(np.float32) * (1.0 - alpha) + heat.astype(np.float32) * alpha,
+            0,
+            255,
+        ).astype(np.uint8)
         cv2.imwrite(str(heatmap_path), heatmap)

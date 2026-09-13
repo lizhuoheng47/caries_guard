@@ -64,6 +64,8 @@ export interface AnalysisDetail {
     createdAt: string;
     completedAt?: string;
     inferenceMillis?: number;
+    errorCode?: string;
+    errorMessage?: string;
     visualAssets: AnalysisAsset[];
   };
   patient: {
@@ -93,6 +95,7 @@ export interface AnalysisDetail {
     abnormalToothCount: number;
     clinicalSummary?: string;
     followUpRecommendation?: string;
+    knowledgeVersion?: string;
     treatmentPlan: AnalysisTreatmentItem[];
     lesions: AnalysisLesion[];
     citations: AnalysisCitation[];

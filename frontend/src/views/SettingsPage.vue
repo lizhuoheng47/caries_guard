@@ -208,7 +208,6 @@ const landingOptions: Array<{ value: WorkspaceLanding; label: string }> = [
   { value: 'dashboard', label: '工作台' },
   { value: 'cases', label: '病例中心' },
   { value: 'analysis', label: '分析队列' },
-  { value: 'ai-diagnosis', label: 'AI 诊断' },
 ]
 
 const imageModeOptions: Array<{ value: WorkspaceImageMode; label: string }> = [

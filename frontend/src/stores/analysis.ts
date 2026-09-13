@@ -22,14 +22,19 @@ export const useAnalysisStore = defineStore('analysis', {
       }
     },
     
-    async fetchDetail(taskId: string | number) {
-      this.loading = true;
+    async fetchDetail(taskId: string | number, options: { silent?: boolean } = {}) {
+      const showLoading = !options.silent || !this.currentDetail;
+      if (showLoading) this.loading = true;
       try {
         const res = await analysisApi.getTaskDetail(taskId);
         this.currentDetail = AnalysisAdapter.toDetail(res.data);
       } finally {
-        this.loading = false;
+        if (showLoading) this.loading = false;
       }
+    },
+
+    clearDetail() {
+      this.currentDetail = null;
     }
   }
 });

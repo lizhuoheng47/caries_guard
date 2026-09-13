@@ -1,0 +1,36 @@
+{
+  "modelCode": "dc1000-unet-v1",
+  "modelType": "BINARY_SEGMENTATION",
+  "format": "torchscript",
+  "sourceCheckpoint": "D:\\caries_guard\\artifacts\\training\\dc1000_segmentation\\dc1000_unet_v1\\weights\\best.pt",
+  "sourceCheckpointEpoch": 22,
+  "outputPath": "D:\\caries_guard\\backend-python\\assets\\models\\checkpoints\\segmentation_v1\\model.pt",
+  "outputSha256": "22df41b8487b08b35a8bbe8af7559585a762a48d2f810bf5f177c465aced0d24",
+  "outputBytes": 6735971,
+  "inputShape": [
+    1,
+    1,
+    512,
+    512
+  ],
+  "outputShape": [
+    1,
+    1,
+    512,
+    512
+  ],
+  "outputType": "logits",
+  "parity": {
+    "maxAbsoluteErrorBeforeSave": 0.0,
+    "meanAbsoluteErrorBeforeSave": 0.0,
+    "maxProbabilityErrorBeforeSave": 0.0,
+    "maskDifferencePixelsBeforeSaveAtThreshold0.70": 0,
+    "maxAbsoluteErrorAfterReload": 0.0,
+    "maxProbabilityErrorAfterReload": 0.0,
+    "maskDifferencePixelsAfterReloadAtThreshold0.70": 0,
+    "allowedMaxAbsoluteError": 0.0001,
+    "passed": true
+  },
+  "selectedMaskThreshold": 0.7,
+  "exportedAtUtc": "2026-09-13T17:29:48.305807+00:00"
+}

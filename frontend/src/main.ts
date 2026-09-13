@@ -8,6 +8,10 @@ import './styles/app.css'
 import './styles/medical-workspace.css'
 import App from './App.vue'
 
+if (import.meta.env.PROD && import.meta.env.VITE_USE_MOCK === 'true') {
+  throw new Error('VITE_USE_MOCK=true is forbidden in production builds')
+}
+
 const app = createApp(App)
 
 app.use(createPinia())

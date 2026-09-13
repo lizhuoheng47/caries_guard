@@ -24,6 +24,9 @@ class _PreprocessedImage:
     channel_count: int
     layout: str
     normalize_mode: str
+    inference_mode: str
+    sliding_window_overlap: float
+    sliding_window_batch_size: int
 
 
 class SegmentationModelAdapter(BaseModelAdapter):
@@ -104,19 +107,25 @@ class SegmentationModelAdapter(BaseModelAdapter):
 
         assets = self._require_assets()
         preprocessed = self._preprocess_image(image_path, assets)
-        raw_output = self._run_model(preprocessed.tensor)
-        probability = self._output_to_probability(raw_output, assets.segmentation_foreground_class_id())
-        probability = self._resize_probability(probability, preprocessed.original_size)
+        if preprocessed.inference_mode == "sliding_window":
+            probability, window_count = self._sliding_window_probability(
+                preprocessed,
+                assets.segmentation_foreground_class_id(),
+            )
+        else:
+            raw_output = self._run_model(preprocessed.tensor)
+            probability = self._output_to_probability(
+                raw_output, assets.segmentation_foreground_class_id()
+            )
+            probability = self._resize_probability(probability, preprocessed.original_size)
+            window_count = 1
         regions, mask_array = self._postprocess_probability(
             probability,
             tooth_detections or [],
             assets,
         )
-        if not regions:
-            raise RuntimeError("segmentation model produced no lesion regions above postprocess thresholds")
-
         manifest = assets.segmentation_manifest
-        score = round(float(np.mean([item["score"] for item in regions])), 4)
+        score = round(float(np.mean([item["score"] for item in regions])), 4) if regions else 0.0
         return {
             "regions": regions,
             "maskArray": mask_array,
@@ -146,6 +155,10 @@ class SegmentationModelAdapter(BaseModelAdapter):
                 "modelInputSize": [preprocessed.model_size[0], preprocessed.model_size[1]],
                 "imageChannels": preprocessed.channel_count,
                 "normalizeMode": preprocessed.normalize_mode,
+                "inferenceMode": preprocessed.inference_mode,
+                "slidingWindowOverlap": preprocessed.sliding_window_overlap,
+                "slidingWindowBatchSize": preprocessed.sliding_window_batch_size,
+                "slidingWindowCount": window_count,
                 "maskThreshold": assets.segmentation_mask_threshold(),
                 "minRegionAreaPx": assets.segmentation_min_region_area(0),
                 "regionCount": len(regions),
@@ -233,6 +246,78 @@ class SegmentationModelAdapter(BaseModelAdapter):
             output = output.detach().cpu().numpy()
         return output
 
+    def _sliding_window_probability(
+        self,
+        preprocessed: _PreprocessedImage,
+        foreground_class_id: int,
+    ) -> tuple[np.ndarray, int]:
+        tensor = preprocessed.tensor
+        if preprocessed.layout == "NHWC":
+            nchw = np.transpose(tensor, (0, 3, 1, 2))
+        else:
+            nchw = tensor
+        if nchw.ndim != 4 or nchw.shape[0] != 1:
+            raise RuntimeError(f"sliding-window input must be NCHW with batch=1, got {list(nchw.shape)}")
+
+        tile_width, tile_height = preprocessed.model_size
+        _, _, original_height, original_width = nchw.shape
+        pad_height = max(0, tile_height - original_height)
+        pad_width = max(0, tile_width - original_width)
+        if pad_height or pad_width:
+            nchw = np.pad(
+                nchw,
+                ((0, 0), (0, 0), (0, pad_height), (0, pad_width)),
+                mode="edge",
+            )
+        padded_height, padded_width = int(nchw.shape[2]), int(nchw.shape[3])
+        y_positions = self._window_positions(
+            padded_height, tile_height, preprocessed.sliding_window_overlap
+        )
+        x_positions = self._window_positions(
+            padded_width, tile_width, preprocessed.sliding_window_overlap
+        )
+        coordinates = [(y, x) for y in y_positions for x in x_positions]
+        weight = self._gaussian_window(tile_height, tile_width)
+        probability_sum = np.zeros((padded_height, padded_width), dtype=np.float32)
+        weight_sum = np.zeros((padded_height, padded_width), dtype=np.float32)
+        batch_size = max(1, preprocessed.sliding_window_batch_size)
+
+        for start in range(0, len(coordinates), batch_size):
+            batch_coordinates = coordinates[start : start + batch_size]
+            windows = np.concatenate(
+                [
+                    nchw[:, :, y : y + tile_height, x : x + tile_width]
+                    for y, x in batch_coordinates
+                ],
+                axis=0,
+            ).astype(np.float32, copy=False)
+            model_input = (
+                np.transpose(windows, (0, 2, 3, 1))
+                if preprocessed.layout == "NHWC"
+                else windows
+            )
+            raw_batch = np.asarray(self._run_model(model_input), dtype=np.float32)
+            if raw_batch.ndim == 3:
+                raw_batch = raw_batch[None, ...]
+            if raw_batch.ndim != 4 or raw_batch.shape[0] != len(batch_coordinates):
+                raise RuntimeError(
+                    "segmentation sliding-window output batch mismatch: "
+                    f"expected={len(batch_coordinates)} shape={list(raw_batch.shape)}"
+                )
+            for batch_index, (y, x) in enumerate(batch_coordinates):
+                probability = self._output_to_probability(
+                    raw_batch[batch_index : batch_index + 1], foreground_class_id
+                )
+                if probability.shape != (tile_height, tile_width):
+                    probability = self._resize_probability(
+                        probability, (tile_width, tile_height)
+                    )
+                probability_sum[y : y + tile_height, x : x + tile_width] += probability * weight
+                weight_sum[y : y + tile_height, x : x + tile_width] += weight
+
+        fused = probability_sum / np.maximum(weight_sum, 1e-6)
+        return fused[:original_height, :original_width], len(coordinates)
+
     def _require_assets(self) -> ModelAssets:
         if self._model_assets is not None:
             return self._model_assets
@@ -246,9 +331,23 @@ class SegmentationModelAdapter(BaseModelAdapter):
         manifest = assets.segmentation_manifest
         preprocess = assets.preprocess_config()
         shared = preprocess.get("shared", {})
+        segmentation = preprocess.get("segmentation", {})
         normalize = shared.get("normalize", {})
         expected_size = manifest.expected_input_size or self._parse_size(shared.get("imageSize")) or (512, 512)
         channel_count = self._input_channels(manifest.raw, shared)
+        inference_mode = str(segmentation.get("inferenceMode") or "resize").strip().lower()
+        if inference_mode not in {"resize", "sliding_window"}:
+            raise RuntimeError(f"unsupported segmentation inference mode: {inference_mode}")
+        try:
+            sliding_window_overlap = float(segmentation.get("slidingWindowOverlap", 0.25))
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("segmentation slidingWindowOverlap must be numeric") from exc
+        if not 0.0 <= sliding_window_overlap < 1.0:
+            raise RuntimeError("segmentation slidingWindowOverlap must be in [0, 1)")
+        try:
+            sliding_window_batch_size = max(1, int(segmentation.get("slidingWindowBatchSize", 1)))
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("segmentation slidingWindowBatchSize must be a positive integer") from exc
 
         loaded = load_image(image_path)
         original_size = (loaded.width, loaded.height)
@@ -257,8 +356,6 @@ class SegmentationModelAdapter(BaseModelAdapter):
             pixels = np.repeat(pixels[:, :, None], 3, axis=2)
         elif channel_count == 1 and pixels.ndim == 3:
             pixels = pixels[:, :, 0]
-        arr = resize_image(pixels, expected_size, interpolation=str(shared.get("interpolation") or "bilinear"))
-        arr = ensure_channel_dim(arr, channel_count)
 
         clip = shared.get("valueClip", {})
         min_value = float(clip.get("min", 0.0))
@@ -267,8 +364,28 @@ class SegmentationModelAdapter(BaseModelAdapter):
             raise RuntimeError(f"invalid preprocess valueClip range: min={min_value} max={max_value}")
 
         normalize_mode = str(normalize.get("mode") or "minmax_0_1")
+        percentiles = segmentation.get("intensityPercentiles")
+        if isinstance(percentiles, (list, tuple)) and len(percentiles) == 2:
+            lower_percentile = float(percentiles[0])
+            upper_percentile = float(percentiles[1])
+            if not 0.0 <= lower_percentile < upper_percentile <= 100.0:
+                raise RuntimeError(
+                    "segmentation intensityPercentiles must satisfy 0 <= lower < upper <= 100"
+                )
+            min_value, max_value = (
+                float(value)
+                for value in np.percentile(np.asarray(pixels, dtype=np.float32), percentiles)
+            )
+            if max_value <= min_value + 1e-6:
+                min_value = float(clip.get("min", 0.0))
+                max_value = float(clip.get("max", 255.0))
+            normalize_mode_label = (
+                f"percentile_{lower_percentile:g}_{upper_percentile:g}+{normalize_mode}"
+            )
+        else:
+            normalize_mode_label = normalize_mode
         arr = normalize_image(
-            arr,
+            pixels,
             min_value=min_value,
             max_value=max_value,
             normalize_mode=normalize_mode,
@@ -276,6 +393,13 @@ class SegmentationModelAdapter(BaseModelAdapter):
             std=normalize.get("std"),
             channels=channel_count,
         )
+        if inference_mode == "resize":
+            arr = resize_image(
+                arr,
+                expected_size,
+                interpolation=str(shared.get("interpolation") or "bilinear"),
+            )
+        arr = ensure_channel_dim(arr, channel_count)
 
         layout = self._input_layout
         if layout == "NHWC":
@@ -288,7 +412,10 @@ class SegmentationModelAdapter(BaseModelAdapter):
             model_size=expected_size,
             channel_count=channel_count,
             layout=layout,
-            normalize_mode=normalize_mode,
+            normalize_mode=normalize_mode_label,
+            inference_mode=inference_mode,
+            sliding_window_overlap=sliding_window_overlap,
+            sliding_window_batch_size=sliding_window_batch_size,
         )
 
     def _output_to_probability(self, raw_output: Any, foreground_class_id: int) -> np.ndarray:
@@ -395,7 +522,8 @@ class SegmentationModelAdapter(BaseModelAdapter):
     @staticmethod
     def _binary_probability(values: np.ndarray) -> np.ndarray:
         if float(np.nanmin(values)) < 0.0 or float(np.nanmax(values)) > 1.0:
-            return 1.0 / (1.0 + np.exp(-values))
+            stable_values = np.clip(values, -80.0, 80.0)
+            return 1.0 / (1.0 + np.exp(-stable_values))
         return np.clip(values, 0.0, 1.0)
 
     @staticmethod
@@ -411,29 +539,47 @@ class SegmentationModelAdapter(BaseModelAdapter):
         return np.asarray(resized, dtype=np.float32) / 255.0
 
     @staticmethod
-    def _connected_components(mask: np.ndarray) -> list[np.ndarray]:
-        height, width = mask.shape
-        visited = np.zeros(mask.shape, dtype=bool)
-        components: list[np.ndarray] = []
+    def _window_positions(length: int, window: int, overlap: float) -> list[int]:
+        if length <= window:
+            return [0]
+        stride = max(1, int(round(window * (1.0 - overlap))))
+        positions = list(range(0, length - window + 1, stride))
+        final = length - window
+        if positions[-1] != final:
+            positions.append(final)
+        return positions
 
-        for y in range(height):
-            for x in range(width):
-                if visited[y, x] or not mask[y, x]:
-                    continue
-                stack = [(y, x)]
-                visited[y, x] = True
-                pixels: list[tuple[int, int]] = []
-                while stack:
-                    cy, cx = stack.pop()
-                    pixels.append((cy, cx))
-                    for ny in range(max(0, cy - 1), min(height, cy + 2)):
-                        for nx in range(max(0, cx - 1), min(width, cx + 2)):
-                            if visited[ny, nx] or not mask[ny, nx]:
-                                continue
-                            visited[ny, nx] = True
-                            stack.append((ny, nx))
-                components.append(np.asarray(pixels, dtype=np.int32))
-        return components
+    @staticmethod
+    def _gaussian_window(height: int, width: int) -> np.ndarray:
+        y = np.arange(height, dtype=np.float32) - (height - 1) / 2.0
+        x = np.arange(width, dtype=np.float32) - (width - 1) / 2.0
+        sigma_y = max(1.0, height * 0.125)
+        sigma_x = max(1.0, width * 0.125)
+        y_weight = np.exp(-0.5 * np.square(y / sigma_y))
+        x_weight = np.exp(-0.5 * np.square(x / sigma_x))
+        weight = np.outer(y_weight, x_weight)
+        weight /= max(float(np.max(weight)), 1e-6)
+        return np.maximum(weight, 1e-3).astype(np.float32)
+
+    @staticmethod
+    def _connected_components(mask: np.ndarray) -> list[np.ndarray]:
+        try:
+            import cv2
+        except ImportError as exc:  # pragma: no cover - runtime dependency
+            raise RuntimeError("opencv-python-headless is required for connected components") from exc
+
+        count, labels = cv2.connectedComponents(mask.astype(np.uint8), connectivity=8)
+        if count <= 1:
+            return []
+        y_values, x_values = np.nonzero(labels)
+        component_ids = labels[y_values, x_values]
+        order = np.argsort(component_ids, kind="stable")
+        ordered_ids = component_ids[order]
+        split_points = np.flatnonzero(np.diff(ordered_ids)) + 1
+        ordered_coordinates = np.column_stack((y_values[order], x_values[order])).astype(
+            np.int32, copy=False
+        )
+        return [component for component in np.split(ordered_coordinates, split_points) if component.size]
 
     @staticmethod
     def _match_tooth_code(bbox: list[int], tooth_detections: list[Any]) -> str:

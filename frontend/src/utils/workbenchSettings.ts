@@ -34,12 +34,17 @@ export const defaultWorkspaceSettings: WorkspaceSettings = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
+const normalizeLanding = (value: unknown): WorkspaceLanding => {
+  // Migrate the retired static AI demo landing to the real upload workflow.
+  if (value === 'ai-diagnosis') return 'cases'
+  if (value === 'cases' || value === 'analysis' || value === 'dashboard') return value
+  return defaultWorkspaceSettings.defaultLanding
+}
+
 const normalizeSettings = (input?: Partial<WorkspaceSettings> | null): WorkspaceSettings => ({
   autoRefreshSeconds: clamp(Number(input?.autoRefreshSeconds ?? defaultWorkspaceSettings.autoRefreshSeconds) || 0, 0, 300),
   queueCompactMode: Boolean(input?.queueCompactMode),
-  defaultLanding: ['dashboard', 'cases', 'analysis', 'ai-diagnosis'].includes(String(input?.defaultLanding))
-    ? (input?.defaultLanding as WorkspaceLanding)
-    : defaultWorkspaceSettings.defaultLanding,
+  defaultLanding: normalizeLanding(input?.defaultLanding),
   confidenceThreshold: clamp(Number(input?.confidenceThreshold ?? defaultWorkspaceSettings.confidenceThreshold) || 0, 0.5, 0.99),
   riskAlertThreshold: clamp(Number(input?.riskAlertThreshold ?? defaultWorkspaceSettings.riskAlertThreshold) || 0, 0.05, 0.95),
   reportIncludeCitations: input?.reportIncludeCitations ?? defaultWorkspaceSettings.reportIncludeCitations,

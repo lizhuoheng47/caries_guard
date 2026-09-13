@@ -1,20 +1,20 @@
 manifestVersion: "1.0"
-modelCode: "caries-segmentation-v1"
+modelCode: "dc1000-unet-v1"
 taskType: "SEGMENTATION"
-status: "MISSING_CHECKPOINT"
+status: "READY"
 dataset:
-  datasetCode: "caries_v1"
+  datasetCode: "dc1000-binary-segmentation-v1"
   annotationVersion: "caries-annot-v1.0"
   classMapPath: "assets/datasets/caries_v1/meta/class_map.json"
-  trainManifestPath: "assets/datasets/caries_v1/manifests/train.jsonl"
-  valManifestPath: "assets/datasets/caries_v1/manifests/val.jsonl"
-  testManifestPath: "assets/datasets/caries_v1/manifests/test.jsonl"
-  datasetCardPath: "assets/datasets/caries_v1/meta/dataset_card.md"
+  trainManifestPath: "../data/processed/dc1000/segmentation_v1/manifests/train.jsonl"
+  valManifestPath: "../data/processed/dc1000/segmentation_v1/manifests/val.jsonl"
+  testManifestPath: "../data/processed/dc1000/segmentation_v1/manifests/test.jsonl"
+  datasetCardPath: "../data/processed/dc1000/segmentation_v1/dataset_card.md"
 artifact:
-  checkpointPath: "assets/models/checkpoints/segmentation_v1/model.onnx"
-  checkpointFormat: "onnx"
-  checkpointSha256: null
-  exportedAt: null
+  checkpointPath: "assets/models/checkpoints/segmentation_v1/model.pt"
+  checkpointFormat: "torchscript"
+  checkpointSha256: "22df41b8487b08b35a8bbe8af7559585a762a48d2f810bf5f177c465aced0d24"
+  exportedAt: "2026-09-13T17:29:48.305807+00:00"
 inputSpec:
   imageChannels: 1
   expectedImageSize: [512, 512]
@@ -28,9 +28,13 @@ outputSpec:
     - "OVERLAY"
     - "HEATMAP"
 training:
-  framework: null
-  trainingRunRef: null
-  baseModelRef: null
+  framework: "PyTorch 2.5.1 + MONAI 1.4.0"
+  arch: "torchscript_segmentation"
+  trainingRunRef: "artifacts/training/dc1000_segmentation/dc1000_unet_v1"
+  baseModelRef: "MONAI UNet"
+  bestEpoch: 22
+  validationDice: 0.5404073706260529
+  officialTestDice: 0.6516215338161944
 release:
   runtimeCompatible: true
   failOnMissingCheckpoint: true

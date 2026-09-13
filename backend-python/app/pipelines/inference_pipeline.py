@@ -8,7 +8,7 @@ from typing import Any
 
 from app.core.config import Settings
 from app.core.exceptions import AnalysisRuntimeException, BusinessException
-from app.core.image_utils import LoadedImage, load_image
+from app.core.image_utils import LoadedImage, load_image, png_bytes
 from app.core.logging import get_logger
 from app.core.time_utils import local_naive_iso_now
 from app.infra.model.model_assets import ModelAssets
@@ -259,7 +259,8 @@ class InferencePipeline:
                 detections,
                 [quality_by_image.get(image_id)] if quality_by_image.get(image_id) is not None else [],
             )
-            uploaded = self._upload_visuals(task, runtime_image.request, segmentation)
+            uploaded = self._upload_dicom_preview(task, runtime_image, output_dir)
+            uploaded.extend(self._upload_visuals(task, runtime_image.request, segmentation))
             visual_assets.extend(uploaded)
             lesion_results.extend(self._lesions_for_image(runtime_image, segmentation, grading, uploaded))
             image_result = self._image_result(
@@ -305,6 +306,31 @@ class InferencePipeline:
                 )
             )
         return assets
+
+    def _upload_dicom_preview(
+        self,
+        task: AnalyzeRequest,
+        runtime_image: RuntimeImage,
+        output_dir: Path,
+    ) -> list[VisualAsset]:
+        if runtime_image.loaded.source_format != "dicom":
+            return []
+        if self.visual_asset_service is None:
+            raise AnalysisRuntimeException("M5102", "visual asset service is unavailable")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        preview_path = output_dir / "dicom-preview.png"
+        preview_path.write_bytes(png_bytes(runtime_image.loaded.pixels))
+        return [
+            self.visual_asset_service.upload_visual(
+                asset_type_code="PREVIEW",
+                org_id=task.org_id,
+                case_no=task.case_no or task.task_no,
+                task_no=task.task_no,
+                model_version=task.model_version or self.settings.model_version,
+                image_id=runtime_image.request.image_id,
+                local_path=preview_path,
+            )
+        ]
 
     def _aggregate_results(self, image_results: list[dict[str, Any]]) -> dict[str, Any]:
         if not image_results:

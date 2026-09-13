@@ -17,7 +17,7 @@ CONTENT_TYPES = {
     ".json": "application/json",
 }
 
-VISUAL_ASSET_TYPES = {"HEATMAP", "MASK", "OVERLAY"}
+VISUAL_ASSET_TYPES = {"HEATMAP", "MASK", "OVERLAY", "PREVIEW"}
 
 
 class VisualAssetService:

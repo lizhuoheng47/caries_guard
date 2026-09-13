@@ -6,7 +6,6 @@ const resolveLandingPath = () => {
   const landing = loadWorkspaceSettings().defaultLanding
   if (landing === 'cases') return '/cases'
   if (landing === 'analysis') return '/analysis'
-  if (landing === 'ai-diagnosis') return '/ai-diagnosis'
   return '/dashboard'
 }
 
@@ -35,8 +34,8 @@ const router = createRouter({
         },
         {
           path: 'ai-diagnosis',
-          name: 'ai-diagnosis',
-          component: () => import('../views/AIDiagnosisView.vue')
+          name: 'segmentation-workbench',
+          component: () => import('../views/SegmentationWorkbenchView.vue')
         },
         {
           path: 'analysis',

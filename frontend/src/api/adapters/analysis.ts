@@ -137,6 +137,8 @@ export const AnalysisAdapter = {
         createdAt: dto.task.createdAt,
         completedAt: dto.task.completedAt,
         inferenceMillis: dto.task.inferenceMillis,
+        errorCode: dto.task.errorCode,
+        errorMessage: dto.task.errorMessage,
         visualAssets,
       },
       patient: {
@@ -168,6 +170,7 @@ export const AnalysisAdapter = {
         followUpRecommendation:
           dto.analysisSummary?.followUpRecommendation ||
           raw.followUpRecommendation,
+        knowledgeVersion: raw.knowledgeVersion,
         treatmentPlan: normalizeTreatmentPlan(raw.treatmentPlan),
         lesions,
         citations,

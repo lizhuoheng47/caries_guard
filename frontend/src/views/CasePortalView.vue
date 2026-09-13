@@ -511,7 +511,7 @@ const submitNewCase = async () => {
 
     const uploadRes = await casePortalApi.uploadCaseFile(selectedFile.value!, caseId, 'PANORAMIC')
 
-    const imageRes = await casePortalApi.createCaseImage(caseId, {
+    await casePortalApi.createCaseImage(caseId, {
       attachmentId: uploadRes.data.attachmentId,
       visitId,
       patientId,
@@ -522,21 +522,12 @@ const submitNewCase = async () => {
       remark: 'Uploaded from case portal'
     })
 
-    await casePortalApi.saveImageQualityCheck(imageRes.data.imageId, {
-      checkTypeCode: 'AUTO',
-      checkResultCode: 'PASS',
-      qualityScore: 97,
-      issueCodes: ['NONE'],
-      suggestionText: 'Portal upload passed default quality gate',
-      remark: 'Auto-approved from case portal'
-    })
-
     const analysisRes = await casePortalApi.createAnalysis(caseId, {
       caseId,
       patientId,
       forceRetryFlag: false,
       taskTypeCode: 'INFERENCE',
-      remark: 'Created from case portal'
+      remark: 'Created from case portal; image quality will be evaluated by the inference pipeline'
     })
 
     notificationStore.success('病例创建成功', `分析任务 ${analysisRes.data.taskNo} 已入队。`)

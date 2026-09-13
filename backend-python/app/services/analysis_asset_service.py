@@ -166,6 +166,7 @@ class AnalysisAssetService:
     def _tooth_detection_status(self, registry: Any | None) -> ModuleAssetStatus:
         enabled = self._settings.model_tooth_detect_enabled
         impl_type = self._settings.model_tooth_detect_impl_type if enabled else "DISABLED"
+        requires_model_assets = enabled and impl_type == "ML_MODEL"
         checkpoint_candidates = self._tooth_checkpoint_candidates()
         checkpoint = next((item for item in checkpoint_candidates if item.is_file()), None)
         config_candidates = self._tooth_config_candidates(checkpoint)
@@ -181,7 +182,7 @@ class AnalysisAssetService:
             or self._nested(metadata, "inputSpec", "expectedImageSize")
         )
         missing_items: list[MissingRequirement] = []
-        if enabled and checkpoint is None:
+        if requires_model_assets and checkpoint is None:
             missing_items.append(
                 MissingRequirement(
                     module_name="tooth_detect",
@@ -191,7 +192,7 @@ class AnalysisAssetService:
                     candidates=[str(item) for item in checkpoint_candidates],
                 )
             )
-        if enabled and config is None:
+        if requires_model_assets and config is None:
             missing_items.append(
                 MissingRequirement(
                     module_name="tooth_detect",
@@ -200,7 +201,7 @@ class AnalysisAssetService:
                     candidates=[str(item) for item in config_candidates],
                 )
             )
-        if enabled and not label_order:
+        if requires_model_assets and not label_order:
             missing_items.append(
                 MissingRequirement(
                     module_name="tooth_detect",
@@ -209,7 +210,7 @@ class AnalysisAssetService:
                     actual_path=str(config) if config is not None else None,
                 )
             )
-        if enabled and expected_input_size is None:
+        if requires_model_assets and expected_input_size is None:
             missing_items.append(
                 MissingRequirement(
                     module_name="tooth_detect",
@@ -246,8 +247,9 @@ class AnalysisAssetService:
         postprocess = self._model_assets.postprocess_config()
         enabled = getattr(self._settings, f"model_{module_name}_enabled")
         impl_type = getattr(self._settings, f"model_{module_name}_impl_type") if enabled else "DISABLED"
+        requires_model_assets = enabled and impl_type == "ML_MODEL"
         missing_items: list[MissingRequirement] = []
-        if enabled and not manifest.manifest_path.is_file():
+        if requires_model_assets and not manifest.manifest_path.is_file():
             missing_items.append(
                 MissingRequirement(
                     module_name=module_name,
@@ -256,7 +258,7 @@ class AnalysisAssetService:
                     expected_path=str(manifest.manifest_path),
                 )
             )
-        if enabled and manifest.checkpoint_path is None:
+        if requires_model_assets and manifest.checkpoint_path is None:
             missing_items.append(
                 MissingRequirement(
                     module_name=module_name,
@@ -265,7 +267,7 @@ class AnalysisAssetService:
                     actual_path=str(manifest.manifest_path),
                 )
             )
-        if enabled and not manifest.checkpoint_exists:
+        if requires_model_assets and not manifest.checkpoint_exists:
             missing_items.append(
                 MissingRequirement(
                     module_name=module_name,
@@ -274,7 +276,7 @@ class AnalysisAssetService:
                     expected_path=str(manifest.checkpoint_path) if manifest.checkpoint_path is not None else None,
                 )
             )
-        if enabled and str(manifest.status or "").strip().upper() in {"", "SPEC_ONLY", "MISSING_CHECKPOINT"}:
+        if requires_model_assets and str(manifest.status or "").strip().upper() in {"", "SPEC_ONLY", "MISSING_CHECKPOINT"}:
             missing_items.append(
                 MissingRequirement(
                     module_name=module_name,
@@ -283,7 +285,7 @@ class AnalysisAssetService:
                     actual_path=str(manifest.manifest_path),
                 )
             )
-        if enabled and manifest.class_map_path is None:
+        if requires_model_assets and manifest.class_map_path is None:
             missing_items.append(
                 MissingRequirement(
                     module_name=module_name,
@@ -292,7 +294,7 @@ class AnalysisAssetService:
                     actual_path=str(manifest.manifest_path),
                 )
             )
-        if enabled and manifest.preprocess_path is None:
+        if requires_model_assets and manifest.preprocess_path is None:
             missing_items.append(
                 MissingRequirement(
                     module_name=module_name,
@@ -301,7 +303,7 @@ class AnalysisAssetService:
                     actual_path=str(manifest.manifest_path),
                 )
             )
-        if enabled and manifest.postprocess_path is None:
+        if requires_model_assets and manifest.postprocess_path is None:
             missing_items.append(
                 MissingRequirement(
                     module_name=module_name,

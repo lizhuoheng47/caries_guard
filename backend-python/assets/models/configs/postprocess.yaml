@@ -1,7 +1,7 @@
 version: "1.0"
 segmentation:
-  maskThreshold: 0.5
-  minRegionAreaPx: 64
+  maskThreshold: 0.7
+  minRegionAreaPx: 1
   connectedComponents: true
   bboxClampToImage: true
   polygonSimplifyEpsilonPx: 2.0

@@ -655,6 +655,9 @@
 </template>
 
 <script setup lang="ts">
+// P0: this legacy static-demo component is deliberately not registered in the
+// router. Do not restore it before replacing file-name fixtures and timers
+// with the task-backed P1 implementation.
 import { computed, onUnmounted, ref } from 'vue'
 import {
   DEMO_CASES,
