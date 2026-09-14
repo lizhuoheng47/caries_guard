@@ -85,6 +85,7 @@ class InferencePipeline:
 
         with TaskWorkspace(self.settings, task.task_no) as workspace:
             runtime_images = self._prepare_images(task, workspace, runtime_job.get("id"))
+            # 在处理影像前统一校验阶段资产，避免执行到一半才发现权重或配置缺失。
             snapshot = self.analysis_asset_service.require_ready_modules(
                 ["quality", "tooth_detect", "segmentation", "grading"],
                 self.model_registry,
@@ -249,6 +250,7 @@ class InferencePipeline:
             quality_by_image[runtime_image.request.image_id] = result
 
         tooth_detections_schema = self.detection_pipeline.detect_all(image_inputs, fetched_images)
+        # 牙位候选与疾病检测是两个独立语义阶段，疾病类别绝不能被当作 FDI 牙位编号。
         disease_detections = self.disease_detection_pipeline.detect_all(image_inputs, fetched_images)
         for item in tooth_detections_schema:
             tooth_detections_all.append(dump_camel(item))
@@ -401,6 +403,7 @@ class InferencePipeline:
         return {
             "pipelineVersion": self.pipeline_version,
             "mode": "full_chain",
+            # 各阶段实现类型随结果返回，前端据此区分真实权重与启发式规则。
             "qualityMode": self._module_mode(snapshot.get("quality")),
             "qualityImplType": self.quality_pipeline.get_last_impl_type(),
             "toothDetectionMode": self._module_mode(snapshot.get("tooth_detect")),

@@ -32,10 +32,12 @@ public class AiCallbackSignatureVerifier {
             throw new BusinessException(CommonErrorCode.FORBIDDEN.code(), "AI callback timestamp is invalid");
         }
         long now = Instant.now().getEpochSecond();
+        // 时间窗口可阻断旧请求重放；签名覆盖“时间戳.原始请求体”，两者都不能被篡改。
         if (Math.abs(now - callbackEpochSeconds) > analysisProperties.getCallbackAllowedClockSkewSeconds()) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN.code(), "AI callback timestamp is expired");
         }
         String expectedSignature = sign(rawBody, timestamp);
+        // 使用常量时间比较，避免普通字符串比较泄露签名匹配位置。
         if (!MessageDigest.isEqual(expectedSignature.getBytes(StandardCharsets.UTF_8), signature.getBytes(StandardCharsets.UTF_8))) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN.code(), "AI callback signature is invalid");
         }

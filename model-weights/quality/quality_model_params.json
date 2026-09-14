@@ -1,5 +1,5 @@
 {
-  "modelVersion": "quality-ml-linear-v1",
+  "modelVersion": "quality-heuristic-multisignal-v2",
   "modelFamily": "LOGISTIC_MULTIHEAD",
   "featureVersion": "quality-fv2",
   "failThreshold": 0.78,

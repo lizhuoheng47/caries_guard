@@ -13,9 +13,9 @@ log = get_logger("cariesguard-ai.quality.adapter")
 
 
 class QualityAssessmentAdapter(BaseModelAdapter):
-    """Model-driven quality adapter (real CV inference)."""
+    """Feature-based image-quality rules; this is not a trained checkpoint."""
 
-    model_code = "quality-assessment-cv-v2"
+    model_code = "quality-heuristic-multisignal-v2"
     model_type_code = "QUALITY"
     impl_type = ImplType.HEURISTIC
 

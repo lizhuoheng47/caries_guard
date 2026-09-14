@@ -63,6 +63,7 @@ class DiseaseDetectorYoloAdapter:
             if boxes is None:
                 continue
             for xyxy, confidence, class_id in zip(boxes.xyxy.tolist(), boxes.conf.tolist(), boxes.cls.tolist()):
+                # 类别顺序以随权重发布的元数据为准，不能依赖训练框架的隐式默认名称。
                 index = int(class_id)
                 detections.append(
                     {

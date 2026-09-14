@@ -770,6 +770,18 @@ public final class AnalysisReportE2EFixture {
         }
 
         @Override
+        public List<ReportRecordModel> listByOrgId(Long orgId, int limit) {
+            // 与生产仓储保持一致：管理员传 null 可跨机构查看，普通用户只返回本机构最近记录。
+            return reportsById.values().stream()
+                    .filter(item -> orgId == null || Objects.equals(item.orgId(), orgId))
+                    .sorted(Comparator.comparing(
+                            ReportRecordModel::createdAt,
+                            Comparator.nullsLast(Comparator.reverseOrder())))
+                    .limit(Math.max(1, Math.min(limit, 200)))
+                    .toList();
+        }
+
+        @Override
         public void createAttachment(ReportAttachmentCreateModel model) {
             attachmentsById.put(model.attachmentId(), new ReportAttachmentModel(
                     model.attachmentId(),

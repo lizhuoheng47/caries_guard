@@ -41,6 +41,7 @@ public class InternalSegmentationClient {
         String requestId = data.path("requestId").asText();
         JsonNode assets = data.path("assets");
         if (REQUEST_ID.matcher(requestId).matches() && assets instanceof ObjectNode assetObject) {
+            // 浏览器只访问 Java 代理地址，不直接暴露 Python 临时资源端点和内部密钥。
             rewriteAsset(assetObject, "maskUrl", requestId);
             rewriteAsset(assetObject, "overlayUrl", requestId);
             rewriteAsset(assetObject, "heatmapUrl", requestId);
@@ -94,6 +95,7 @@ public class InternalSegmentationClient {
     }
 
     private void validateAssetPath(String requestId, String fileName) {
+        // 仅允许服务生成的 PNG 文件名，阻断路径穿越和任意内部文件读取。
         boolean validName = fileName != null && fileName.endsWith(".png") && ASSET_PREFIXES.stream().anyMatch(fileName::startsWith);
         if (!REQUEST_ID.matcher(requestId == null ? "" : requestId).matches() || !validName || fileName.contains("..")) {
             throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "Invalid segmentation asset path");

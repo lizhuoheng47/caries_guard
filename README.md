@@ -193,6 +193,12 @@ sequenceDiagram
 - 权重：`artifacts/training/dentex_detection/dentex_yolov8n_v1/weights/best.pt`
 - 元数据：`artifacts/training/dentex_detection/dentex_yolov8n_v1/cariesguard_model_metadata.json`
 
+### `model-weights/` 是否仍在使用
+
+根目录 `model-weights/` 是当前运行资产，必须保留。Docker 会将它只读挂载到 `/app/model-weights`，质量检查适配器会读取 `quality/quality_model_params.json`，模型治理元数据也会引用这个目录。
+
+需要特别说明：当前质量参数文件保存的是规则与线性评分参数，因此系统仍将该阶段标记为 `HEURISTIC`；文件夹名称中包含 `weights`，并不代表它是经过临床验证的神经网络权重。
+
 > [!WARNING]
 > 上述数值是仓库内训练产物记录的离线实验结果，不等于临床验证。DC1000 是研究数据且标签为二值病灶掩膜；DENTEX 数据因没有公开患者标识而使用图像级划分，官方验证集也没有公开真值。这些限制必须随任何结果说明一并保留。
 

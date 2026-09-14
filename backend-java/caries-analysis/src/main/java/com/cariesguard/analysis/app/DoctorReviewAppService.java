@@ -75,11 +75,13 @@ public class DoctorReviewAppService {
         draft.setReasonTagsJson(writeJson(normalizeTags(command.reasonTags())));
         draft.setNote(trimToNull(command.note()));
         draft.setOrgId(medicalCase.orgId());
+        // 同一医生对同一任务只保留一份草稿，仓储层负责插入或覆盖，避免自动保存产生重复记录。
         return toVO(draftRepository.saveDraft(draft));
     }
 
     @Transactional
     public CorrectionFeedbackVO submit(String taskIdentifier, SaveReviewDraftCommand command) {
+        // 正式提交前先持久化页面上的最后一次修改，保证草稿与纠正反馈使用同一份数据。
         ReviewDraftVO saved = saveDraft(taskIdentifier, command);
         if ("SUBMITTED".equals(saved.statusCode())) {
             throw new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "Review has already been submitted");
@@ -117,6 +119,7 @@ public class DoctorReviewAppService {
                 saved.reasonTags().isEmpty() ? "OTHER" : saved.reasonTags().get(0),
                 agreed,
                 null));
+        // 先成功创建反馈再标记草稿已提交；事务异常时两处写入会一起回滚。
         draftRepository.markSubmitted(saved.draftId(), feedback.feedbackId(), operator().getUserId());
         return feedback;
     }

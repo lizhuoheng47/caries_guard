@@ -58,7 +58,7 @@ class QualityInferModel:
 
     def __init__(self, params: dict[str, Any]) -> None:
         self._params = params
-        self._model_version = str(params.get("modelVersion") or "quality-assessment-cv-v2")
+        self._model_version = str(params.get("modelVersion") or "quality-heuristic-multisignal-v2")
         self._fail_threshold = _safe_float(params.get("failThreshold"), 0.78)
         self._warn_threshold = _safe_float(params.get("warnThreshold"), 0.42)
         self._issue_threshold = _safe_float(params.get("issueThreshold"), 0.45)
