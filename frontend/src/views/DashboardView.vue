@@ -4,13 +4,13 @@
     <header class="page-header">
       <h1>工作台</h1>
       <div class="header-actions">
-        <button class="btn btn-ghost">
+        <button class="btn btn-ghost" :disabled="loading" @click="exportDashboard">
           <svg viewBox="0 0 18 18" fill="none">
             <path d="M9 2v9m0 0l-3-3m3 3l3-3M3 14v1.5A1.5 1.5 0 0 0 4.5 17h9a1.5 1.5 0 0 0 1.5-1.5V14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <span>导出数据</span>
         </button>
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" @click="router.push('/cases?new=1')">
           <svg viewBox="0 0 18 18" fill="none">
             <path d="M9 4v10M4 9h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
@@ -31,10 +31,7 @@
             <span class="num">{{ s.value }}</span>
             <span class="unit">{{ s.unit }}</span>
           </div>
-          <div class="stat-trend">
-            较昨日
-            <span class="up">↑{{ s.trend }}</span>
-          </div>
+          <div class="stat-trend">来自业务数据库实时统计</div>
         </div>
         <div class="stat-bar"></div>
       </div>
@@ -137,7 +134,7 @@
                 transform="rotate(-90)"
               />
             </g>
-            <text x="110" y="106" text-anchor="middle" class="donut-num">1,234</text>
+            <text x="110" y="106" text-anchor="middle" class="donut-num">{{ riskTotal.toLocaleString() }}</text>
             <text x="110" y="128" text-anchor="middle" class="donut-cap">总数</text>
           </svg>
 
@@ -164,9 +161,9 @@
         <thead>
           <tr>
             <th>患者信息</th>
-            <th>检查类型</th>
-            <th>AI诊断结果</th>
-            <th>风险等级</th>
+            <th>病例号</th>
+            <th>分析分级</th>
+            <th>复核状态</th>
             <th>检查时间</th>
             <th class="op-col">操作</th>
           </tr>
@@ -181,7 +178,7 @@
             </td>
             <td>{{ r.time }}</td>
             <td>
-              <button class="row-btn" aria-label="查看">
+              <button class="row-btn" aria-label="查看" @click="router.push(`/analysis/${r.taskId}`)">
                 <svg viewBox="0 0 16 16" fill="none">
                   <path d="M3 13L13 3M13 3H6M13 3v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
@@ -195,82 +192,84 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { dashboardApi, type DashboardOverview, type DashboardTrendPoint, type RiskDistribution } from '@/api/dashboard'
+import { analysisApi } from '@/api/analysis'
+import { useNotificationStore } from '@/stores/notification'
 
+const router = useRouter()
+const notifications = useNotificationStore()
+const loading = ref(false)
 const range = ref<'7' | '30'>('7')
+const overview = ref<DashboardOverview | null>(null)
+const riskDistribution = ref<RiskDistribution>({ highRiskCount: 0, mediumRiskCount: 0, lowRiskCount: 0, totalCount: 0 })
+const trendPoints = ref<DashboardTrendPoint[]>([])
+const cases = ref<Array<{ taskId: number | string; patient: string; type: string; result: string; risk: string; riskLevel: string; time: string }>>([])
 
-const stats = [
+const number = (value?: number | null) => Number(value || 0).toLocaleString()
+
+const stats = computed(() => [
   {
     key: 'scan',
-    label: '总扫描数量',
-    value: '1,234',
-    unit: '例',
-    trend: '15%',
+    label: '患者总数',
+    value: number(overview.value?.patientCount),
+    unit: '人',
     tone: 'mint',
     icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M4 16v2a2 2 0 0 0 2 2h2M16 20h2a2 2 0 0 0 2-2v-2M8 12h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
   },
   {
     key: 'ai',
-    label: 'AI诊断数量',
-    value: '987',
+    label: '病例总数',
+    value: number(overview.value?.caseCount),
     unit: '例',
-    trend: '10%',
     tone: 'violet',
     icon: `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="13" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 11h.01M15 11h.01M9 15c1.2.8 4.8.8 6 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M9 6V4M15 6V4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
   },
   {
     key: 'risk',
-    label: '高风险病例',
-    value: '89',
+    label: '已分析病例',
+    value: number(overview.value?.analyzedCaseCount),
     unit: '例',
-    trend: '8%',
     tone: 'rose',
     icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l9 16H3l9-16Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
   },
   {
-    key: 'acc',
-    label: '诊断准确率',
-    value: '96.7',
-    unit: '%',
-    trend: '2.3%',
+    key: 'report',
+    label: '已生成报告',
+    value: number(overview.value?.generatedReportCount),
+    unit: '份',
     tone: 'mint',
     icon: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7"/><path d="M8 12l3 3 5-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   },
-]
-
-const cases = [
-  { patient: '王** 男 / 28岁', type: '全景片', result: '多颗牙龋坏，建议充填治疗', risk: '高风险', riskLevel: 'high', time: '2024-06-01 14:30' },
-  { patient: '李** 女 / 35岁', type: '口内片', result: '右下智齿阻生，建议拔除', risk: '中风险', riskLevel: 'mid', time: '2024-06-01 13:45' },
-  { patient: '张** 男 / 42岁', type: 'CBCT', result: '左上颌窦炎伴骨质吸收', risk: '高风险', riskLevel: 'high', time: '2024-06-01 11:20' },
-  { patient: '刘** 女 / 31岁', type: '全景片', result: '牙周轻度骨吸收', risk: '低风险', riskLevel: 'low', time: '2024-06-01 10:15' },
-]
+])
 
 /* ===== Trend chart math ===== */
 const trendW = 720
 const trendH = 250
-const trend = {
-  dates: ['05-25', '05-26', '05-27', '05-28', '05-30', '05-31', '06-01'],
-  scan: [380, 620, 780, 920, 1100, 1280, 980],
-  diag: [220, 470, 600, 760, 880, 1000, 800],
-}
-const yMax = 1500
+const trend = computed(() => ({
+  dates: trendPoints.value.map((item) => item.date.slice(5)),
+  scan: trendPoints.value.map((item) => Number(item.newCaseCount || 0)),
+  diag: trendPoints.value.map((item) => Number(item.analysisCompletedCount || 0)),
+}))
+const yMax = computed(() => Math.max(5, ...trend.value.scan, ...trend.value.diag))
 const yTicks = computed(() => {
-  const ticks = [1500, 1200, 900, 600, 300, 0]
+  const ticks = Array.from({ length: 6 }, (_, index) => Math.round(yMax.value * (5 - index) / 5))
   const top = 16
   const bot = trendH - 26
   return ticks.map(t => ({
     label: t.toLocaleString(),
-    y: top + (bot - top) * (1 - t / yMax),
+    y: top + (bot - top) * (1 - t / yMax.value),
   }))
 })
-const xAt = (i: number) => 50 + i * ((trendW - 70) / (trend.dates.length - 1))
+const xAt = (i: number) => trend.value.dates.length <= 1 ? trendW / 2 : 50 + i * ((trendW - 70) / (trend.value.dates.length - 1))
 const yAt = (v: number) => {
   const top = 16
   const bot = trendH - 26
-  return top + (bot - top) * (1 - v / yMax)
+  return top + (bot - top) * (1 - v / yMax.value)
 }
-const pointsA = computed(() => trend.scan.map((v, i) => ({ x: xAt(i), y: yAt(v) })))
-const pointsB = computed(() => trend.diag.map((v, i) => ({ x: xAt(i), y: yAt(v) })))
+const pointsA = computed(() => trend.value.scan.map((v, i) => ({ x: xAt(i), y: yAt(v) })))
+const pointsB = computed(() => trend.value.diag.map((v, i) => ({ x: xAt(i), y: yAt(v) })))
 
 const smooth = (pts: { x: number; y: number }[]) => {
   if (pts.length < 2) return ''
@@ -285,26 +284,75 @@ const smooth = (pts: { x: number; y: number }[]) => {
 }
 const lineA = computed(() => smooth(pointsA.value))
 const lineB = computed(() => smooth(pointsB.value))
-const areaA = computed(() => `${lineA.value} L ${pointsA.value[pointsA.value.length - 1].x} ${trendH - 26} L ${pointsA.value[0].x} ${trendH - 26} Z`)
-const areaB = computed(() => `${lineB.value} L ${pointsB.value[pointsB.value.length - 1].x} ${trendH - 26} L ${pointsB.value[0].x} ${trendH - 26} Z`)
+const buildArea = (line: string, points: { x: number; y: number }[]) => points.length
+  ? `${line} L ${points[points.length - 1].x} ${trendH - 26} L ${points[0].x} ${trendH - 26} Z`
+  : ''
+const areaA = computed(() => buildArea(lineA.value, pointsA.value))
+const areaB = computed(() => buildArea(lineB.value, pointsB.value))
 
 /* ===== Donut math ===== */
-const donutData = [
-  { name: '龋齿', pct: 45, color: '#35f8ff' },
-  { name: '牙周病', pct: 25, color: '#9b6bff' },
-  { name: '根尖周病', pct: 20, color: '#f7a23a' },
-  { name: '其他', pct: 10, color: '#3f79ff' },
-]
+const riskTotal = computed(() => Number(riskDistribution.value.totalCount || (riskDistribution.value.highRiskCount + riskDistribution.value.mediumRiskCount + riskDistribution.value.lowRiskCount)))
+const donutData = computed(() => {
+  const total = Math.max(1, riskTotal.value)
+  return [
+    { name: '高风险', pct: Math.round(riskDistribution.value.highRiskCount * 1000 / total) / 10, color: '#ff636e' },
+    { name: '中风险', pct: Math.round(riskDistribution.value.mediumRiskCount * 1000 / total) / 10, color: '#f7a23a' },
+    { name: '低风险', pct: Math.round(riskDistribution.value.lowRiskCount * 1000 / total) / 10, color: '#35f8ff' },
+  ]
+})
 const donutCirc = 2 * Math.PI * 78
 const donutSegs = computed(() => {
   let acc = 0
-  return donutData.map(d => {
+  return donutData.value.map(d => {
     const len = (d.pct / 100) * donutCirc
     const seg = { color: d.color, len, offset: -acc }
     acc += len
     return seg
   })
 })
+
+const loadDashboard = async () => {
+  loading.value = true
+  try {
+    const [overviewResponse, riskResponse, trendResponse, tasksResponse] = await Promise.all([
+      dashboardApi.getOverview(),
+      dashboardApi.getRiskDistribution(),
+      dashboardApi.getTrend(range.value === '7' ? 'LAST_7_DAYS' : 'LAST_30_DAYS'),
+      analysisApi.getTasks({ pageNo: 1, pageSize: 5 }),
+    ])
+    overview.value = overviewResponse.data
+    riskDistribution.value = riskResponse.data
+    trendPoints.value = trendResponse.data
+    const records = tasksResponse.data.records || tasksResponse.data.list || []
+    cases.value = records.map((item) => ({
+      taskId: item.taskId,
+      patient: item.patientName || item.patientId || '脱敏患者',
+      type: item.caseNo || '--',
+      result: item.gradingLabel || '待分析',
+      risk: item.needsReview ? '待复核' : '无需复核',
+      riskLevel: item.needsReview ? 'mid' : 'low',
+      time: item.createdAt ? new Date(item.createdAt).toLocaleString() : '--',
+    }))
+  } catch (error) {
+    notifications.error('仪表盘加载失败', error instanceof Error ? error.message : '无法读取业务统计')
+  } finally {
+    loading.value = false
+  }
+}
+
+const exportDashboard = () => {
+  const rows = [['任务号', '患者', '病例号', '分级', '复核状态', '创建时间'], ...cases.value.map((item) => [String(item.taskId), item.patient, item.type, item.result, item.risk, item.time])]
+  const csv = '\ufeff' + rows.map((row) => row.map((cell) => `"${String(cell).split('"').join('""')}"`).join(',')).join('\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `cariesguard-dashboard-${new Date().toISOString().slice(0, 10)}.csv`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+onMounted(loadDashboard)
+watch(range, loadDashboard)
 </script>
 
 <style scoped>

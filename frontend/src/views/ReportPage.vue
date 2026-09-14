@@ -4,11 +4,11 @@
       <div class="med-hero-main">
         <div class="med-eyebrow">
           <span>Diagnostic Report</span>
-          <span v-if="detail" class="med-chip med-chip--ok">RP-{{ detail.task.id }}</span>
+          <span v-if="activeReport" class="med-chip med-chip--ok">{{ activeReport.reportNo }}</span>
         </div>
         <h1 class="med-title">结构化诊断报告</h1>
         <p class="med-subtitle">
-          将分析详情整理为临床阅读友好的报告文档，支持打印、复制摘要，并按系统设置决定是否包含引用与治疗计划。
+          展示已归档的业务报告，并通过 Java 报告服务生成和导出 PDF；分析详情仅作为报告内容预览。
         </p>
       </div>
       <div class="med-action-row">
@@ -24,9 +24,13 @@
           <AppIcon name="share" :size="14" />
           复制摘要
         </button>
-        <button class="med-btn med-btn--primary" @click="printReport" :disabled="!detail">
+        <button class="med-btn med-btn--ghost" @click="generateReport" :disabled="!detail || reportBusy">
+          <AppIcon name="report" :size="14" />
+          生成报告版本
+        </button>
+        <button class="med-btn med-btn--primary" @click="exportPdf" :disabled="!activeReport || reportBusy">
           <AppIcon name="download" :size="14" />
-          打印 / 导出
+          {{ reportBusy ? '处理中...' : '导出 PDF' }}
         </button>
       </div>
     </section>
@@ -37,10 +41,22 @@
           <span class="med-chip" :class="gradeClass(detail?.summary.grade)">{{ detail?.summary.grade || '--' }}</span>
           <span v-if="detail?.summary.riskLevel" class="med-chip" :class="riskClass(detail?.summary.riskLevel)">{{ detail.summary.riskLevel }}</span>
           <span class="med-chip med-chip--accent">TASK {{ activeTaskId || '--' }}</span>
+          <span v-if="activeReport" class="med-chip med-chip--ok">{{ activeReport.reportStatusCode }} · V{{ activeReport.versionNo }}</span>
         </div>
         <div class="med-stack-inline">
           <button class="med-tab" :class="{ 'is-active': includeTreatmentPlan }" @click="includeTreatmentPlan = !includeTreatmentPlan">治疗计划</button>
           <button class="med-tab" :class="{ 'is-active': includeCitations }" @click="includeCitations = !includeCitations">证据引用</button>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="reportHistory.length" class="med-card">
+      <div class="med-card-inner report-toolbar">
+        <span class="queue-label">已归档报告</span>
+        <div class="med-stack-inline">
+          <button v-for="report in reportHistory" :key="report.reportId" class="med-tab" :class="{ 'is-active': activeReport?.reportId === report.reportId }" @click="openArchivedReport(report)">
+            {{ report.reportNo }} · V{{ report.versionNo }}
+          </button>
         </div>
       </div>
     </section>
@@ -227,6 +243,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import { analysisApi } from '@/api/analysis'
+import { reportApi, type ReportListItem } from '@/api/report'
 import type { AnalysisDetail, AnalysisLesion } from '@/models/analysis'
 import { useNotificationStore } from '@/stores/notification'
 import { loadWorkspaceSettings } from '@/utils/workbenchSettings'
@@ -237,8 +254,11 @@ const notificationStore = useNotificationStore()
 const settings = loadWorkspaceSettings()
 
 const loading = ref(false)
+const reportBusy = ref(false)
 const detail = ref<AnalysisDetail | null>(null)
 const activeTaskId = ref<string>('')
+const activeReport = ref<ReportListItem | null>(null)
+const reportHistory = ref<ReportListItem[]>([])
 const includeCitations = ref(settings.reportIncludeCitations)
 const includeTreatmentPlan = ref(settings.reportIncludeTreatmentPlan)
 
@@ -303,9 +323,13 @@ const resolveTaskId = async () => {
   const fromQuery = typeof route.query.taskId === 'string' ? route.query.taskId : ''
   if (fromQuery) return fromQuery
 
-  const tasksRes = await analysisApi.getTasks({ pageNo: 1, pageSize: 1 })
-  const first = tasksRes.data.records?.[0] || tasksRes.data.list?.[0]
-  return first ? String(first.taskId) : ''
+  const reportsResponse = await reportApi.listReports(100)
+  reportHistory.value = reportsResponse.data
+  const first = reportsResponse.data[0]
+  if (!first) return ''
+  activeReport.value = first
+  const reportResponse = await reportApi.getReport(first.reportId)
+  return reportResponse.data.analysisSummary?.taskId ? String(reportResponse.data.analysisSummary.taskId) : ''
 }
 
 const loadReport = async () => {
@@ -395,6 +419,14 @@ const loadReport = async () => {
       },
       timeline: [],
     }
+    const caseId = Number(task.caseInfo?.caseId || task.task.caseId)
+    if (caseId) {
+      const reportsResponse = await reportApi.listCaseReports(caseId)
+      reportHistory.value = reportsResponse.data
+      if (!activeReport.value || activeReport.value.caseId !== caseId) {
+        activeReport.value = reportsResponse.data[0] || null
+      }
+    }
   } catch (error) {
     console.error('Failed to load report', error)
     detail.value = null
@@ -438,8 +470,48 @@ const copySummary = async () => {
   }
 }
 
-const printReport = () => {
-  window.print()
+const generateReport = async () => {
+  const caseId = Number(detail.value?.caseInfo.id)
+  if (!caseId) return
+  reportBusy.value = true
+  try {
+    await reportApi.generate(caseId, detail.value?.summary.clinicalSummary)
+    const reportsResponse = await reportApi.listCaseReports(caseId)
+    reportHistory.value = reportsResponse.data
+    activeReport.value = reportsResponse.data[0] || null
+    notificationStore.success('报告已生成', activeReport.value ? `${activeReport.value.reportNo} 已归档。` : '报告已归档。')
+  } catch (error) {
+    notificationStore.error('报告生成失败', error instanceof Error ? error.message : '报告服务调用失败')
+  } finally {
+    reportBusy.value = false
+  }
+}
+
+const exportPdf = async () => {
+  if (!activeReport.value) return
+  reportBusy.value = true
+  try {
+    const response = await reportApi.exportPdf(activeReport.value.reportId)
+    if (!response.data.downloadUrl) throw new Error('报告服务未返回下载地址')
+    const anchor = document.createElement('a')
+    anchor.href = response.data.downloadUrl
+    anchor.rel = 'noopener'
+    anchor.click()
+    notificationStore.success('PDF 已生成', '下载链接有效期由报告服务控制。')
+  } catch (error) {
+    notificationStore.error('PDF 导出失败', error instanceof Error ? error.message : '报告导出失败')
+  } finally {
+    reportBusy.value = false
+  }
+}
+
+const openArchivedReport = async (report: ReportListItem) => {
+  activeReport.value = report
+  const response = await reportApi.getReport(report.reportId)
+  const taskId = response.data.analysisSummary?.taskId
+  if (taskId && String(taskId) !== activeTaskId.value) {
+    await router.push(`/reports/${taskId}`)
+  }
 }
 
 const goToDetail = () => detail.value && router.push(`/analysis/${detail.value.task.id}`)

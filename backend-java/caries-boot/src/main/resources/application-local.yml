@@ -85,6 +85,8 @@ caries:
     default-model-version: ${CARIES_ANALYSIS_MODEL_VERSION:caries-v1}
     callback-secret: ${CARIES_ANALYSIS_CALLBACK_SECRET:change-me-to-a-strong-analysis-callback-secret}
     callback-allowed-clock-skew-seconds: ${CARIES_ANALYSIS_CALLBACK_SKEW_SECONDS:300}
+    inference-base-url: ${CARIES_INFERENCE_BASE_URL:http://127.0.0.1:8001}
+    internal-api-key: ${CARIES_INTERNAL_API_KEY:change-me-to-a-strong-internal-api-key}
     messaging:
       mode: rabbit
       rabbit:

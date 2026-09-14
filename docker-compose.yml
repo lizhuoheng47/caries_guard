@@ -159,6 +159,8 @@ services:
       CARIES_BUCKET_EXPORT: ${CARIES_BUCKET_EXPORT:-caries-export}
       CARIES_ANALYSIS_CALLBACK_SECRET: ${CARIES_ANALYSIS_CALLBACK_SECRET:-docker-change-me-to-a-strong-analysis-callback-secret}
       CARIES_ANALYSIS_MODEL_VERSION: ${CARIES_ANALYSIS_MODEL_VERSION:-caries-v1}
+      CARIES_INFERENCE_BASE_URL: http://backend-python:8001
+      CARIES_INTERNAL_API_KEY: ${CARIES_INTERNAL_API_KEY:-docker-change-me-to-a-strong-internal-api-key}
       TZ: Asia/Shanghai
     ports:
       - "${CARIES_BACKEND_JAVA_HOST_PORT:-8080}:8080"
@@ -195,8 +197,10 @@ services:
       CG_ANALYSIS_EXCHANGE: ${CARIES_ANALYSIS_EXCHANGE:-caries.analysis.exchange}
       CG_ANALYSIS_REQUESTED_QUEUE: ${CG_ANALYSIS_REQUESTED_QUEUE:-caries.analysis.requested.queue}
       CG_ANALYSIS_REQUESTED_ROUTING_KEY: ${CG_ANALYSIS_REQUESTED_ROUTING_KEY:-analysis.requested}
+      CG_ANALYSIS_FAILED_ROUTING_KEY: ${CARIES_ANALYSIS_FAILED_ROUTING_KEY:-analysis.failed}
       CG_JAVA_CALLBACK_URL: http://backend-java:8080/api/v1/internal/ai/callbacks/analysis-result
       CG_ANALYSIS_CALLBACK_SECRET: ${CARIES_ANALYSIS_CALLBACK_SECRET:-docker-change-me-to-a-strong-analysis-callback-secret}
+      CG_INTERNAL_API_KEY: ${CARIES_INTERNAL_API_KEY:-docker-change-me-to-a-strong-internal-api-key}
       CG_CALLBACK_VISUAL_ASSET_MODE: ${CG_CALLBACK_VISUAL_ASSET_MODE:-metadata}
       CG_MODEL_VERSION: ${CARIES_ANALYSIS_MODEL_VERSION:-caries-v1}
       CG_AI_DOWNLOAD_IMAGES: "true"
@@ -224,6 +228,11 @@ services:
       CG_MODEL_QUALITY_IMPL_TYPE: HEURISTIC
       CG_MODEL_TOOTH_DETECT_ENABLED: "true"
       CG_MODEL_TOOTH_DETECT_IMPL_TYPE: HEURISTIC
+      CG_MODEL_DISEASE_DETECT_ENABLED: "true"
+      CG_MODEL_DISEASE_DETECT_CHECKPOINT_PATH: /app/disease-model/best.pt
+      CG_MODEL_DISEASE_DETECT_METADATA_PATH: /app/disease-model/cariesguard_model_metadata.json
+      CG_MODEL_DISEASE_DETECT_IMAGE_SIZE: "960"
+      CG_MODEL_DISEASE_DETECT_CONFIDENCE_THRESHOLD: ${CG_MODEL_DISEASE_DETECT_CONFIDENCE_THRESHOLD:-0.25}
       CG_MODEL_SEGMENTATION_ENABLED: "true"
       CG_MODEL_SEGMENTATION_IMPL_TYPE: ML_MODEL
       CG_MODEL_GRADING_ENABLED: "true"
@@ -233,7 +242,7 @@ services:
       CG_MODEL_DEVICE: ${CG_MODEL_DEVICE:-cuda:0}
       CG_STRICT_MODEL_STARTUP_VALIDATION: "true"
       CG_LOCAL_SEGMENTATION_API_ENABLED: "true"
-      CG_RAG_RUNTIME_ENABLED: "false"
+      CG_LOCAL_SEGMENTATION_ASSET_TTL_SECONDS: ${CG_LOCAL_SEGMENTATION_ASSET_TTL_SECONDS:-3600}
       CG_MODEL_WEIGHTS_DIR: ${CG_MODEL_WEIGHTS_DIR:-/app/model-weights}
       CG_MODEL_SEGMENTATION_MANIFEST_PATH: ${CG_MODEL_SEGMENTATION_MANIFEST_PATH:-/app/assets/models/manifests/segmentation_v1.yaml}
       CG_MODEL_GRADING_MANIFEST_PATH: ${CG_MODEL_GRADING_MANIFEST_PATH:-/app/assets/models/manifests/grading_v1.yaml}
@@ -248,6 +257,7 @@ services:
       - "${CARIES_BACKEND_PYTHON_HOST_PORT:-8001}:8001"
     volumes:
       - ./model-weights:/app/model-weights:ro
+      - ./artifacts/training/dentex_detection/dentex_yolov8n_v1:/app/disease-model:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/ai/v1/health', timeout=5)"]
       interval: 15s

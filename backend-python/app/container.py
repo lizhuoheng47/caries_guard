@@ -5,6 +5,7 @@ from app.infra.model.model_assets import ModelAssets
 from app.infra.model.model_registry import ModelRegistry
 from app.infra.storage.minio_client import MinioStorageClient
 from app.pipelines.detection_pipeline import DetectionPipeline
+from app.pipelines.disease_detection_pipeline import DiseaseDetectionPipeline
 from app.pipelines.grading_pipeline import GradingPipeline
 from app.pipelines.inference_pipeline import InferencePipeline
 from app.pipelines.quality_pipeline import QualityPipeline
@@ -50,6 +51,7 @@ class AppContainer:
 
         self.quality_pipeline = QualityPipeline(self.model_registry, settings)
         self.detection_pipeline = DetectionPipeline(self.model_registry, settings)
+        self.disease_detection_pipeline = DiseaseDetectionPipeline(settings)
         self.segmentation_pipeline = SegmentationPipeline(self.model_registry, settings, self.model_assets)
         self.grading_pipeline = GradingPipeline(self.model_registry, settings, self.model_assets)
         self.risk_pipeline = RiskPipeline(self.model_registry, settings)
@@ -68,6 +70,7 @@ class AppContainer:
             model_assets=self.model_assets,
             quality_pipeline=self.quality_pipeline,
             detection_pipeline=self.detection_pipeline,
+            disease_detection_pipeline=self.disease_detection_pipeline,
             segmentation_pipeline=self.segmentation_pipeline,
             grading_pipeline=self.grading_pipeline,
             risk_service=self.risk_service,

@@ -4,12 +4,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record ReviewQueueItemVO(
+        Long taskId,
         String taskNo,
         Long caseId,
         String caseNo,
         String taskStatusCode,
         String reviewStatusCode,
-        String secondOpinionStatusCode,
         String gradingLabel,
         Double uncertaintyScore,
         Boolean needsReview,

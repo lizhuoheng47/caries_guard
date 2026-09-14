@@ -55,6 +55,14 @@ public class ReportQueryAppService {
                 .toList();
     }
 
+    public List<ReportListItemVO> listReports(int limit) {
+        AuthenticatedUser operator = SecurityContextUtils.currentUser();
+        Long orgId = operator.hasAnyRole("ADMIN", "SYS_ADMIN") ? null : operator.getOrgId();
+        return reportRecordRepository.listByOrgId(orgId, limit).stream()
+                .map(this::toListItemVO)
+                .toList();
+    }
+
     public ReportDetailVO getReport(Long reportId) {
         AuthenticatedUser operator = SecurityContextUtils.currentUser();
         ReportRecordModel report = reportRecordRepository.findById(reportId)
@@ -103,6 +111,7 @@ public class ReportQueryAppService {
         return new ReportListItemVO(
                 report.reportId(),
                 report.reportNo(),
+                report.caseId(),
                 report.reportTypeCode(),
                 report.versionNo(),
                 report.reportStatusCode(),

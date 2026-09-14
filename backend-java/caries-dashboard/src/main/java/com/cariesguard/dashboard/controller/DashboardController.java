@@ -23,8 +23,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.cariesguard.dashboard.app.DashboardNeuralAppService;
-import com.cariesguard.dashboard.interfaces.vo.AINeuralDashboardVO;
 
 @RestController
 public class DashboardController {
@@ -36,7 +34,6 @@ public class DashboardController {
     private final DashboardBacklogAppService dashboardBacklogAppService;
     private final DashboardTrendAppService dashboardTrendAppService;
     private final DashboardCorrectionFeedbackAppService dashboardCorrectionFeedbackAppService;
-    private final DashboardNeuralAppService dashboardNeuralAppService;
 
     public DashboardController(DashboardOverviewAppService dashboardOverviewAppService,
                                DashboardCaseStatsAppService dashboardCaseStatsAppService,
@@ -44,8 +41,7 @@ public class DashboardController {
                                DashboardFollowupStatsAppService dashboardFollowupStatsAppService,
                                DashboardBacklogAppService dashboardBacklogAppService,
                                DashboardTrendAppService dashboardTrendAppService,
-                               DashboardCorrectionFeedbackAppService dashboardCorrectionFeedbackAppService,
-                               DashboardNeuralAppService dashboardNeuralAppService) {
+                               DashboardCorrectionFeedbackAppService dashboardCorrectionFeedbackAppService) {
         this.dashboardOverviewAppService = dashboardOverviewAppService;
         this.dashboardCaseStatsAppService = dashboardCaseStatsAppService;
         this.dashboardRiskStatsAppService = dashboardRiskStatsAppService;
@@ -53,13 +49,6 @@ public class DashboardController {
         this.dashboardBacklogAppService = dashboardBacklogAppService;
         this.dashboardTrendAppService = dashboardTrendAppService;
         this.dashboardCorrectionFeedbackAppService = dashboardCorrectionFeedbackAppService;
-        this.dashboardNeuralAppService = dashboardNeuralAppService;
-    }
-
-    @GetMapping("/api/v1/dashboard/ai-neural")
-    @RequirePermission("dashboard:view")
-    public ApiResponse<AINeuralDashboardVO> getNeuralDashboard() {
-        return ApiResponse.success(dashboardNeuralAppService.getNeuralDashboard(), TraceIdUtils.currentTraceId());
     }
 
     @GetMapping("/api/v1/dashboard/overview")

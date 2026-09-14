@@ -103,6 +103,17 @@ public class ReportRecordRepositoryImpl implements ReportRecordRepository {
     }
 
     @Override
+    public List<ReportRecordModel> listByOrgId(Long orgId, int limit) {
+        LambdaQueryWrapper<RptRecordDO> wrapper = new LambdaQueryWrapper<RptRecordDO>()
+                .eq(orgId != null, RptRecordDO::getOrgId, orgId)
+                .eq(RptRecordDO::getDeletedFlag, 0L)
+                .eq(RptRecordDO::getStatus, "ACTIVE")
+                .orderByDesc(RptRecordDO::getCreatedAt)
+                .last("LIMIT " + Math.max(1, Math.min(limit, 200)));
+        return rptRecordMapper.selectList(wrapper).stream().map(this::toModel).toList();
+    }
+
+    @Override
     public void createAttachment(ReportAttachmentCreateModel model) {
         ReportAttachmentDO entity = new ReportAttachmentDO();
         entity.setId(model.attachmentId());

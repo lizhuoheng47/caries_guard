@@ -30,23 +30,17 @@ class ModelRouter:
         from app.infra.model.grading_model import GradingHeuristicAdapter
         from app.infra.model.lesion_segmenter import LesionSegmenterAdapter
         from app.infra.model.segmentation_model_adapter import SegmentationModelAdapter
-        from app.infra.model.quality_cnn_model import QualityCnnAdapter
         from app.quality.quality_adapter import QualityAssessmentAdapter
-        from app.infra.model.risk_ml_fusion_model import RiskMlFusionAdapter
         from app.infra.model.risk_model import RiskHeuristicFusionAdapter
         from app.infra.model.tooth_detector import ToothDetectorHeuristicAdapter
-        from app.infra.model.tooth_detector_yolo import ToothDetectorYoloAdapter
 
         mapping = {
             ("quality", ImplType.HEURISTIC): QualityAssessmentAdapter,
-            ("quality", ImplType.ML_MODEL): QualityCnnAdapter,
             ("tooth_detect", ImplType.HEURISTIC): ToothDetectorHeuristicAdapter,
-            ("tooth_detect", ImplType.ML_MODEL): ToothDetectorYoloAdapter,
             ("segmentation", ImplType.HEURISTIC): LesionSegmenterAdapter,
             ("segmentation", ImplType.ML_MODEL): SegmentationModelAdapter,
             ("grading", ImplType.HEURISTIC): GradingHeuristicAdapter,
             ("grading", ImplType.ML_MODEL): GradingModelAdapter,
             ("risk", ImplType.HEURISTIC): RiskHeuristicFusionAdapter,
-            ("risk", ImplType.ML_MODEL): RiskMlFusionAdapter,
         }
         return mapping.get((module, impl_type))

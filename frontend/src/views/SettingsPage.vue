@@ -142,7 +142,7 @@
           <div class="med-toggle-row">
             <div>
               <div class="settings-toggle-title">默认包含证据引用</div>
-              <div class="med-meta">报告页初始打开时展示 RAG / 证据来源内容</div>
+              <div class="med-meta">报告页初始打开时展示后端返回的证据来源内容</div>
             </div>
             <button class="med-switch" :class="{ 'is-on': form.reportIncludeCitations }" @click="form.reportIncludeCitations = !form.reportIncludeCitations"></button>
           </div>
@@ -153,33 +153,6 @@
         </div>
       </article>
 
-      <article class="med-card">
-        <div class="med-card-inner settings-section">
-          <div class="med-section-head">
-            <h2 class="med-section-title">通知策略</h2>
-          </div>
-
-          <div class="med-toggle-row">
-            <div>
-              <div class="settings-toggle-title">任务完成提醒</div>
-              <div class="med-meta">为后续实时通知预留开关</div>
-            </div>
-            <button class="med-switch" :class="{ 'is-on': form.notifyTaskFinished }" @click="form.notifyTaskFinished = !form.notifyTaskFinished"></button>
-          </div>
-
-          <div class="med-toggle-row">
-            <div>
-              <div class="settings-toggle-title">复核到达提醒</div>
-              <div class="med-meta">高优先级任务进入复核时，可用于前端提醒策略</div>
-            </div>
-            <button class="med-switch" :class="{ 'is-on': form.notifyReviewReady }" @click="form.notifyReviewReady = !form.notifyReviewReady"></button>
-          </div>
-
-          <div class="med-note">
-            这些开关当前会保存并广播到工作台，后续可继续接入 WebSocket / SSE 事件流。
-          </div>
-        </div>
-      </article>
     </section>
   </div>
 </template>

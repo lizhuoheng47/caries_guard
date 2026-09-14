@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 import pika
@@ -72,5 +73,27 @@ class AnalysisRequestConsumer:
             task_no = payload.get("taskNo") if isinstance(payload, dict) else task.get("taskNo")
             trace_id = payload.get("traceId") if isinstance(payload, dict) else task.get("traceId")
             log.exception("analysis task failed taskNo=%s traceId=%s", task_no, trace_id)
-            log.error("message rejected because callback could not be delivered error=%s", exc)
-            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            log.error("moving failed analysis message to recovery queue error=%s", exc)
+            failure = {
+                "failedAt": datetime.now(timezone.utc).isoformat(),
+                "errorType": exc.__class__.__name__,
+                "errorMessage": str(exc)[:1000],
+                "taskNo": task_no,
+                "traceId": trace_id,
+                "originalMessage": task,
+            }
+            try:
+                channel.basic_publish(
+                    exchange=self.settings.analysis_exchange,
+                    routing_key=self.settings.failed_routing_key,
+                    body=json.dumps(failure, ensure_ascii=False).encode("utf-8"),
+                    properties=pika.BasicProperties(
+                        content_type="application/json",
+                        delivery_mode=2,
+                        headers={"x-caries-failure": True},
+                    ),
+                )
+                channel.basic_ack(delivery_tag=method.delivery_tag)
+            except Exception:
+                log.exception("failed to publish recovery message; requeueing original delivery")
+                channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)

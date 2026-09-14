@@ -44,7 +44,6 @@ public class ReviewTaskAssembler {
         vo.setImage(toImage(imageModel));
         vo.setAiResult(toAiResult(task));
         vo.setDoctorDraft(new ReviewTaskDetailVO.DoctorDraftVO());
-        vo.setSecondOpinion(new ReviewTaskDetailVO.SecondOpinionVO());
         vo.setReviewOptions(defaultReviewOptions());
         return vo;
     }
@@ -96,6 +95,9 @@ public class ReviewTaskAssembler {
     }
 
     private Boolean resolveNeedsReview(AnalysisSummaryVO summary) {
+        if (summary == null) {
+            return false;
+        }
         if (summary.needsReview() != null) {
             return summary.needsReview();
         }

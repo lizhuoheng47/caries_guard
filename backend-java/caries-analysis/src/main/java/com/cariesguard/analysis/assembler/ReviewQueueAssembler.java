@@ -24,12 +24,12 @@ public class ReviewQueueAssembler {
                 .toList();
         Boolean needsReview = resolveNeedsReview(summary);
         return new ReviewQueueItemVO(
+                task.taskId(),
                 task.taskNo(),
                 task.caseId(),
                 medicalCase == null ? null : medicalCase.caseNo(),
                 task.taskStatusCode(),
                 needsReview ? "REVIEW_PENDING" : "NOT_REQUIRED",
-                null,
                 summary == null ? null : summary.gradingLabel(),
                 summary == null ? null : summary.uncertaintyScore(),
                 needsReview,

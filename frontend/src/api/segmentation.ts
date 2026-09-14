@@ -42,8 +42,14 @@ interface SegmentationHealth {
 }
 
 const client = axios.create({
-  baseURL: import.meta.env.VITE_SEGMENTATION_API_BASE_URL || '/ai/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   timeout: 120_000,
+})
+
+client.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
 })
 
 const unwrap = <T>(response: { data: ApiEnvelope<T> }): T => {
@@ -56,7 +62,7 @@ const unwrap = <T>(response: { data: ApiEnvelope<T> }): T => {
 
 export const segmentationApi = {
   async health(): Promise<SegmentationHealth> {
-    return unwrap(await client.get<ApiEnvelope<SegmentationHealth>>('/segment/health'))
+    return unwrap(await client.get<ApiEnvelope<SegmentationHealth>>('/segmentation/health'))
   },
 
   async analyze(file: File): Promise<SegmentationResult> {
@@ -67,7 +73,7 @@ export const segmentationApi = {
       throw new Error('仅支持 PNG、JPG/JPEG 或 DICOM 文件')
     }
     return unwrap(
-      await client.post<ApiEnvelope<SegmentationResult>>('/segment', file, {
+      await client.post<ApiEnvelope<SegmentationResult>>('/segmentation', file, {
         headers: { 'Content-Type': contentType },
       }),
     )

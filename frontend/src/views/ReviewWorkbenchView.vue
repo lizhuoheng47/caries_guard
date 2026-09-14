@@ -68,7 +68,7 @@
           </div>
 
           <div v-if="currentWorkbench" class="review-image-stage">
-            <div class="review-image-canvas">
+            <div ref="imageCanvasRef" class="review-image-canvas">
               <template v-if="shouldRenderSyntheticImage">
                 <div class="review-synthetic">
                   <div
@@ -106,6 +106,9 @@
                 :key="box.id"
                 :style="boxStyle(box)"
                 class="review-box review-box-doctor"
+                :class="{ selected: selectedBoxId === box.id }"
+                @pointerdown.stop.prevent="startBoxDrag($event, box.id)"
+                @click.stop="selectedBoxId = box.id"
               >
                 <div class="review-box-label">DOC {{ box.label }}</div>
               </div>
@@ -114,6 +117,13 @@
                 <span class="med-chip med-chip--warn">AI 标注 {{ currentWorkbench.aiResult.detections.length }}</span>
                 <span class="med-chip med-chip--ok">医生修订 {{ renderedDoctorDetections.length }}</span>
               </div>
+            </div>
+
+            <div class="review-annotation-tools">
+              <button class="med-btn med-btn--tiny med-btn--ghost" @click="copyAiDetections">复制 AI 标注</button>
+              <button class="med-btn med-btn--tiny med-btn--ghost" @click="addDoctorDetection">新增标注框</button>
+              <button class="med-btn med-btn--tiny med-btn--danger" :disabled="!selectedBoxId" @click="deleteSelectedDetection">删除选中框</button>
+              <span class="med-meta">拖动医生标注框可调整位置；坐标会随草稿持久化。</span>
             </div>
 
             <div class="review-stage-summary">
@@ -198,13 +208,9 @@
             </div>
 
             <div class="review-editor-actions">
-              <button class="med-btn med-btn--ghost" @click="saveDraftLocally">
+              <button class="med-btn med-btn--ghost" :disabled="savingDraft" @click="saveDraft">
                 <AppIcon name="pen" :size="14" />
-                保存草稿
-              </button>
-              <button class="med-btn med-btn--ghost" @click="requestSecondOpinion">
-                <AppIcon name="compare" :size="14" />
-                二次意见
+                {{ savingDraft ? '保存中...' : '保存草稿' }}
               </button>
               <button class="med-btn med-btn--primary" :disabled="submitting" @click="submitReview">
                 <AppIcon name="check" :size="14" />
@@ -224,13 +230,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import { reviewApi } from '@/api/review'
-import { analysisApi } from '@/api/analysis'
 import type { AnalysisTaskItem } from '@/models/analysis'
 import { useNotificationStore } from '@/stores/notification'
 import { ApiClientError } from '@/api/request'
 import { loadWorkspaceSettings } from '@/utils/workbenchSettings'
 
-type ReviewGrade = 'G0' | 'G1' | 'G2' | 'G3' | 'G4'
+type ReviewGrade = 'C0' | 'C1' | 'C2' | 'C3' | 'C4' | 'G0' | 'G1' | 'G2' | 'G3' | 'G4'
 
 interface DetectionBox {
   id: string
@@ -279,6 +284,7 @@ interface ReviewWorkbenchData {
 
 interface DraftState {
   revisedGrade: ReviewGrade
+  revisedDetections: DetectionBox[]
   reasonTags: string[]
   note: string
 }
@@ -303,10 +309,14 @@ const queueKeyword = ref('')
 const queueLoading = ref(false)
 const workbenchLoading = ref(false)
 const submitting = ref(false)
+const savingDraft = ref(false)
 const activeTaskId = ref<number | null>(null)
-const selectedGrade = ref<ReviewGrade>('G2')
+const selectedGrade = ref<ReviewGrade>('C0')
 const selectedTags = ref<string[]>([])
 const clinicalNote = ref('')
+const doctorDetections = ref<DetectionBox[]>([])
+const selectedBoxId = ref<string | null>(null)
+const imageCanvasRef = ref<HTMLElement | null>(null)
 
 const workbenchMap = ref<Record<number, ReviewWorkbenchData>>({})
 const draftStateMap = ref<Record<number, DraftState>>({})
@@ -339,23 +349,11 @@ const originalReasonText = computed(() => {
 
 const originalNoteText = computed(() => currentWorkbench.value?.doctorDraft?.note || '暂无原始备注')
 
-const renderedDoctorDetections = computed(() => {
-  if (!currentWorkbench.value) return []
-  const baseDetections = currentWorkbench.value.doctorDraft?.revisedDetections?.length
-    ? currentWorkbench.value.doctorDraft.revisedDetections
-    : currentWorkbench.value.aiResult.detections.slice(0, 1).map((box) => ({
-        ...box,
-        id: `${box.id}-doctor`,
-        y: Math.min(0.92, box.y + 0.05),
-        height: Math.max(0.08, box.height - 0.05)
-      }))
-
-  return baseDetections.map((box, index) => ({
+const renderedDoctorDetections = computed(() => doctorDetections.value.map((box, index) => ({
     ...box,
     id: box.id || `doc-box-${index + 1}`,
     label: selectedGrade.value
-  }))
-})
+  })))
 
 const shouldRenderSyntheticImage = computed(() => {
   const imageUrl = currentWorkbench.value?.image?.imageUrl ?? ''
@@ -392,13 +390,18 @@ const syntheticHotspots = computed<SyntheticHotspot[]>(() => {
 const gradeClass = (grade?: string) => {
   switch ((grade || '').toUpperCase()) {
     case 'G0':
+    case 'C0':
       return 'med-chip--ok'
     case 'G1':
+    case 'C1':
       return 'med-chip--accent'
     case 'G2':
+    case 'C2':
       return 'med-chip--warn'
     case 'G3':
     case 'G4':
+    case 'C3':
+    case 'C4':
       return 'med-chip--danger'
     default:
       return ''
@@ -425,6 +428,11 @@ const normalizeApiError = (error: unknown) => {
 
 const normalizeGrade = (grade?: string): ReviewGrade => {
   switch (grade) {
+    case 'C0':
+    case 'C1':
+    case 'C2':
+    case 'C3':
+    case 'C4':
     case 'G0':
     case 'G1':
     case 'G2':
@@ -432,7 +440,7 @@ const normalizeGrade = (grade?: string): ReviewGrade => {
     case 'G4':
       return grade
     default:
-      return 'G0'
+      return 'C0'
   }
 }
 
@@ -471,6 +479,7 @@ const normalizeWorkbench = (raw: ReviewWorkbenchData): ReviewWorkbenchData => ({
 
 const seedDraftFromWorkbench = (workbench: ReviewWorkbenchData): DraftState => ({
   revisedGrade: workbench.doctorDraft?.revisedGrade || workbench.aiResult.gradingLabel,
+  revisedDetections: [...(workbench.doctorDraft?.revisedDetections || [])],
   reasonTags: [...(workbench.doctorDraft?.reasonTags || [])],
   note: workbench.doctorDraft?.note || ''
 })
@@ -479,6 +488,7 @@ const persistCurrentDraft = () => {
   if (activeTaskId.value == null) return
   draftStateMap.value[activeTaskId.value] = {
     revisedGrade: selectedGrade.value,
+    revisedDetections: renderedDoctorDetections.value.map((box) => ({ ...box })),
     reasonTags: [...selectedTags.value],
     note: clinicalNote.value
   }
@@ -490,10 +500,13 @@ const hydrateDraft = (taskId: number) => {
   const draft = draftStateMap.value[taskId] ?? seedDraftFromWorkbench(workbench)
   draftStateMap.value[taskId] = {
     revisedGrade: draft.revisedGrade,
+    revisedDetections: draft.revisedDetections.map((box) => ({ ...box })),
     reasonTags: [...draft.reasonTags],
     note: draft.note
   }
   selectedGrade.value = draft.revisedGrade
+  doctorDetections.value = draft.revisedDetections.map((box) => ({ ...box }))
+  selectedBoxId.value = null
   selectedTags.value = [...draft.reasonTags]
   clinicalNote.value = draft.note
 }
@@ -538,8 +551,8 @@ const loadWorkbench = async (taskId: number) => {
 const fetchQueue = async () => {
   queueLoading.value = true
   try {
-    const res = await analysisApi.getTasks({ pageNo: 1, pageSize: 24 })
-    const records = (res.data.records || res.data.list || []) as Array<{
+    const res = await reviewApi.getReviewQueue({ pageNo: 1, pageSize: 100 })
+    const records = (res.data.records || []) as Array<{
       taskId: number
       taskNo?: string
       taskStatusCode?: string
@@ -553,7 +566,7 @@ const fetchQueue = async () => {
     }>
 
     queueItems.value = records
-      .filter((item) => ['REVIEW'].includes(String(item.taskStatusCode || '').toUpperCase()))
+      .filter((item) => item.needsReview)
       .map((item): AnalysisTaskItem => ({
         id: Number(item.taskId),
         no: item.taskNo || `TASK-${item.taskId}`,
@@ -599,13 +612,86 @@ const toggleTag = (tag: string) => {
   persistCurrentDraft()
 }
 
-const saveDraftLocally = () => {
+const draftPayload = () => ({
+  revisedGrade: selectedGrade.value,
+  revisedDetections: renderedDoctorDetections.value,
+  reasonTags: selectedTags.value,
+  note: clinicalNote.value
+})
+
+const saveDraft = async () => {
+  if (activeTaskId.value == null) return
+  savingDraft.value = true
   persistCurrentDraft()
-  notificationStore.info('草稿已保存', '当前复核内容已保存在本地状态。')
+  try {
+    const response = await reviewApi.saveDraft(activeTaskId.value, draftPayload())
+    const workbench = currentWorkbench.value
+    if (workbench) {
+      workbenchMap.value[activeTaskId.value] = {
+        ...workbench,
+        doctorDraft: {
+          draftId: response.data.draftId,
+          revisedGrade: selectedGrade.value,
+          revisedDetections: renderedDoctorDetections.value,
+          reasonTags: [...selectedTags.value],
+          note: clinicalNote.value
+        }
+      }
+    }
+    notificationStore.success('草稿已保存', `草稿版本 ${response.data.versionNo} 已写入服务器。`)
+  } catch (error) {
+    notificationStore.error('保存草稿失败', normalizeApiError(error))
+  } finally {
+    savingDraft.value = false
+  }
 }
 
-const requestSecondOpinion = () => {
-  notificationStore.info('二次意见', '二次意见入口已保留，后续可继续接线。')
+const copyAiDetections = () => {
+  if (!currentWorkbench.value) return
+  doctorDetections.value = currentWorkbench.value.aiResult.detections.map((box, index) => ({
+    ...box,
+    id: `doctor-${box.id || index + 1}`,
+    label: selectedGrade.value
+  }))
+  selectedBoxId.value = doctorDetections.value[0]?.id || null
+  persistCurrentDraft()
+}
+
+const addDoctorDetection = () => {
+  const id = `doctor-${Date.now()}`
+  doctorDetections.value.push({ id, x: 0.4, y: 0.4, width: 0.18, height: 0.16, label: selectedGrade.value })
+  selectedBoxId.value = id
+  persistCurrentDraft()
+}
+
+const deleteSelectedDetection = () => {
+  if (!selectedBoxId.value) return
+  doctorDetections.value = doctorDetections.value.filter((box) => box.id !== selectedBoxId.value)
+  selectedBoxId.value = null
+  persistCurrentDraft()
+}
+
+const startBoxDrag = (event: PointerEvent, boxId: string) => {
+  const canvas = imageCanvasRef.value
+  const box = doctorDetections.value.find((item) => item.id === boxId)
+  if (!canvas || !box) return
+  selectedBoxId.value = boxId
+  const bounds = canvas.getBoundingClientRect()
+  const originX = box.x
+  const originY = box.y
+  const startX = event.clientX
+  const startY = event.clientY
+  const move = (moveEvent: PointerEvent) => {
+    box.x = Math.min(1 - box.width, Math.max(0, originX + (moveEvent.clientX - startX) / bounds.width))
+    box.y = Math.min(1 - box.height, Math.max(0, originY + (moveEvent.clientY - startY) / bounds.height))
+  }
+  const end = () => {
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', end)
+    persistCurrentDraft()
+  }
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', end, { once: true })
 }
 
 const getDraftGrade = (item: AnalysisTaskItem) => draftStateMap.value[item.id]?.revisedGrade
@@ -617,12 +703,7 @@ const submitReview = async () => {
   persistCurrentDraft()
 
   try {
-    await reviewApi.submitReview({
-      taskId: currentWorkbench.value.task.taskId,
-      revisedGrade: selectedGrade.value,
-      reasonTags: selectedTags.value,
-      note: clinicalNote.value
-    })
+    await reviewApi.submitReview(activeTaskId.value, draftPayload())
 
     workbenchMap.value[activeTaskId.value] = {
       ...currentWorkbench.value,
@@ -807,6 +888,24 @@ watch([selectedGrade, selectedTags, clinicalNote], () => {
 
 .review-box-doctor::before {
   border: 2px dashed #35f8ff;
+}
+
+.review-box-doctor {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.review-box-doctor.selected::before {
+  border-style: solid;
+  box-shadow: 0 0 0 3px rgba(53, 248, 255, 0.18);
+}
+
+.review-annotation-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .review-box-label {

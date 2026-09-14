@@ -22,16 +22,6 @@ from app.models.governance import (
     ModelVersion,
     TrainingRun,
 )
-from app.models.rag import (
-    KnowledgeBase,
-    KnowledgeDocument,
-    KnowledgeDocumentChunk,
-    KnowledgeRebuildJob,
-    LlmCallLog,
-    RagRequestLog,
-    RagRetrievalLog,
-    RagSession,
-)
 
 __all__ = [
     "Base",
@@ -45,15 +35,6 @@ __all__ = [
     "AiInferJobImage",
     "AiInferArtifact",
     "AiCallbackLog",
-    # rag
-    "KnowledgeBase",
-    "KnowledgeDocument",
-    "KnowledgeDocumentChunk",
-    "KnowledgeRebuildJob",
-    "RagSession",
-    "RagRequestLog",
-    "RagRetrievalLog",
-    "LlmCallLog",
     # governance
     "ModelVersion",
     "ModelEvalRecord",

@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+import hmac
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,6 +14,16 @@ from app.schemas.common import error_response
 def create_app() -> FastAPI:
     settings = Settings()
     app = FastAPI(title="CariesGuard Python AI", version="0.1.0")
+
+    @app.middleware("http")
+    async def require_internal_api_key(request: Request, call_next):
+        if request.url.path == "/ai/v1/health":
+            return await call_next(request)
+        supplied = request.headers.get("X-Internal-Api-Key", "")
+        if not settings.internal_api_key or not hmac.compare_digest(supplied, settings.internal_api_key):
+            return JSONResponse(status_code=401, content=error_response("A0401", "internal API key is required"))
+        return await call_next(request)
+
     app.include_router(v1_router, prefix="/ai/v1")
     if settings.local_segmentation_api_enabled:
         output_dir = local_segmentation_output_dir(settings)

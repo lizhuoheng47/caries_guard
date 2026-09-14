@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public record ReportListItemVO(
         Long reportId,
         String reportNo,
+        Long caseId,
         String reportTypeCode,
         Integer versionNo,
         String reportStatusCode,

@@ -146,9 +146,22 @@
 
               <div class="case-form-grid">
                 <label class="med-input-wrap">
-                  <span class="queue-label">患者编号</span>
-                  <input v-model.trim="newCaseForm.patientCode" class="med-input" type="text" placeholder="P-10001" />
+                  <span class="queue-label">患者姓名 / 患者号</span>
+                  <input v-model.trim="newCaseForm.patientCode" class="med-input" type="text" placeholder="输入姓名或编号后查询" @input="clearPatientSelection" />
                 </label>
+                <div class="med-input-wrap">
+                  <span class="queue-label">复用已有患者</span>
+                  <button class="med-btn med-btn--ghost" :disabled="patientSearching || !newCaseForm.patientCode" @click="searchPatients">
+                    {{ patientSearching ? '查询中...' : '查询患者库' }}
+                  </button>
+                </div>
+                <div v-if="patientMatches.length" class="case-patient-results case-span-2">
+                  <button v-for="patient in patientMatches" :key="patient.patientId" class="case-patient-result" :class="{ active: selectedPatientId === patient.patientId }" @click="selectPatient(patient)">
+                    <strong>{{ patient.patientNameMasked || '脱敏患者' }}</strong>
+                    <span class="med-mono">{{ patient.patientNo }}</span>
+                    <span>{{ patient.genderCode || '--' }} · {{ patient.age ?? '--' }} 岁</span>
+                  </button>
+                </div>
                 <label class="med-input-wrap">
                   <span class="queue-label">年龄</span>
                   <input v-model.trim="newCaseForm.age" class="med-input" type="number" min="0" max="120" placeholder="45" />
@@ -205,13 +218,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import { useAnalysisStore } from '@/stores/analysis'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
 import { ApiClientError } from '@/api/request'
-import { casePortalApi } from '@/api/casePortal'
+import { casePortalApi, type PatientListItem } from '@/api/casePortal'
 import type { AnalysisTaskItem } from '@/models/analysis'
 
 type GenderCode = 'MALE' | 'FEMALE' | ''
@@ -224,6 +237,7 @@ interface NewCaseFormState {
 }
 
 const router = useRouter()
+const route = useRoute()
 const store = useAnalysisStore()
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
@@ -235,6 +249,9 @@ const selectedFile = ref<File | null>(null)
 const inlineError = ref('')
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const searchKeyword = ref('')
+const patientSearching = ref(false)
+const patientMatches = ref<PatientListItem[]>([])
+const selectedPatientId = ref<string | null>(null)
 const activeStatus = ref<'ALL' | 'DONE' | 'RUNNING' | 'REVIEW' | 'FAILED' | 'QUEUED'>('ALL')
 
 const newCaseForm = reactive<NewCaseFormState>({
@@ -345,6 +362,7 @@ const fileTypeLabel = computed(() => {
 
 onMounted(() => {
   void store.fetchTasks({ pageNum: 1, pageSize: 24 })
+  if (route.query.new === '1') openNewCaseDrawer()
 })
 
 const reload = () => {
@@ -374,6 +392,8 @@ const resetNewCaseForm = () => {
   newCaseForm.chiefComplaint = ''
   selectedFile.value = null
   inlineError.value = ''
+  patientMatches.value = []
+  selectedPatientId.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
 }
 
@@ -436,7 +456,32 @@ const buildLocalDateTime = () => {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
 }
 
-const buildPatientName = (patientCode: string) => `患者 ${patientCode}`
+const clearPatientSelection = () => {
+  selectedPatientId.value = null
+  patientMatches.value = []
+}
+
+const searchPatients = async () => {
+  const keyword = newCaseForm.patientCode.trim()
+  if (!keyword) return
+  patientSearching.value = true
+  try {
+    const response = await casePortalApi.pagePatients({ pageNo: 1, pageSize: 10, keyword })
+    patientMatches.value = response.data.records || []
+    if (!patientMatches.value.length) notificationStore.info('未找到患者', '提交时将创建新的患者档案。')
+  } catch (error) {
+    notificationStore.error('患者查询失败', normalizeErrorMessage(error))
+  } finally {
+    patientSearching.value = false
+  }
+}
+
+const selectPatient = (patient: PatientListItem) => {
+  selectedPatientId.value = patient.patientId
+  newCaseForm.patientCode = patient.patientNo
+  newCaseForm.age = patient.age == null ? '' : String(patient.age)
+  newCaseForm.genderCode = patient.genderCode === 'MALE' || patient.genderCode === 'FEMALE' ? patient.genderCode : ''
+}
 
 const normalizeErrorMessage = (error: unknown) => {
   if (error instanceof ApiClientError) return error.message
@@ -446,8 +491,8 @@ const normalizeErrorMessage = (error: unknown) => {
 
 const validateNewCaseForm = () => {
   if (!newCaseForm.patientCode) return '患者编号不能为空。'
-  if (!newCaseForm.age) return '年龄不能为空。'
-  if (!newCaseForm.genderCode) return '请选择性别。'
+  if (!selectedPatientId.value && !newCaseForm.age) return '新患者年龄不能为空。'
+  if (!selectedPatientId.value && !newCaseForm.genderCode) return '新患者请选择性别。'
   if (!newCaseForm.chiefComplaint) return '请填写主诉。'
   if (!selectedFile.value) return '请先选择一张影像文件。'
   return ''
@@ -472,16 +517,18 @@ const submitNewCase = async () => {
   inlineError.value = ''
 
   try {
-    const patientRes = await casePortalApi.createPatient({
-      patientName: buildPatientName(newCaseForm.patientCode),
-      genderCode: newCaseForm.genderCode || undefined,
-      birthDate: buildLocalDate(newCaseForm.age),
-      sourceCode: 'OUTPATIENT',
-      privacyLevelCode: 'L4',
-      remark: `Created from case portal for ${newCaseForm.patientCode}`
-    })
-
-    const patientId = patientRes.data.patientId
+    let patientId = selectedPatientId.value
+    if (!patientId) {
+      const patientRes = await casePortalApi.createPatient({
+        patientName: newCaseForm.patientCode,
+        genderCode: newCaseForm.genderCode || undefined,
+        birthDate: buildLocalDate(newCaseForm.age),
+        sourceCode: 'OUTPATIENT',
+        privacyLevelCode: 'L4',
+        remark: 'Created from case portal'
+      })
+      patientId = patientRes.data.patientId
+    }
 
     const visitRes = await casePortalApi.createVisit({
       patientId,
@@ -719,6 +766,32 @@ const submitNewCase = async () => {
 
 .case-span-2 {
   grid-column: 1 / -1;
+}
+
+.case-patient-results {
+  display: grid;
+  gap: 8px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.case-patient-result {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--text-soft);
+  border: 1px solid rgba(112, 224, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(15, 31, 63, 0.55);
+  text-align: left;
+  cursor: pointer;
+}
+
+.case-patient-result.active {
+  border-color: var(--accent);
+  background: rgba(53, 248, 255, 0.1);
 }
 
 .case-dropzone {

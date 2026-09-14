@@ -80,7 +80,7 @@
 
           <div v-if="loading" class="med-empty">正在同步分析任务...</div>
           <div v-else-if="displayedTasks.length === 0" class="med-empty">当前筛选条件下没有匹配任务。</div>
-          <div v-else class="queue-list">
+          <div v-else class="queue-list" :class="{ 'is-compact': settings.queueCompactMode }">
             <article
               v-for="task in displayedTasks"
               :key="task.taskId"
@@ -482,6 +482,19 @@ onUnmounted(() => {
 .queue-list {
   display: grid;
   gap: 12px;
+}
+
+.queue-list.is-compact .queue-item {
+  padding: 12px 14px;
+}
+
+.queue-list.is-compact .queue-item-grid,
+.queue-list.is-compact .queue-progress-row {
+  display: none;
+}
+
+.queue-list.is-compact .queue-actions {
+  margin-top: 10px;
 }
 
 .queue-item {

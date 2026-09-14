@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import threading
 import uuid
+import shutil
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, Request
@@ -15,6 +17,8 @@ from app.services.local_segmentation_service import get_local_segmentation_runti
 
 router = APIRouter(tags=["segmentation"])
 _INFERENCE_LOCK = threading.Lock()
+_CLEANUP_LOCK = threading.Lock()
+_last_cleanup_at = 0.0
 _CONTENT_TYPE_EXTENSIONS = {
     "image/png": ".png",
     "image/jpeg": ".jpg",
@@ -27,6 +31,25 @@ def _run_segmentation(runtime: object, image: ImageInput, image_path: Path, outp
     # Serializing GPU work prevents concurrent requests from exhausting an 8 GB card.
     with _INFERENCE_LOCK:
         return runtime.segmentation_pipeline.segment(image, image_path, [], output_dir)
+
+
+def _cleanup_expired_assets(root: Path, ttl_seconds: int) -> None:
+    global _last_cleanup_at
+    now = time.time()
+    interval = min(max(ttl_seconds // 4, 30), 300)
+    if now - _last_cleanup_at < interval:
+        return
+    with _CLEANUP_LOCK:
+        if now - _last_cleanup_at < interval:
+            return
+        cutoff = now - max(ttl_seconds, 60)
+        for child in root.iterdir() if root.exists() else []:
+            try:
+                if child.is_dir() and child.stat().st_mtime < cutoff:
+                    shutil.rmtree(child)
+            except OSError:
+                continue
+        _last_cleanup_at = now
 
 
 @router.post("/segment")
@@ -62,7 +85,9 @@ async def segment_image(request: Request) -> dict:
         raise BusinessException("A0413", "image exceeds configured upload size limit")
 
     request_id = uuid.uuid4().hex
-    output_dir = local_segmentation_output_dir(settings) / request_id
+    output_root = local_segmentation_output_dir(settings)
+    _cleanup_expired_assets(output_root, getattr(settings, "local_segmentation_asset_ttl_seconds", 3600))
+    output_dir = output_root / request_id
     output_dir.mkdir(parents=True, exist_ok=False)
     input_path = output_dir / f"input{suffix}"
     input_path.write_bytes(image_bytes)

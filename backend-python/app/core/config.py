@@ -1,25 +1,20 @@
-import os
 import json
 import logging
-from dataclasses import dataclass, field
+import os
+from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
 
 log = logging.getLogger("cariesguard-ai.config")
 
-
-_VALID_VECTOR_STORE_TYPES = {"LOCAL_JSON", "OPENSEARCH"}
 _VALID_MODEL_IMPL_TYPES = {"HEURISTIC", "ML_MODEL"}
 _VALID_QUALITY_FAIL_STRATEGIES = {"CONTINUE", "FAIL_FAST"}
-_VALID_LLM_PROVIDER_CODES = {"OPENAI", "OPENAI_COMPATIBLE", "DASHSCOPE", "DEEPSEEK", "QWEN"}
 
 
 def first_non_empty(*values: str | None, default: str = "") -> str:
     for raw in values:
-        if raw is None:
-            continue
-        value = raw.strip()
+        value = (raw or "").strip()
         if value and value != "...":
             return value
     return default
@@ -27,61 +22,38 @@ def first_non_empty(*values: str | None, default: str = "") -> str:
 
 def bool_env(name: str, default: bool) -> bool:
     value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return default if value is None else value.strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def int_env(name: str, default: int) -> int:
     value = os.getenv(name)
-    if value is None or value.strip() == "":
-        return default
-    return int(value)
+    return default if value is None or not value.strip() else int(value)
 
 
 def float_env(name: str, default: float) -> float:
     value = os.getenv(name)
-    if value is None or value.strip() == "":
-        return default
-    return float(value)
-
-
-def csv_env(name: str, default: list[str]) -> list[str]:
-    value = os.getenv(name)
-    if value is None or value.strip() == "":
-        return list(default)
-    return [item.strip() for item in value.split(",") if item.strip()]
-
-
-def json_env(name: str, default: dict[str, float]) -> dict[str, float]:
-    value = os.getenv(name)
-    if value is None or value.strip() == "":
-        return dict(default)
-    loaded = json.loads(value)
-    return {str(key): float(item) for key, item in loaded.items()}
-
-
-def _validate_vector_store_type(raw: str) -> str:
-    value = raw.strip().upper()
-    if value not in _VALID_VECTOR_STORE_TYPES:
-        raise ValueError(
-            f"CG_RAG_VECTOR_STORE_TYPE={raw!r} is invalid; "
-            f"allowed values: {sorted(_VALID_VECTOR_STORE_TYPES)}"
-        )
-    return value
+    return default if value is None or not value.strip() else float(value)
 
 
 def _require_non_empty(name: str, value: str) -> None:
-    if not value or value.strip() == "" or value.strip() == "...":
+    if not value or value.strip() in {"", "..."}:
         raise ValueError(f"Configuration {name} is required but missing or placeholder.")
 
 
-def _require_model_weights_if_enabled(weights_dir: str, model_name: str, enabled: bool, impl_type: str) -> None:
-    if not enabled or impl_type != "ML_MODEL":
-        return
-    path = os.path.join(weights_dir, model_name)
-    if not os.path.exists(path):
-        raise ValueError(f"Model {model_name} is enabled with ML_MODEL type, but weights are missing at {path}")
+def _validate_model_impl_type(name: str, raw: str) -> str:
+    value = (raw or "").strip().upper()
+    if value not in _VALID_MODEL_IMPL_TYPES:
+        raise ValueError(f"{name}={raw!r} is invalid; allowed values: {sorted(_VALID_MODEL_IMPL_TYPES)}")
+    return value
+
+
+def _validate_quality_fail_strategy(raw: str) -> str:
+    value = (raw or "").strip().upper()
+    if value not in _VALID_QUALITY_FAIL_STRATEGIES:
+        raise ValueError(
+            f"CG_QUALITY_FAIL_STRATEGY={raw!r} is invalid; allowed values: {sorted(_VALID_QUALITY_FAIL_STRATEGIES)}"
+        )
+    return value
 
 
 def _project_root() -> Path:
@@ -93,87 +65,40 @@ def _resolve_project_path(path_value: str) -> Path:
     normalized = path.as_posix()
     if normalized.startswith("/app/"):
         return (_project_root() / normalized.removeprefix("/app/")).resolve()
-    if path.is_absolute():
-        if path.exists():
-            return path
-        return path
-    return (_project_root() / path).resolve()
+    return path if path.is_absolute() else (_project_root() / path).resolve()
 
 
-def _require_manifest_backed_model_assets(module_name: str, enabled: bool, impl_type: str, manifest_path_value: str) -> None:
+def _require_manifest_backed_model_assets(
+    module_name: str,
+    enabled: bool,
+    impl_type: str,
+    manifest_path_value: str,
+) -> None:
     if not enabled or impl_type != "ML_MODEL":
         return
-
     from app.core.exceptions import ModelRuntimeException
     from app.infra.model.checkpoint_validator import CheckpointValidator
     from app.infra.model.manifest_loader import ManifestLoader
 
     try:
-        loader = ManifestLoader(_project_root())
-        manifest = loader.load(module_name, manifest_path_value)
-        class_map = {}
-        preprocess = {}
-        postprocess = {}
-
+        manifest = ManifestLoader(_project_root()).load(module_name, manifest_path_value)
+        class_map: dict = {}
+        preprocess: dict = {}
+        postprocess: dict = {}
         if manifest.class_map_path is not None and manifest.class_map_path.is_file():
-            with manifest.class_map_path.open("r", encoding="utf-8") as fp:
-                class_map = json.load(fp)
+            with manifest.class_map_path.open("r", encoding="utf-8") as stream:
+                class_map = json.load(stream)
         if manifest.preprocess_path is not None and manifest.preprocess_path.is_file():
-            with manifest.preprocess_path.open("r", encoding="utf-8") as fp:
-                preprocess = yaml.safe_load(fp)
+            with manifest.preprocess_path.open("r", encoding="utf-8") as stream:
+                preprocess = yaml.safe_load(stream) or {}
         if manifest.postprocess_path is not None and manifest.postprocess_path.is_file():
-            with manifest.postprocess_path.open("r", encoding="utf-8") as fp:
-                postprocess = yaml.safe_load(fp)
-
+            with manifest.postprocess_path.open("r", encoding="utf-8") as stream:
+                postprocess = yaml.safe_load(stream) or {}
         validator = CheckpointValidator(module_name)
-        validator.validate_manifest_assets(
-            manifest,
-            class_map=class_map if isinstance(class_map, dict) else {},
-            preprocess=preprocess if isinstance(preprocess, dict) else {},
-            postprocess=postprocess if isinstance(postprocess, dict) else {},
-        )
+        validator.validate_manifest_assets(manifest, class_map=class_map, preprocess=preprocess, postprocess=postprocess)
         validator.validate_checkpoint_ready(manifest)
     except ModelRuntimeException as exc:
         raise ValueError(f"{exc.code} {exc.message}") from exc
-
-
-def _validate_model_impl_type(name: str, raw: str) -> str:
-    value = (raw or "").strip().upper()
-    if value not in _VALID_MODEL_IMPL_TYPES:
-        raise ValueError(
-            f"{name}={raw!r} is invalid; allowed values: {sorted(_VALID_MODEL_IMPL_TYPES)}"
-        )
-    return value
-
-
-def _validate_quality_fail_strategy(raw: str) -> str:
-    value = (raw or "").strip().upper()
-    if value not in _VALID_QUALITY_FAIL_STRATEGIES:
-        raise ValueError(
-            f"CG_QUALITY_FAIL_STRATEGY={raw!r} is invalid; "
-            f"allowed values: {sorted(_VALID_QUALITY_FAIL_STRATEGIES)}"
-        )
-    return value
-
-
-def _validate_llm_provider_code(name: str, raw: str) -> str:
-    value = (raw or "").strip().upper()
-    if value not in _VALID_LLM_PROVIDER_CODES:
-        raise ValueError(
-            f"{name}={raw!r} is invalid; allowed values: {sorted(_VALID_LLM_PROVIDER_CODES)}"
-        )
-    return value
-
-
-def _is_blank_or_placeholder(value: str | None) -> bool:
-    return value is None or value.strip() == "" or value.strip() == "..."
-
-
-def _require_non_blank_if_present(name: str) -> None:
-    if name not in os.environ:
-        return
-    if _is_blank_or_placeholder(os.getenv(name)):
-        raise ValueError(f"Configuration {name} is explicitly set but blank or placeholder.")
 
 
 @dataclass(frozen=True)
@@ -192,47 +117,35 @@ class Settings:
     analysis_exchange: str = os.getenv("CG_ANALYSIS_EXCHANGE", "caries.analysis.exchange")
     requested_queue: str = os.getenv("CG_ANALYSIS_REQUESTED_QUEUE", "caries.analysis.requested.queue")
     requested_routing_key: str = os.getenv("CG_ANALYSIS_REQUESTED_ROUTING_KEY", "analysis.requested")
+    failed_routing_key: str = os.getenv("CG_ANALYSIS_FAILED_ROUTING_KEY", "analysis.failed")
     rabbit_retry_seconds: int = int_env("CG_RABBIT_RETRY_SECONDS", 5)
 
     callback_url: str = os.getenv(
-        "CG_JAVA_CALLBACK_URL",
-        "http://backend-java:8080/api/v1/internal/ai/callbacks/analysis-result",
+        "CG_JAVA_CALLBACK_URL", "http://backend-java:8080/api/v1/internal/ai/callbacks/analysis-result"
     )
     callback_secret: str = os.getenv(
-        "CG_ANALYSIS_CALLBACK_SECRET",
-        "docker-change-me-to-a-strong-analysis-callback-secret",
+        "CG_ANALYSIS_CALLBACK_SECRET", "docker-change-me-to-a-strong-analysis-callback-secret"
     )
     callback_retry_count: int = int_env("CG_CALLBACK_RETRY_COUNT", 3)
     callback_visual_asset_mode: str = os.getenv("CG_CALLBACK_VISUAL_ASSET_MODE", "metadata")
     request_timeout_seconds: int = int_env("CG_REQUEST_TIMEOUT_SECONDS", 30)
+    internal_api_key: str = os.getenv("CG_INTERNAL_API_KEY", "change-me-to-a-strong-internal-api-key")
 
     model_version: str = os.getenv("CG_MODEL_VERSION", "caries-v1")
-    download_images: bool = bool_env("CG_AI_DOWNLOAD_IMAGES", True)
-
     minio_endpoint: str = os.getenv("CG_MINIO_ENDPOINT", "http://minio:9000")
     minio_access_key: str = os.getenv("CG_MINIO_ACCESS_KEY", "minioadmin")
     minio_secret_key: str = os.getenv("CG_MINIO_SECRET_KEY", "minioadmin")
     minio_secure: bool = bool_env("CG_MINIO_SECURE", False)
     minio_region: str = os.getenv("CG_MINIO_REGION", "")
-    minio_connect_timeout_seconds: int = int_env("CG_MINIO_CONNECT_TIMEOUT_SECONDS", 5)
-    minio_read_timeout_seconds: int = int_env("CG_MINIO_READ_TIMEOUT_SECONDS", 30)
-    bucket_image: str = os.getenv("CG_BUCKET_IMAGE", os.getenv("CG_MINIO_BUCKET_IMAGE", "caries-image"))
     bucket_visual: str = os.getenv("CG_BUCKET_VISUAL", os.getenv("CG_MINIO_BUCKET_VISUAL", "caries-visual"))
-    bucket_report: str = os.getenv("CG_BUCKET_REPORT", "caries-report")
-    bucket_export: str = os.getenv("CG_BUCKET_EXPORT", "caries-export")
-    bucket_knowledge: str = os.getenv("CG_BUCKET_KNOWLEDGE", "caries-knowledge")
     temp_dir: str = os.getenv("CG_TEMP_DIR", "/tmp/cariesguard")
+
     local_segmentation_api_enabled: bool = bool_env("CG_LOCAL_SEGMENTATION_API_ENABLED", False)
     local_segmentation_api_output_dir: str = os.getenv(
-        "CG_LOCAL_SEGMENTATION_API_OUTPUT_DIR",
-        str(_project_root() / "runtime-assets" / "segmentation"),
+        "CG_LOCAL_SEGMENTATION_API_OUTPUT_DIR", str(_project_root() / "runtime-assets" / "segmentation")
     )
-    local_segmentation_api_max_bytes: int = int_env(
-        "CG_LOCAL_SEGMENTATION_API_MAX_BYTES",
-        25 * 1024 * 1024,
-    )
-
-    allow_bucket_create: bool = bool_env("CG_MINIO_ALLOW_BUCKET_CREATE", False)
+    local_segmentation_api_max_bytes: int = int_env("CG_LOCAL_SEGMENTATION_API_MAX_BYTES", 25 * 1024 * 1024)
+    local_segmentation_asset_ttl_seconds: int = int_env("CG_LOCAL_SEGMENTATION_ASSET_TTL_SECONDS", 3600)
 
     mysql_host: str = os.getenv("CG_MYSQL_HOST", os.getenv("CARIES_MYSQL_HOST", "mysql"))
     mysql_port: int = int_env("CG_MYSQL_PORT", int_env("CARIES_MYSQL_PORT", 3306))
@@ -245,199 +158,17 @@ class Settings:
     db_pool_recycle_seconds: int = int_env("CG_DB_POOL_RECYCLE_SECONDS", 1800)
     db_echo: bool = bool_env("CG_DB_ECHO", False)
     db_schema_bootstrap_enabled: bool = bool_env("CG_DB_SCHEMA_BOOTSTRAP_ENABLED", True)
-    db_migration_enabled: bool = bool_env("CG_DB_MIGRATION_ENABLED", False)
-    rag_index_dir: str = os.getenv("CG_RAG_INDEX_DIR", "/tmp/cariesguard/vector-index")
-    rag_default_kb_code: str = os.getenv("CG_RAG_DEFAULT_KB_CODE", "caries-default")
-    rag_default_kb_name: str = os.getenv("CG_RAG_DEFAULT_KB_NAME", "CariesGuard Default Knowledge Base")
-    rag_runtime_enabled: bool = bool_env("CG_RAG_RUNTIME_ENABLED", False)
-    rag_knowledge_version: str = os.getenv("CG_RAG_KNOWLEDGE_VERSION", "v1.0")
-    rag_embedding_model: str = os.getenv("CG_RAG_EMBEDDING_MODEL", "text-embedding-3-small")
-    rag_embedding_provider: str = os.getenv("CG_RAG_EMBEDDING_PROVIDER", "OPENAI_COMPATIBLE").strip().upper()
-    rag_embedding_dimension: int = int_env("CG_RAG_EMBEDDING_DIMENSION", 256)
-    rag_embedding_version: str = os.getenv("CG_RAG_EMBEDDING_VERSION", "2026-04")
-    rag_embedding_base_url: str = first_non_empty(
-        os.getenv("CG_RAG_EMBEDDING_BASE_URL"),
-        os.getenv("CG_LLM_BASE_URL"),
-        os.getenv("DASHSCOPE_BASE_URL"),
-        default="",
-    )
-    rag_embedding_api_key: str = first_non_empty(
-        os.getenv("CG_RAG_EMBEDDING_API_KEY"),
-        os.getenv("CG_LLM_API_KEY"),
-        os.getenv("DASHSCOPE_API_KEY"),
-        default="",
-    )
-    rag_embedding_batch_size: int = int_env("CG_RAG_EMBEDDING_BATCH_SIZE", 16)
-    rag_embedding_timeout_seconds: int = int_env("CG_RAG_EMBEDDING_TIMEOUT_SECONDS", 30)
-    rag_vector_store_type: str = _validate_vector_store_type(os.getenv("CG_RAG_VECTOR_STORE_TYPE", "OPENSEARCH"))
-    rag_top_k: int = int_env("CG_RAG_TOP_K", 5)
-    lexical_top_k: int = int_env("CG_RAG_LEXICAL_TOP_K", 20)
-    dense_top_k: int = int_env("CG_RAG_DENSE_TOP_K", 20)
-    graph_top_k: int = int_env("CG_RAG_GRAPH_TOP_K", 10)
-    fusion_top_k: int = int_env("CG_RAG_FUSION_TOP_K", 12)
-    rerank_top_k: int = int_env("CG_RAG_RERANK_TOP_K", 8)
-    answer_evidence_top_k: int = int_env("CG_RAG_ANSWER_EVIDENCE_TOP_K", 6)
-    rag_evidence_min_count: int = int_env("CG_RAG_EVIDENCE_MIN_COUNT", 2)
-    rag_evidence_min_distinct_docs: int = int_env("CG_RAG_EVIDENCE_MIN_DISTINCT_DOCS", 1)
-    rag_rebuild_graph_enabled: bool = bool_env("CG_RAG_REBUILD_GRAPH_ENABLED", True)
-    rag_rebuild_parse_enabled: bool = bool_env("CG_RAG_REBUILD_PARSE_ENABLED", True)
-    rag_rebuild_cleanup_enabled: bool = bool_env("CG_RAG_REBUILD_CLEANUP_ENABLED", True)
-    rag_rebuild_lexical_enabled: bool = bool_env("CG_RAG_REBUILD_LEXICAL_ENABLED", True)
-    rag_rebuild_dense_enabled: bool = bool_env("CG_RAG_REBUILD_DENSE_ENABLED", True)
-    rag_eval_enabled: bool = bool_env("CG_RAG_EVAL_ENABLED", True)
-    rag_channel_weights: dict[str, float] = field(
-        default_factory=lambda: json_env(
-            "CG_RAG_CHANNEL_WEIGHTS",
-            {
-                "LEXICAL": 1.0,
-                "DENSE": 1.15,
-                "GRAPH": 1.2,
-            },
-        )
-    )
-    rag_source_authority_weights: dict[str, float] = field(
-        default_factory=lambda: json_env(
-            "CG_RAG_SOURCE_AUTHORITY_WEIGHTS",
-            {
-                "GUIDELINE": 1.0,
-                "MANUAL": 0.9,
-                "INTERNAL": 0.75,
-                "UPLOAD": 0.7,
-            },
-        )
-    )
-    rag_freshness_decay_days: int = int_env("CG_RAG_FRESHNESS_DECAY_DAYS", 365)
-    rag_graph_confidence_weight: float = float_env("CG_RAG_GRAPH_CONFIDENCE_WEIGHT", 0.2)
-    rerank_provider: str = os.getenv("CG_RAG_RERANK_PROVIDER", "EMBEDDING").strip().upper()
-    rerank_model_name: str = os.getenv("CG_RAG_RERANK_MODEL_NAME", "embedding-similarity-reranker")
-    rerank_base_url: str = first_non_empty(
-        os.getenv("CG_RAG_RERANK_BASE_URL"),
-        os.getenv("CG_LLM_BASE_URL"),
-        os.getenv("DASHSCOPE_BASE_URL"),
-        default="",
-    )
-    rerank_api_key: str = first_non_empty(
-        os.getenv("CG_RAG_RERANK_API_KEY"),
-        os.getenv("CG_LLM_API_KEY"),
-        os.getenv("DASHSCOPE_API_KEY"),
-        default="",
-    )
-    rerank_timeout_seconds: int = int_env("CG_RAG_RERANK_TIMEOUT_SECONDS", 20)
-    rerank_semantic_weight: float = float_env("CG_RAG_RERANK_SEMANTIC_WEIGHT", 0.7)
-    rerank_lexical_weight: float = float_env("CG_RAG_RERANK_LEXICAL_WEIGHT", 0.2)
-    rerank_prior_weight: float = float_env("CG_RAG_RERANK_PRIOR_WEIGHT", 0.1)
-    opensearch_hosts: list[str] = field(default_factory=lambda: csv_env("CG_OPENSEARCH_HOSTS", ["http://127.0.0.1:9200"]))
-    opensearch_username: str = os.getenv("CG_OPENSEARCH_USERNAME", "")
-    opensearch_password: str = os.getenv("CG_OPENSEARCH_PASSWORD", "")
-    opensearch_verify_certs: bool = bool_env("CG_OPENSEARCH_VERIFY_CERTS", False)
-    opensearch_chunk_index: str = os.getenv("CG_OPENSEARCH_CHUNK_INDEX", "kb_chunk_index")
-    opensearch_doc_index: str = os.getenv("CG_OPENSEARCH_DOC_INDEX", "kb_doc_index")
-    neo4j_uri: str = os.getenv("CG_NEO4J_URI", "bolt://127.0.0.1:7687")
-    neo4j_username: str = os.getenv("CG_NEO4J_USERNAME", "neo4j")
-    neo4j_password: str = os.getenv("CG_NEO4J_PASSWORD", "cariesguard")
-    neo4j_database: str = os.getenv("CG_NEO4J_DATABASE", "neo4j")
-    llm_provider_code: str = os.getenv("CG_LLM_PROVIDER_CODE", "OPENAI_COMPATIBLE")
-    llm_model_name: str = os.getenv("CG_LLM_MODEL_NAME", "gpt-4o-mini")
-    llm_base_url: str = first_non_empty(
-        os.getenv("CG_LLM_BASE_URL"),
-        os.getenv("DASHSCOPE_BASE_URL"),
-        default="https://api.openai.com/v1",
-    )
-    llm_api_key: str = first_non_empty(
-        os.getenv("CG_LLM_API_KEY"),
-        os.getenv("DASHSCOPE_API_KEY"),
-        default="",
-    )
-    llm_timeout_seconds: int = int_env("CG_LLM_TIMEOUT_SECONDS", 30)
-    llm_retry_count: int = int_env("CG_LLM_RETRY_COUNT", 1)
-    llm_temperature: float = float_env("CG_LLM_TEMPERATURE", 0.2)
-    llm_hedge_enabled: bool = bool_env("CG_LLM_HEDGE_ENABLED", False)
-    llm_hedge_delay_ms: int = int_env("CG_LLM_HEDGE_DELAY_MS", 250)
-    llm_hedge_provider_code: str = first_non_empty(
-        os.getenv("CG_LLM_HEDGE_PROVIDER_CODE"),
-        os.getenv("CG_LLM_PROVIDER_CODE"),
-        default="OPENAI_COMPATIBLE",
-    )
-    llm_hedge_model_name: str = first_non_empty(
-        os.getenv("CG_LLM_HEDGE_MODEL_NAME"),
-        os.getenv("CG_LLM_MODEL_NAME"),
-        default="gpt-4o-mini",
-    )
-    llm_hedge_base_url: str = first_non_empty(
-        os.getenv("CG_LLM_HEDGE_BASE_URL"),
-        os.getenv("CG_LLM_BASE_URL"),
-        os.getenv("DASHSCOPE_BASE_URL"),
-        default="https://api.openai.com/v1",
-    )
-    llm_hedge_api_key: str = first_non_empty(
-        os.getenv("CG_LLM_HEDGE_API_KEY"),
-        os.getenv("CG_LLM_API_KEY"),
-        os.getenv("DASHSCOPE_API_KEY"),
-        default="",
-    )
-    llm_scene_routing_enabled: bool = bool_env("CG_LLM_SCENE_ROUTING_ENABLED", False)
-    llm_doctor_provider_code: str = first_non_empty(
-        os.getenv("CG_LLM_DOCTOR_PROVIDER_CODE"),
-        os.getenv("CG_LLM_PROVIDER_CODE"),
-        default="OPENAI_COMPATIBLE",
-    )
-    llm_doctor_model_name: str = first_non_empty(
-        os.getenv("CG_LLM_DOCTOR_MODEL_NAME"),
-        os.getenv("CG_LLM_MODEL_NAME"),
-        default="gpt-4o-mini",
-    )
-    llm_doctor_base_url: str = first_non_empty(
-        os.getenv("CG_LLM_DOCTOR_BASE_URL"),
-        os.getenv("CG_LLM_BASE_URL"),
-        os.getenv("DASHSCOPE_BASE_URL"),
-        default="https://api.openai.com/v1",
-    )
-    llm_doctor_api_key: str = first_non_empty(
-        os.getenv("CG_LLM_DOCTOR_API_KEY"),
-        os.getenv("CG_LLM_API_KEY"),
-        os.getenv("DASHSCOPE_API_KEY"),
-        default="",
-    )
-    llm_patient_provider_code: str = first_non_empty(
-        os.getenv("CG_LLM_PATIENT_PROVIDER_CODE"),
-        os.getenv("CG_LLM_PROVIDER_CODE"),
-        default="OPENAI_COMPATIBLE",
-    )
-    llm_patient_model_name: str = first_non_empty(
-        os.getenv("CG_LLM_PATIENT_MODEL_NAME"),
-        os.getenv("CG_LLM_MODEL_NAME"),
-        default="gpt-4o-mini",
-    )
-    llm_patient_base_url: str = first_non_empty(
-        os.getenv("CG_LLM_PATIENT_BASE_URL"),
-        os.getenv("CG_LLM_BASE_URL"),
-        os.getenv("DASHSCOPE_BASE_URL"),
-        default="https://api.openai.com/v1",
-    )
-    llm_patient_api_key: str = first_non_empty(
-        os.getenv("CG_LLM_PATIENT_API_KEY"),
-        os.getenv("CG_LLM_API_KEY"),
-        os.getenv("DASHSCOPE_API_KEY"),
-        default="",
-    )
+
     qwen_vision_enabled: bool = bool_env("CG_QWEN_VISION_ENABLED", False)
     qwen_vision_model: str = os.getenv("CG_QWEN_VISION_MODEL", "qwen3-vl-plus")
     qwen_vision_base_url: str = first_non_empty(
-        os.getenv("CG_QWEN_VISION_BASE_URL"),
-        os.getenv("CG_LLM_BASE_URL"),
-        os.getenv("DASHSCOPE_BASE_URL"),
-        default="",
+        os.getenv("CG_QWEN_VISION_BASE_URL"), os.getenv("DASHSCOPE_BASE_URL"), default=""
     )
     qwen_vision_api_key: str = first_non_empty(
-        os.getenv("CG_QWEN_VISION_API_KEY"),
-        os.getenv("CG_LLM_API_KEY"),
-        os.getenv("DASHSCOPE_API_KEY"),
-        default="",
+        os.getenv("CG_QWEN_VISION_API_KEY"), os.getenv("DASHSCOPE_API_KEY"), default=""
     )
-    qwen_vision_timeout_seconds: int = int_env("CG_QWEN_VISION_TIMEOUT_SECONDS", int_env("CG_LLM_TIMEOUT_SECONDS", 60))
+    qwen_vision_timeout_seconds: int = int_env("CG_QWEN_VISION_TIMEOUT_SECONDS", 60)
     qwen_vision_temperature: float = float_env("CG_QWEN_VISION_TEMPERATURE", 0.1)
-    analysis_kb_enhancement_enabled: bool = bool_env("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED", False)
-    analysis_kb_code: str = os.getenv("CG_ANALYSIS_KB_CODE", os.getenv("CG_RAG_DEFAULT_KB_CODE", "caries-default"))
 
     model_quality_enabled: bool = bool_env("CG_MODEL_QUALITY_ENABLED", True)
     model_quality_impl_type: str = os.getenv("CG_MODEL_QUALITY_IMPL_TYPE", "HEURISTIC").upper()
@@ -445,6 +176,11 @@ class Settings:
     model_tooth_detect_impl_type: str = os.getenv("CG_MODEL_TOOTH_DETECT_IMPL_TYPE", "HEURISTIC").upper()
     model_tooth_detect_checkpoint_path: str = os.getenv("CG_MODEL_TOOTH_DETECT_CHECKPOINT_PATH", "").strip()
     model_tooth_detect_config_path: str = os.getenv("CG_MODEL_TOOTH_DETECT_CONFIG_PATH", "").strip()
+    model_disease_detect_enabled: bool = bool_env("CG_MODEL_DISEASE_DETECT_ENABLED", False)
+    model_disease_detect_checkpoint_path: str = os.getenv("CG_MODEL_DISEASE_DETECT_CHECKPOINT_PATH", "").strip()
+    model_disease_detect_metadata_path: str = os.getenv("CG_MODEL_DISEASE_DETECT_METADATA_PATH", "").strip()
+    model_disease_detect_image_size: int = int_env("CG_MODEL_DISEASE_DETECT_IMAGE_SIZE", 960)
+    model_disease_detect_confidence_threshold: float = float_env("CG_MODEL_DISEASE_DETECT_CONFIDENCE_THRESHOLD", 0.25)
     model_segmentation_enabled: bool = bool_env("CG_MODEL_SEGMENTATION_ENABLED", True)
     model_segmentation_impl_type: str = os.getenv("CG_MODEL_SEGMENTATION_IMPL_TYPE", "ML_MODEL").upper()
     model_grading_enabled: bool = bool_env("CG_MODEL_GRADING_ENABLED", True)
@@ -455,12 +191,10 @@ class Settings:
     model_weights_dir: str = os.getenv("CG_MODEL_WEIGHTS_DIR", "/app/model-weights")
     model_confidence_threshold: float = float_env("CG_MODEL_CONFIDENCE_THRESHOLD", 0.5)
     model_segmentation_manifest_path: str = os.getenv(
-        "CG_MODEL_SEGMENTATION_MANIFEST_PATH",
-        "assets/models/manifests/segmentation_v1.yaml",
+        "CG_MODEL_SEGMENTATION_MANIFEST_PATH", "assets/models/manifests/segmentation_v1.yaml"
     ).strip()
     model_grading_manifest_path: str = os.getenv(
-        "CG_MODEL_GRADING_MANIFEST_PATH",
-        "assets/models/manifests/grading_v1.yaml",
+        "CG_MODEL_GRADING_MANIFEST_PATH", "assets/models/manifests/grading_v1.yaml"
     ).strip()
     quality_model_param_path: str = os.getenv("CG_QUALITY_MODEL_PARAM_PATH", "").strip()
     quality_model_weights_path: str = os.getenv("CG_QUALITY_MODEL_WEIGHTS_PATH", "").strip()
@@ -471,224 +205,34 @@ class Settings:
     strict_model_startup_validation: bool = bool_env("CG_STRICT_MODEL_STARTUP_VALIDATION", False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "rag_vector_store_type", _validate_vector_store_type(self.rag_vector_store_type))
-        object.__setattr__(self, "model_quality_impl_type", _validate_model_impl_type("CG_MODEL_QUALITY_IMPL_TYPE", self.model_quality_impl_type))
-        object.__setattr__(self, "model_tooth_detect_impl_type", _validate_model_impl_type("CG_MODEL_TOOTH_DETECT_IMPL_TYPE", self.model_tooth_detect_impl_type))
-        object.__setattr__(self, "model_segmentation_impl_type", _validate_model_impl_type("CG_MODEL_SEGMENTATION_IMPL_TYPE", self.model_segmentation_impl_type))
-        object.__setattr__(self, "model_grading_impl_type", _validate_model_impl_type("CG_MODEL_GRADING_IMPL_TYPE", self.model_grading_impl_type))
-        object.__setattr__(self, "model_risk_impl_type", _validate_model_impl_type("CG_MODEL_RISK_IMPL_TYPE", self.model_risk_impl_type))
+        for attribute, env_name in (
+            ("model_quality_impl_type", "CG_MODEL_QUALITY_IMPL_TYPE"),
+            ("model_tooth_detect_impl_type", "CG_MODEL_TOOTH_DETECT_IMPL_TYPE"),
+            ("model_segmentation_impl_type", "CG_MODEL_SEGMENTATION_IMPL_TYPE"),
+            ("model_grading_impl_type", "CG_MODEL_GRADING_IMPL_TYPE"),
+            ("model_risk_impl_type", "CG_MODEL_RISK_IMPL_TYPE"),
+        ):
+            object.__setattr__(self, attribute, _validate_model_impl_type(env_name, getattr(self, attribute)))
         object.__setattr__(self, "quality_fail_strategy", _validate_quality_fail_strategy(self.quality_fail_strategy))
-        object.__setattr__(self, "llm_provider_code", _validate_llm_provider_code("CG_LLM_PROVIDER_CODE", self.llm_provider_code))
-        object.__setattr__(
-            self, "llm_doctor_provider_code", _validate_llm_provider_code("CG_LLM_DOCTOR_PROVIDER_CODE", self.llm_doctor_provider_code)
-        )
-        object.__setattr__(
-            self, "llm_patient_provider_code", _validate_llm_provider_code("CG_LLM_PATIENT_PROVIDER_CODE", self.llm_patient_provider_code)
-        )
-        object.__setattr__(
-            self, "llm_hedge_provider_code", _validate_llm_provider_code("CG_LLM_HEDGE_PROVIDER_CODE", self.llm_hedge_provider_code)
-        )
-        object.__setattr__(self, "llm_model_name", (self.llm_model_name or "").strip())
-        object.__setattr__(self, "llm_doctor_model_name", (self.llm_doctor_model_name or "").strip())
-        object.__setattr__(self, "llm_patient_model_name", (self.llm_patient_model_name or "").strip())
-        object.__setattr__(self, "llm_hedge_model_name", (self.llm_hedge_model_name or "").strip())
-        object.__setattr__(self, "llm_base_url", (self.llm_base_url or "").strip())
-        object.__setattr__(self, "llm_doctor_base_url", (self.llm_doctor_base_url or "").strip())
-        object.__setattr__(self, "llm_patient_base_url", (self.llm_patient_base_url or "").strip())
-        object.__setattr__(self, "llm_hedge_base_url", (self.llm_hedge_base_url or "").strip())
-        object.__setattr__(self, "llm_api_key", (self.llm_api_key or "").strip())
-        object.__setattr__(self, "llm_doctor_api_key", (self.llm_doctor_api_key or "").strip())
-        object.__setattr__(self, "llm_patient_api_key", (self.llm_patient_api_key or "").strip())
-        object.__setattr__(self, "llm_hedge_api_key", (self.llm_hedge_api_key or "").strip())
-        object.__setattr__(self, "llm_hedge_delay_ms", max(0, int(self.llm_hedge_delay_ms)))
-
-        rag_dependencies_required = self.analysis_kb_enhancement_enabled or self.rag_runtime_enabled
-        if self.analysis_kb_enhancement_enabled and not self.rag_runtime_enabled:
-            raise ValueError("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED=true requires CG_RAG_RUNTIME_ENABLED=true")
-
-        scene_env_names = [
-            "CG_LLM_DOCTOR_PROVIDER_CODE",
-            "CG_LLM_DOCTOR_MODEL_NAME",
-            "CG_LLM_DOCTOR_BASE_URL",
-            "CG_LLM_DOCTOR_API_KEY",
-            "CG_LLM_PATIENT_PROVIDER_CODE",
-            "CG_LLM_PATIENT_MODEL_NAME",
-            "CG_LLM_PATIENT_BASE_URL",
-            "CG_LLM_PATIENT_API_KEY",
-        ]
-        scene_override_set = any(
-            name in os.environ and not _is_blank_or_placeholder(os.getenv(name))
-            for name in scene_env_names
-        )
-        if scene_override_set and not self.llm_scene_routing_enabled:
-            raise ValueError(
-                "Scene LLM variables are set but CG_LLM_SCENE_ROUTING_ENABLED=false; "
-                "set CG_LLM_SCENE_ROUTING_ENABLED=true to make scene parameters effective."
-            )
-        if self.llm_scene_routing_enabled:
-            for name in scene_env_names:
-                _require_non_blank_if_present(name)
-
-        if self.rag_runtime_enabled:
-            _require_non_empty("CG_LLM_MODEL_NAME", self.llm_model_name)
-            _require_non_empty("CG_LLM_BASE_URL", self.llm_base_url)
-            _require_non_empty("CG_LLM_API_KEY", self.llm_api_key)
-            _require_non_blank_if_present("CG_LLM_MODEL_NAME")
-            _require_non_blank_if_present("CG_LLM_BASE_URL")
-            _require_non_blank_if_present("CG_LLM_API_KEY")
-
-        if self.llm_scene_routing_enabled and self.rag_runtime_enabled:
-            self._validate_scene_llm_profile(
-                profile_prefix="CG_LLM_DOCTOR",
-                provider_code=self.llm_doctor_provider_code,
-                model_name=self.llm_doctor_model_name,
-                base_url=self.llm_doctor_base_url,
-                api_key=self.llm_doctor_api_key,
-            )
-            self._validate_scene_llm_profile(
-                profile_prefix="CG_LLM_PATIENT",
-                provider_code=self.llm_patient_provider_code,
-                model_name=self.llm_patient_model_name,
-                base_url=self.llm_patient_base_url,
-                api_key=self.llm_patient_api_key,
-            )
-
-        if self.llm_hedge_enabled and self.rag_runtime_enabled:
-            self._validate_scene_llm_profile(
-                profile_prefix="CG_LLM_HEDGE",
-                provider_code=self.llm_hedge_provider_code,
-                model_name=self.llm_hedge_model_name,
-                base_url=self.llm_hedge_base_url,
-                api_key=self.llm_hedge_api_key,
-            )
-
         if self.qwen_vision_enabled:
             _require_non_empty("CG_QWEN_VISION_BASE_URL", self.qwen_vision_base_url)
             _require_non_empty("CG_QWEN_VISION_API_KEY", self.qwen_vision_api_key)
-            _require_non_empty("CG_QWEN_VISION_MODEL", self.qwen_vision_model)
-        if self.rag_runtime_enabled and self.rag_embedding_provider == "HASHING":
-            raise ValueError("The full-chain runtime forbids HASHING embeddings when RAG is enabled")
-
-        if rag_dependencies_required:
-            _require_non_empty("CG_LLM_BASE_URL", self.llm_base_url)
-            _require_non_empty("CG_LLM_API_KEY", self.llm_api_key)
-
-        if rag_dependencies_required and self.rag_embedding_provider != "HASHING":
-            _require_non_empty("CG_RAG_EMBEDDING_BASE_URL", self.rag_embedding_base_url)
-            _require_non_empty("CG_RAG_EMBEDDING_API_KEY", self.rag_embedding_api_key)
-
-        if rag_dependencies_required and self.rag_vector_store_type == "OPENSEARCH":
-            if not self.opensearch_hosts:
-                raise ValueError("CG_RAG_VECTOR_STORE_TYPE='OPENSEARCH' requires CG_OPENSEARCH_HOSTS")
-
-        modules = [
-            ("quality", self.model_quality_enabled, self.model_quality_impl_type, "CG_MODEL_QUALITY_IMPL_TYPE"),
-            ("tooth_detect", self.model_tooth_detect_enabled, self.model_tooth_detect_impl_type, "CG_MODEL_TOOTH_DETECT_IMPL_TYPE"),
-            ("segmentation", self.model_segmentation_enabled, self.model_segmentation_impl_type, "CG_MODEL_SEGMENTATION_IMPL_TYPE"),
-            ("grading", self.model_grading_enabled, self.model_grading_impl_type, "CG_MODEL_GRADING_IMPL_TYPE"),
-            ("risk", self.model_risk_enabled, self.model_risk_impl_type, "CG_MODEL_RISK_IMPL_TYPE"),
-        ]
-        for module_name, enabled, impl_type, env_name in modules:
-            validate_manifest_assets = module_name in {"segmentation", "grading"} and self.strict_model_startup_validation
-            if validate_manifest_assets:
-                _require_manifest_backed_model_assets(
-                    module_name,
-                    enabled,
-                    impl_type,
-                    self.model_segmentation_manifest_path if module_name == "segmentation" else self.model_grading_manifest_path,
-                )
-                continue
-
-            if self.strict_model_startup_validation:
-                _require_model_weights_if_enabled(
-                    self.model_weights_dir,
-                    module_name,
-                    enabled,
-                    impl_type,
-                )
-
+        if self.model_disease_detect_enabled:
+            for name, value in (
+                ("CG_MODEL_DISEASE_DETECT_CHECKPOINT_PATH", self.model_disease_detect_checkpoint_path),
+                ("CG_MODEL_DISEASE_DETECT_METADATA_PATH", self.model_disease_detect_metadata_path),
+            ):
+                _require_non_empty(name, value)
+                if self.strict_model_startup_validation and not _resolve_project_path(value).is_file():
+                    raise ValueError(f"Configuration {name} does not point to a readable file: {value}")
+        if self.strict_model_startup_validation:
+            _require_manifest_backed_model_assets(
+                "segmentation", self.model_segmentation_enabled, self.model_segmentation_impl_type, self.model_segmentation_manifest_path
+            )
+            _require_manifest_backed_model_assets(
+                "grading", self.model_grading_enabled, self.model_grading_impl_type, self.model_grading_manifest_path
+            )
         log.info("CariesGuard runtime pipeline=FULL_CHAIN")
-        log.info("LLM provider=%s model=%s", self.llm_provider_code, self.llm_model_name)
-        if self.llm_scene_routing_enabled:
-            log.info(
-                "LLM scene routing enabled doctor=%s/%s patient=%s/%s",
-                self.llm_doctor_provider_code,
-                self.llm_doctor_model_name,
-                self.llm_patient_provider_code,
-                self.llm_patient_model_name,
-            )
-        if self.llm_hedge_enabled:
-            log.info(
-                "LLM hedge enabled delayMs=%s secondary=%s/%s",
-                self.llm_hedge_delay_ms,
-                self.llm_hedge_provider_code,
-                self.llm_hedge_model_name,
-            )
-        if self.qwen_vision_enabled:
-            log.info("Qwen Vision enabled model=%s", self.qwen_vision_model)
-        if self.analysis_kb_enhancement_enabled:
-            log.info("Analysis KB enhancement enabled kb=%s", self.analysis_kb_code)
-        if self.rag_runtime_enabled:
-            log.info("Embedding provider=%s store=%s", self.rag_embedding_provider, self.rag_vector_store_type)
-        else:
-            log.info("RAG runtime disabled")
-        enabled_modules = [
-            f"{name}({impl_type})"
-            for name, enabled, impl_type in [
-                ("Quality", self.model_quality_enabled, self.model_quality_impl_type),
-                ("Detect", self.model_tooth_detect_enabled, self.model_tooth_detect_impl_type),
-                ("Segment", self.model_segmentation_enabled, self.model_segmentation_impl_type),
-                ("Grading", self.model_grading_enabled, self.model_grading_impl_type),
-                ("Risk", self.model_risk_enabled, self.model_risk_impl_type),
-            ]
-            if enabled
-        ]
-        log.info("Enabled modules=%s", ", ".join(enabled_modules) if enabled_modules else "None")
-
-    def _validate_scene_llm_profile(
-        self,
-        *,
-        profile_prefix: str,
-        provider_code: str,
-        model_name: str,
-        base_url: str,
-        api_key: str,
-    ) -> None:
-        _require_non_empty(f"{profile_prefix}_PROVIDER_CODE", provider_code)
-        _require_non_empty(f"{profile_prefix}_MODEL_NAME", model_name)
-        _require_non_empty(f"{profile_prefix}_BASE_URL", base_url)
-        _require_non_empty(f"{profile_prefix}_API_KEY", api_key)
-
-    def get_llm_profile_for_scene(self, scene: str) -> dict[str, str]:
-        key = (scene or "").strip().upper()
-        if not self.llm_scene_routing_enabled:
-            return {
-                "providerCode": self.llm_provider_code,
-                "modelName": self.llm_model_name,
-                "baseUrl": self.llm_base_url,
-                "apiKey": self.llm_api_key,
-            }
-        if key == "PATIENT_EXPLAIN":
-            return {
-                "providerCode": self.llm_patient_provider_code,
-                "modelName": self.llm_patient_model_name,
-                "baseUrl": self.llm_patient_base_url,
-                "apiKey": self.llm_patient_api_key,
-            }
-        return {
-            "providerCode": self.llm_doctor_provider_code,
-            "modelName": self.llm_doctor_model_name,
-            "baseUrl": self.llm_doctor_base_url,
-            "apiKey": self.llm_doctor_api_key,
-        }
-
-    def get_llm_hedge_profile(self) -> dict[str, str]:
-        return {
-            "providerCode": self.llm_hedge_provider_code,
-            "modelName": self.llm_hedge_model_name,
-            "baseUrl": self.llm_hedge_base_url,
-            "apiKey": self.llm_hedge_api_key,
-        }
 
     def build_mysql_url(self) -> str:
         return (

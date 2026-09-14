@@ -14,6 +14,7 @@ from app.core.time_utils import local_naive_iso_now
 from app.infra.model.model_assets import ModelAssets
 from app.infra.model.model_registry import ModelRegistry
 from app.pipelines.detection_pipeline import DetectionPipeline
+from app.pipelines.disease_detection_pipeline import DiseaseDetectionPipeline
 from app.pipelines.grading_pipeline import GradingPipeline, GradingResult
 from app.pipelines.quality_pipeline import QualityPipeline
 from app.pipelines.segmentation_pipeline import SegmentationPipeline, SegmentationResult
@@ -52,6 +53,7 @@ class InferencePipeline:
         model_assets: ModelAssets,
         quality_pipeline: QualityPipeline,
         detection_pipeline: DetectionPipeline,
+        disease_detection_pipeline: DiseaseDetectionPipeline,
         segmentation_pipeline: SegmentationPipeline,
         grading_pipeline: GradingPipeline,
         risk_service: RiskService,
@@ -65,6 +67,7 @@ class InferencePipeline:
         self.model_assets = model_assets
         self.quality_pipeline = quality_pipeline
         self.detection_pipeline = detection_pipeline
+        self.disease_detection_pipeline = disease_detection_pipeline
         self.segmentation_pipeline = segmentation_pipeline
         self.grading_pipeline = grading_pipeline
         self.risk_service = risk_service
@@ -86,7 +89,7 @@ class InferencePipeline:
                 ["quality", "tooth_detect", "segmentation", "grading"],
                 self.model_registry,
             )
-            image_results, visual_assets, lesion_results, tooth_detections = self._process_images(
+            image_results, visual_assets, lesion_results, tooth_detections, disease_detections = self._process_images(
                 task=task,
                 runtime_images=runtime_images,
                 workspace=workspace,
@@ -105,6 +108,7 @@ class InferencePipeline:
                 image_results=image_results,
                 lesion_results=lesion_results,
                 tooth_detections=tooth_detections,
+                disease_detections=disease_detections,
                 visual_assets=visual_assets,
                 risk_assessment=risk_assessment,
                 runtime_job=runtime_job,
@@ -225,7 +229,13 @@ class InferencePipeline:
         runtime_images: list[RuntimeImage],
         workspace: Path,
         runtime_job_id: int | None,
-    ) -> tuple[list[dict[str, Any]], list[VisualAsset], list[dict[str, Any]], list[dict[str, Any]]]:
+    ) -> tuple[
+        list[dict[str, Any]],
+        list[VisualAsset],
+        list[dict[str, Any]],
+        list[dict[str, Any]],
+        list[dict[str, Any]],
+    ]:
         visual_assets: list[VisualAsset] = []
         lesion_results: list[dict[str, Any]] = []
         image_results: list[dict[str, Any]] = []
@@ -239,12 +249,14 @@ class InferencePipeline:
             quality_by_image[runtime_image.request.image_id] = result
 
         tooth_detections_schema = self.detection_pipeline.detect_all(image_inputs, fetched_images)
+        disease_detections = self.disease_detection_pipeline.detect_all(image_inputs, fetched_images)
         for item in tooth_detections_schema:
             tooth_detections_all.append(dump_camel(item))
 
         for runtime_image in runtime_images:
             image_id = runtime_image.request.image_id
             detections = [item for item in tooth_detections_schema if item.image_id in {None, image_id}]
+            disease_evidence = [item for item in disease_detections if item.get("imageId") in {None, image_id}]
             output_dir = workspace / "outputs" / str(image_id or "unknown")
             segmentation = self.segmentation_pipeline.segment(
                 runtime_image.request,
@@ -269,6 +281,7 @@ class InferencePipeline:
                 grading=grading,
                 quality_result=quality_by_image.get(image_id),
                 detections=[dump_camel(item) for item in detections],
+                disease_detections=disease_evidence,
                 visual_assets=uploaded,
             )
             image_results.append(image_result)
@@ -281,7 +294,7 @@ class InferencePipeline:
                     uncertainty_score=grading.uncertainty_score,
                     result_json=image_result,
                 )
-        return image_results, visual_assets, lesion_results, tooth_detections_all
+        return image_results, visual_assets, lesion_results, tooth_detections_all, disease_detections
 
     def _upload_visuals(self, task: AnalyzeRequest, image: ImageInput, segmentation: SegmentationResult) -> list[VisualAsset]:
         if self.visual_asset_service is None:
@@ -379,6 +392,7 @@ class InferencePipeline:
         image_results: list[dict[str, Any]],
         lesion_results: list[dict[str, Any]],
         tooth_detections: list[dict[str, Any]],
+        disease_detections: list[dict[str, Any]],
         visual_assets: list[VisualAsset],
         risk_assessment: Any,
         runtime_job: dict[str, Any],
@@ -407,6 +421,8 @@ class InferencePipeline:
             "aiRuntimeJobId": runtime_job.get("id"),
             "aiRuntimeJobNo": runtime_job.get("job_no"),
             "toothDetections": tooth_detections,
+            "diseaseDetection": self.disease_detection_pipeline.runtime_info(),
+            "diseaseDetections": disease_detections,
             "lesionResults": lesion_results,
             "imageResults": image_results,
             "riskAssessment": dump_camel(risk_assessment),
@@ -458,11 +474,18 @@ class InferencePipeline:
         grading: GradingResult,
         quality_result: Any,
         detections: list[dict[str, Any]],
+        disease_detections: list[dict[str, Any]],
         visual_assets: list[VisualAsset],
     ) -> dict[str, Any]:
         review_reason = None
+        disease_alert = any(
+            str(item.get("diseaseCode") or "").upper() in {"CARIES", "DEEP_CARIES", "PERIAPICAL_LESION"}
+            for item in disease_detections
+        )
         if grading.needs_review:
             review_reason = "HIGH_UNCERTAINTY"
+        if disease_alert:
+            review_reason = "DISEASE_MODEL_EVIDENCE" if review_reason is None else f"{review_reason},DISEASE_MODEL_EVIDENCE"
         if quality_result is not None and getattr(quality_result, "check_result_code", "PASS") != "PASS":
             review_reason = "QUALITY_ALERT" if review_reason is None else f"{review_reason},QUALITY_ALERT"
         return {
@@ -475,9 +498,10 @@ class InferencePipeline:
             "gradingLabel": grading.grading_label,
             "confidenceScore": grading.confidence_score,
             "uncertaintyScore": grading.uncertainty_score,
-            "needsReview": grading.needs_review,
+            "needsReview": grading.needs_review or disease_alert,
             "reviewReason": review_reason,
             "detections": detections,
+            "diseaseDetections": disease_detections,
             "segmentationRegions": segmentation.regions,
             "visualAssets": [dump_camel(item) for item in visual_assets],
             "gradingRawResult": grading.raw_result,

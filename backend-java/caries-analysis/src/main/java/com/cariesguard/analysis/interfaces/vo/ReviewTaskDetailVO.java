@@ -11,7 +11,6 @@ public class ReviewTaskDetailVO {
     private AnalysisDetailViewVO.ImageDetailVO image;
     private AiResultVO aiResult;
     private DoctorDraftVO doctorDraft;
-    private SecondOpinionVO secondOpinion;
     private ReviewOptionsVO reviewOptions;
 
     @Data
@@ -41,21 +40,14 @@ public class ReviewTaskDetailVO {
     public static class DoctorDraftVO {
         private Long draftId;
         private Integer draftVersion;
-        private String doctorConfirmedGrade;
-        private Boolean agreedWithAi;
-        private String correctionReasonCategoryCode;
-        private String reasonNote;
+        private String revisedGrade;
+        private List<DetectionBoxVO> revisedDetections;
+        private List<String> reasonTags;
+        private String note;
+        private String statusCode;
     }
 
     @Data
-    public static class SecondOpinionVO {
-        private String secondOpinionNo;
-        private String statusCode;
-        private String requestedBy;
-        private String requestedAt;
-        private String comment;
-    }
-
     @Data
     public static class ReviewOptionsVO {
         private List<String> gradeOptions;

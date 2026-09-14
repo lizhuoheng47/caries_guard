@@ -67,6 +67,28 @@
         </article>
       </section>
 
+      <section v-if="canOpenResult" class="med-card">
+        <div class="med-card-inner provenance-panel">
+          <div class="med-section-head compact-head">
+            <h2 class="med-section-title">推理来源</h2>
+            <span class="med-chip">真实运行记录</span>
+          </div>
+          <div class="provenance-grid">
+            <div v-for="item in provenanceItems" :key="item.name" class="provenance-item">
+              <span>{{ item.name }}</span>
+              <strong>{{ item.source }}</strong>
+              <small>{{ item.detail }}</small>
+            </div>
+          </div>
+          <div v-if="diseaseDetections.length" class="disease-evidence">
+            <span class="queue-label">DENTEX 疾病检测证据</span>
+            <span v-for="(item, index) in diseaseDetections" :key="`${item.imageId}-${index}`" class="med-chip med-chip--warn">
+              {{ diseaseLabel(item.diseaseCode) }} · {{ formatPercent(item.confidenceScore) }}
+            </span>
+          </div>
+        </div>
+      </section>
+
       <section v-if="canOpenResult && confidenceWarning" class="med-note detail-warning">
         当前结果置信度低于工作台阈值，建议结合复核工作台进行人工确认后再生成正式报告。
       </section>
@@ -213,7 +235,7 @@
               <div class="med-section-head">
                 <h2 class="med-section-title">证据与建议</h2>
                 <span v-if="detail.summary.citations.length" class="med-chip med-chip--accent">
-                  RAG {{ detail.summary.knowledgeVersion || '' }}
+                  已关联证据 {{ detail.summary.knowledgeVersion || '' }}
                 </span>
                 <span v-else class="med-chip">未启用知识增强</span>
             </div>
@@ -341,6 +363,28 @@ const bboxOverlays = computed<(AnalysisLesion & { bbox: [number, number, number,
   )
 )
 const confidenceWarning = computed(() => Number(detail.value?.summary.confidence || 0) > 0 && Number(detail.value?.summary.confidence || 0) < settings.confidenceThreshold)
+const rawResult = computed<Record<string, any>>(() => detail.value?.summary.rawResultJson || {})
+const diseaseDetections = computed<Array<{ imageId?: number; diseaseCode?: string; confidenceScore?: number }>>(() =>
+  Array.isArray(rawResult.value.diseaseDetections) ? rawResult.value.diseaseDetections : []
+)
+const provenanceItems = computed(() => {
+  const disease = rawResult.value.diseaseDetection || {}
+  const source = (implType: unknown) => String(implType || '').toUpperCase() === 'ML_MODEL' ? '训练模型' : '规则算法'
+  return [
+    { name: '影像质量', source: source(rawResult.value.qualityImplType), detail: String(rawResult.value.qualityImplType || 'UNKNOWN') },
+    { name: '牙位定位', source: source(rawResult.value.toothDetectionImplType), detail: String(rawResult.value.toothDetectionImplType || 'UNKNOWN') },
+    { name: '病灶分割', source: source(rawResult.value.segmentationImplType), detail: String(rawResult.value.segmentationImplType || 'UNKNOWN') },
+    { name: '疾病检测', source: disease.enabled ? '训练模型' : '未启用', detail: disease.modelCode || 'DENTEX detector disabled' },
+    { name: '龋损分级', source: source(rawResult.value.gradingImplType), detail: String(rawResult.value.gradingImplType || 'UNKNOWN') },
+  ]
+})
+
+const diseaseLabel = (code?: string) => ({
+  CARIES: '龋病',
+  DEEP_CARIES: '深龋',
+  PERIAPICAL_LESION: '根尖周病灶',
+  IMPACTED: '阻生牙',
+}[String(code || '').toUpperCase()] || code || '未知类别')
 
 const goBack = () => router.push('/analysis')
 const openReview = () => detail.value && router.push(`/review/${detail.value.task.id}`)
@@ -506,6 +550,37 @@ onUnmounted(() => {
   gap: 6px;
   border-color: rgba(255, 99, 110, 0.28);
   background: rgba(255, 99, 110, 0.08);
+}
+
+.provenance-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.provenance-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.provenance-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--med-border);
+  border-radius: 10px;
+}
+
+.provenance-item small {
+  color: var(--med-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.disease-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .detail-main-grid {

@@ -24,6 +24,8 @@ public interface ReportRecordRepository {
 
     List<ReportRecordModel> listByCaseId(Long caseId);
 
+    List<ReportRecordModel> listByOrgId(Long orgId, int limit);
+
     void createAttachment(ReportAttachmentCreateModel model);
 
     Optional<ReportAttachmentModel> findAttachment(Long attachmentId);

@@ -9,8 +9,6 @@ export interface WorkspaceSettings {
   riskAlertThreshold: number
   reportIncludeCitations: boolean
   reportIncludeTreatmentPlan: boolean
-  notifyTaskFinished: boolean
-  notifyReviewReady: boolean
   autoOpenNewestReview: boolean
   defaultImageMode: WorkspaceImageMode
 }
@@ -26,8 +24,6 @@ export const defaultWorkspaceSettings: WorkspaceSettings = {
   riskAlertThreshold: 0.35,
   reportIncludeCitations: true,
   reportIncludeTreatmentPlan: true,
-  notifyTaskFinished: true,
-  notifyReviewReady: true,
   autoOpenNewestReview: true,
   defaultImageMode: 'overlay',
 }
@@ -49,8 +45,6 @@ const normalizeSettings = (input?: Partial<WorkspaceSettings> | null): Workspace
   riskAlertThreshold: clamp(Number(input?.riskAlertThreshold ?? defaultWorkspaceSettings.riskAlertThreshold) || 0, 0.05, 0.95),
   reportIncludeCitations: input?.reportIncludeCitations ?? defaultWorkspaceSettings.reportIncludeCitations,
   reportIncludeTreatmentPlan: input?.reportIncludeTreatmentPlan ?? defaultWorkspaceSettings.reportIncludeTreatmentPlan,
-  notifyTaskFinished: input?.notifyTaskFinished ?? defaultWorkspaceSettings.notifyTaskFinished,
-  notifyReviewReady: input?.notifyReviewReady ?? defaultWorkspaceSettings.notifyReviewReady,
   autoOpenNewestReview: input?.autoOpenNewestReview ?? defaultWorkspaceSettings.autoOpenNewestReview,
   defaultImageMode: ['overlay', 'heatmap', 'original'].includes(String(input?.defaultImageMode))
     ? (input?.defaultImageMode as WorkspaceImageMode)

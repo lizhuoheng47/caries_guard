@@ -30,17 +30,20 @@ public class ReviewBffAppService {
     private final AnalysisCommandRepository analysisCommandRepository;
     private final ReviewQueueAssembler reviewQueueAssembler;
     private final ReviewTaskAssembler reviewTaskAssembler;
+    private final DoctorReviewAppService doctorReviewAppService;
 
     public ReviewBffAppService(AnalysisQueryAppService analysisQueryAppService,
                                AnaTaskRecordRepository anaTaskRecordRepository,
                                AnalysisCommandRepository analysisCommandRepository,
                                ReviewQueueAssembler reviewQueueAssembler,
-                               ReviewTaskAssembler reviewTaskAssembler) {
+                               ReviewTaskAssembler reviewTaskAssembler,
+                               DoctorReviewAppService doctorReviewAppService) {
         this.analysisQueryAppService = analysisQueryAppService;
         this.anaTaskRecordRepository = anaTaskRecordRepository;
         this.analysisCommandRepository = analysisCommandRepository;
         this.reviewQueueAssembler = reviewQueueAssembler;
         this.reviewTaskAssembler = reviewTaskAssembler;
+        this.doctorReviewAppService = doctorReviewAppService;
     }
 
     public ReviewQueuePageVO getReviewQueue(ReviewQueueQuery query) {
@@ -62,7 +65,20 @@ public class ReviewBffAppService {
         AnalysisTaskDetailVO taskDetail = resolveTaskDetail(taskIdentifier);
         AnalysisCaseModel medicalCase = analysisCommandRepository.findCase(taskDetail.caseId()).orElse(null);
         AnalysisImageModel imageModel = resolvePrimaryImage(taskDetail.caseId());
-        return reviewTaskAssembler.toDetail(taskDetail, medicalCase, imageModel);
+        ReviewTaskDetailVO detail = reviewTaskAssembler.toDetail(taskDetail, medicalCase, imageModel);
+        var draft = doctorReviewAppService.getCurrentDraft(taskDetail.taskId());
+        if (draft != null) {
+            ReviewTaskDetailVO.DoctorDraftVO doctorDraft = new ReviewTaskDetailVO.DoctorDraftVO();
+            doctorDraft.setDraftId(draft.draftId());
+            doctorDraft.setDraftVersion(draft.versionNo());
+            doctorDraft.setRevisedGrade(draft.revisedGrade());
+            doctorDraft.setRevisedDetections(draft.revisedDetections());
+            doctorDraft.setReasonTags(draft.reasonTags());
+            doctorDraft.setNote(draft.note());
+            doctorDraft.setStatusCode(draft.statusCode());
+            detail.setDoctorDraft(doctorDraft);
+        }
+        return detail;
     }
 
     private ReviewQueueItemVO toQueueItem(AnalysisTaskViewModel task) {

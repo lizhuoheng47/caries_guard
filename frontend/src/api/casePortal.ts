@@ -87,7 +87,27 @@ export interface CreateAnalysisResponse {
   taskStatusCode: string
 }
 
+export interface PatientListItem {
+  patientId: string
+  patientNo: string
+  patientNameMasked: string
+  genderCode?: string
+  age?: number
+  phoneMasked?: string
+  status?: string
+}
+
+export interface PatientPage {
+  pageNo: number
+  pageSize: number
+  total: number
+  records: PatientListItem[]
+}
+
 export const casePortalApi = {
+  pagePatients(params: { pageNo?: number; pageSize?: number; keyword?: string }): Promise<ApiResponse<PatientPage>> {
+    return request.get('/patients', { params })
+  },
   createPatient(payload: CreatePatientPayload): Promise<ApiResponse<CreatePatientResponse>> {
     return request.post('/patients', payload)
   },

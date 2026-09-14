@@ -16,4 +16,6 @@ alembic==1.13.3
 PyYAML==6.0.2
 onnxruntime>=1.17,<2.0
 torch==2.5.1
+torchvision==0.20.1
+ultralytics==8.3.186
 torch==2.5.1

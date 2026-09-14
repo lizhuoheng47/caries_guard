@@ -5,13 +5,6 @@
         <h1>用户中心</h1>
         <p class="subtitle">专注口腔健康 · 智能精准诊断</p>
       </div>
-      <button class="bell" aria-label="通知">
-        <svg viewBox="0 0 24 24" fill="none">
-          <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-          <path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-        </svg>
-        <span class="bell-dot"></span>
-      </button>
     </header>
 
     <!-- Hero card -->
@@ -33,11 +26,6 @@
               <path d="M12 56c2.6-9 10-13 20-13s17.4 4 20 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
           </div>
-          <button class="avatar-edit" aria-label="编辑头像">
-            <svg viewBox="0 0 16 16" fill="none">
-              <path d="M11 2l3 3-8 8H3v-3l8-8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-            </svg>
-          </button>
         </div>
 
         <div class="hero-meta">
@@ -117,23 +105,6 @@
       </div>
     </div>
 
-    <div class="card actions-card">
-      <div class="card-head">
-        <div class="card-title"><span class="title-bar"></span>快捷操作</div>
-      </div>
-      <div class="actions">
-        <button v-for="a in actions" :key="a.key" class="action" :class="`tone-${a.tone}`">
-          <span class="action-icon" v-html="a.icon"></span>
-          <span class="action-text">
-            <span class="action-title">{{ a.title }}</span>
-            <span class="action-sub">{{ a.sub }}</span>
-          </span>
-          <svg class="action-chev" viewBox="0 0 16 16" fill="none">
-            <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -236,16 +207,6 @@ const profile = computed(() => [
   { k: '角色列表', v: user.value.roles?.length ? user.value.roles.map(mapRoleLabel).join(' / ') : '--' },
 ])
 
-const actions = [
-  { key: 'sec',    tone: 'mint',   title: '账户安全', sub: '管理账号与安全设置',
-    icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l8 3v6c0 5-3.4 9-8 11-4.6-2-8-6-8-11V6l8-3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>` },
-  { key: 'noti',   tone: 'violet', title: '消息通知', sub: '管理订阅与提醒',
-    icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>` },
-  { key: 'export', tone: 'cyan',   title: '数据导出', sub: '导出我的诊断数据',
-    icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M7 16a4 4 0 1 1 1-7.9A6 6 0 0 1 19 11a4 4 0 0 1 0 8H7Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 12v6m0 0l-2-2m2 2l2-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>` },
-  { key: 'pref',   tone: 'amber',  title: '偏好设置', sub: '自定义系统偏好',
-    icon: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.4.9a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.5a7 7 0 0 0-2 1.2l-2.4-.9-2 3.5 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.5 2.4-.9c.6.5 1.3.9 2 1.2L10 21h4l.5-2.5c.7-.3 1.4-.7 2-1.2l2.4.9 2-3.5-2-1.5c.1-.4.1-.8.1-1.2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>` },
-]
 </script>
 
 <style scoped>
