@@ -114,7 +114,7 @@ def segment_health() -> dict:
     data = {
         "status": "UP" if ready else "DOWN",
         "ready": ready,
-        "runtimeMode": runtime.settings.ai_runtime_mode,
+        "runtimePipeline": "full_chain",
         "implementationType": adapter.impl_type.value if adapter is not None else "DISABLED",
         "modelCode": adapter.model_code if adapter is not None else None,
         "device": runtime.settings.model_device,

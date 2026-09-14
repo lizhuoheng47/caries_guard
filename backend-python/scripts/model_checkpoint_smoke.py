@@ -23,7 +23,6 @@ from app.infra.model.grading_model_adapter import GradingModelAdapter
 
 def _settings(module: str) -> Settings:
     values = {
-        "ai_runtime_mode": "real",
         "rag_runtime_enabled": False,
         "analysis_kb_enhancement_enabled": False,
         "model_quality_enabled": False,

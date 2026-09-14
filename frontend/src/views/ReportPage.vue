@@ -212,7 +212,7 @@
                 <span class="med-chip" v-if="citation.score != null">{{ formatPercent(citation.score) }}</span>
               </div>
               <p>{{ citation.excerpt || '暂无引用摘要。' }}</p>
-              <div class="med-meta med-mono">{{ citation.sourceUri || 'mock://citation' }}</div>
+              <div class="med-meta med-mono">{{ citation.sourceUri || '暂无来源' }}</div>
             </article>
           </div>
           <div v-else class="med-empty">暂无证据引用。</div>

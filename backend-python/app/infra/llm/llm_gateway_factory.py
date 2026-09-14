@@ -5,26 +5,6 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, TimeoutError
 from app.core.config import Settings
 from app.infra.llm.base_llm_client import BaseLlmClient, LlmResult
 from app.infra.llm.openai_compatible_llm_client import OpenAiCompatibleLlmClient
-from app.infra.llm.template_llm_client import TemplateLlmClient
-
-
-class FallbackLlmClient:
-    def __init__(self, primary: BaseLlmClient, fallback: BaseLlmClient) -> None:
-        self.primary = primary
-        self.fallback = fallback
-
-    def generate(self, scene: str, query: str, evidence: list[dict], context_text: str | None = None):
-        try:
-            return self.primary.generate(scene=scene, query=query, evidence=evidence, context_text=context_text)
-        except Exception:
-            return self.fallback.generate(scene=scene, query=query, evidence=evidence, context_text=context_text)
-
-    def resolve_profile(self, scene: str) -> dict[str, str]:
-        if hasattr(self.primary, "resolve_profile"):
-            return self.primary.resolve_profile(scene)
-        if hasattr(self.fallback, "resolve_profile"):
-            return self.fallback.resolve_profile(scene)
-        return {}
 
 
 class HedgedLlmClient:
@@ -152,12 +132,10 @@ class RoutedLlmClient:
 
 
 def _build_client_with_profile(settings: Settings, profile: dict[str, str]) -> BaseLlmClient:
-    provider = (profile.get("providerCode") or "MOCK").strip().upper()
+    provider = (profile.get("providerCode") or "OPENAI_COMPATIBLE").strip().upper()
     model_name = profile.get("modelName") or settings.llm_model_name
     base_url = profile.get("baseUrl") or settings.llm_base_url
     api_key = profile.get("apiKey") or settings.llm_api_key
-    if provider == "MOCK":
-        return TemplateLlmClient(settings, provider_code=provider, model_name=model_name)
     if provider in {"OPENAI", "OPENAI_COMPATIBLE", "DASHSCOPE", "DEEPSEEK", "QWEN"}:
         primary = OpenAiCompatibleLlmClient(
             settings,
@@ -166,9 +144,6 @@ def _build_client_with_profile(settings: Settings, profile: dict[str, str]) -> B
             base_url=base_url,
             api_key=api_key,
         )
-        if settings.llm_enable_fallback_mock and settings.ai_runtime_mode != "real":
-            fallback_model = f"{model_name}-fallback-mock"
-            return FallbackLlmClient(primary, TemplateLlmClient(settings, model_name=fallback_model))
         return primary
     raise ValueError(f"Unsupported CG_LLM_PROVIDER_CODE={provider}")
 

@@ -76,11 +76,8 @@ class RagOrchestrator:
         context_text: str | None,
         include_debug: bool = False,
     ) -> dict[str, Any]:
-        if self.settings.ai_runtime_mode == "real":
-            if self.settings.llm_provider_code == "MOCK":
-                raise RuntimeError("CG_AI_RUNTIME_MODE='real' requires a real LLM provider")
-            if self.settings.rag_embedding_provider == "HASHING":
-                raise RuntimeError("CG_AI_RUNTIME_MODE='real' requires a real Embedding provider")
+        if self.settings.rag_embedding_provider == "HASHING":
+            raise RuntimeError("The full-chain runtime requires a real embedding provider")
 
         started = time.perf_counter()
         answer_top_k = self._resolve_answer_top_k(top_k)
@@ -365,9 +362,7 @@ class RagOrchestrator:
                         graph_hits = hits
                 except Exception as exc:
                     channel_errors[channel] = str(exc)
-                    if self.settings.ai_runtime_mode == "real":
-                        raise RuntimeError(f"{channel} retrieval failed: {exc}") from exc
-                    log.warning("rag retrieval channel failed channel=%s error=%s", channel, exc)
+                    raise RuntimeError(f"{channel} retrieval failed: {exc}") from exc
 
         total_retrieval_ms = int((time.perf_counter() - retrieval_started) * 1000)
         retrieval_meta = {

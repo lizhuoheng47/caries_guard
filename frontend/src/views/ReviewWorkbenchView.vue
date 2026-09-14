@@ -359,7 +359,7 @@ const renderedDoctorDetections = computed(() => {
 
 const shouldRenderSyntheticImage = computed(() => {
   const imageUrl = currentWorkbench.value?.image?.imageUrl ?? ''
-  return !imageUrl || /mock|demo/i.test(imageUrl)
+  return !imageUrl
 })
 
 const syntheticTeeth = computed<SyntheticTooth[]>(() => {

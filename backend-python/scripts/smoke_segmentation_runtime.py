@@ -78,7 +78,6 @@ def main() -> int:
     if not image_path.is_file():
         raise FileNotFoundError(f"input image does not exist: {image_path}")
 
-    os.environ["CG_AI_RUNTIME_MODE"] = "hybrid"
     os.environ["CG_MODEL_SEGMENTATION_ENABLED"] = "true"
     os.environ["CG_MODEL_SEGMENTATION_IMPL_TYPE"] = "ML_MODEL"
     os.environ["CG_MODEL_DEVICE"] = args.device
@@ -118,7 +117,7 @@ def main() -> int:
     mask = np.asarray(Image.open(result.mask_path).convert("L"), dtype=np.uint8) > 0
     report: dict[str, Any] = {
         "modelCode": assets.segmentation_manifest.model_code,
-        "runtimeMode": settings.ai_runtime_mode,
+        "runtimePipeline": "full_chain",
         "implementationType": result.segmentation_impl_type,
         "device": result.raw_result.get("device"),
         "inputImage": str(image_path),

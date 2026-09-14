@@ -10,7 +10,7 @@ from app.services.analysis_asset_service import AnalysisAssetService
 
 
 class ModelSwitchService:
-    """Exposes the current runtime mode and per-module adapter status."""
+    """Exposes the fixed full-chain runtime and per-module adapter status."""
 
     def __init__(
         self,

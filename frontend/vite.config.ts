@@ -4,11 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 // https://vite.dev/config/
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  if (command === 'build' && env.VITE_USE_MOCK === 'true') {
-    throw new Error('VITE_USE_MOCK=true is forbidden in production builds')
-  }
 
   return {
     plugins: [

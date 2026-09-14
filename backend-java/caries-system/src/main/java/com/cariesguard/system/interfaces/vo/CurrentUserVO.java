@@ -20,6 +20,5 @@ public record CurrentUserVO(
         LocalDateTime lastLoginAt,
         String status,
         List<String> roles,
-        List<String> permissions,
-        boolean competitionModeEnabled) {
+        List<String> permissions) {
 }

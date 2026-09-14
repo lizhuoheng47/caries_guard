@@ -18,34 +18,21 @@ import com.cariesguard.system.interfaces.vo.SystemRoleDetailVO;
 import com.cariesguard.system.interfaces.vo.SystemRoleListItemVO;
 import com.cariesguard.system.interfaces.vo.SystemUserDetailVO;
 import com.cariesguard.system.interfaces.vo.SystemUserListItemVO;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SystemAdminQueryAppService {
 
-    private static final Logger log = LoggerFactory.getLogger(SystemAdminQueryAppService.class);
-
     private static final String MODULE_CODE = "SYSTEM";
 
     private final SystemAdminQueryRepository systemAdminQueryRepository;
     private final SystemDataScopeService systemDataScopeService;
-    private final CompetitionExposureService competitionExposureService;
-    private final CompetitionMenuProjectionService competitionMenuProjectionService;
 
     public SystemAdminQueryAppService(SystemAdminQueryRepository systemAdminQueryRepository,
-                                      SystemDataScopeService systemDataScopeService,
-                                      CompetitionExposureService competitionExposureService,
-                                      CompetitionMenuProjectionService competitionMenuProjectionService) {
+                                      SystemDataScopeService systemDataScopeService) {
         this.systemAdminQueryRepository = systemAdminQueryRepository;
         this.systemDataScopeService = systemDataScopeService;
-        this.competitionExposureService = competitionExposureService;
-        this.competitionMenuProjectionService = competitionMenuProjectionService;
     }
 
     public PageResultVO<SystemUserListItemVO> pageUsers(int pageNo,
@@ -76,19 +63,9 @@ public class SystemAdminQueryAppService {
     }
 
     public List<SystemMenuListItemVO> listMenus(String status) {
-        List<SystemMenuListItemVO> result = systemAdminQueryRepository.listMenus(systemDataScopeService.currentScope(MODULE_CODE), status).stream()
-                .filter(this::isMenuExposed)
-                .map(competitionMenuProjectionService::project)
-                .sorted(Comparator.comparingInt(SystemMenuSummaryModel::orderNum)
-                        .thenComparing(SystemMenuSummaryModel::menuId))
+        return systemAdminQueryRepository.listMenus(systemDataScopeService.currentScope(MODULE_CODE), status).stream()
                 .map(this::toMenuVO)
                 .toList();
-
-        if (competitionExposureService.isEnabled()) {
-            log.info("Competition Mode Menu Snapshot - Total: {}", result.size());
-            result.forEach(m -> log.info(" - Menu: [{}] Route: [{}]", m.menuName(), m.routePath()));
-        }
-        return result;
     }
 
     public SystemUserDetailVO getUser(Long userId) {
@@ -106,18 +83,8 @@ public class SystemAdminQueryAppService {
 
     public SystemMenuDetailVO getMenu(Long menuId) {
         return systemAdminQueryRepository.findMenuDetail(systemDataScopeService.currentScope(MODULE_CODE), menuId)
-                .filter(this::isMenuExposed)
-                .map(competitionMenuProjectionService::project)
                 .map(this::toMenuDetailVO)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.BUSINESS_ERROR.code(), "System menu does not exist"));
-    }
-
-    private boolean isMenuExposed(SystemMenuSummaryModel item) {
-        return competitionExposureService.isMenuExposed(item.routePath(), item.permissionCode());
-    }
-
-    private boolean isMenuExposed(SystemMenuDetailModel item) {
-        return competitionExposureService.isMenuExposed(item.routePath(), item.permissionCode());
     }
 
     private SystemUserListItemVO toUserVO(SystemUserSummaryModel item) {
@@ -198,20 +165,7 @@ public class SystemAdminQueryAppService {
                 item.orgId(),
                 item.status(),
                 item.remark(),
-                filterExposedMenuIds(scope, item.menuIds()));
-    }
-
-    private List<Long> filterExposedMenuIds(DataScopeContext scope, List<Long> menuIds) {
-        if (!competitionExposureService.isEnabled() || menuIds == null || menuIds.isEmpty()) {
-            return menuIds == null ? List.of() : menuIds;
-        }
-        LinkedHashSet<Long> exposedMenuIds = systemAdminQueryRepository.findMenusByIds(scope, menuIds).stream()
-                .filter(this::isMenuExposed)
-                .map(SystemMenuSummaryModel::menuId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        return menuIds.stream()
-                .filter(exposedMenuIds::contains)
-                .toList();
+                item.menuIds() == null ? List.of() : item.menuIds());
     }
 
     private SystemMenuDetailVO toMenuDetailVO(SystemMenuDetailModel item) {

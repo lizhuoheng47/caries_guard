@@ -32,7 +32,7 @@ class AnalysisAssetService:
             missing_items.extend(status.missing_items)
         return RuntimeSnapshot(
             pipeline_version="analysis-v2",
-            mode=self._settings.ai_runtime_mode,
+            mode="full_chain",
             modules=modules,
             missing_items=missing_items,
         )

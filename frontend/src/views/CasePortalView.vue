@@ -462,7 +462,7 @@ const submitNewCase = async () => {
   }
 
   const currentUserId = authStore.user?.id
-  if (!currentUserId && !import.meta.env.VITE_USE_MOCK) {
+  if (!currentUserId) {
     inlineError.value = '当前登录信息不完整，请重新登录后再试。'
     notificationStore.error('无法创建病例', inlineError.value)
     return

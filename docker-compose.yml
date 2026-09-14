@@ -2,7 +2,6 @@ services:
   mysql:
     image: mysql:8.4
     container_name: caries-mysql
-    profiles: ["dev", "competition", "staging-real"]
     environment:
       MYSQL_ROOT_PASSWORD: ${CARIES_MYSQL_PASSWORD:-1234}
       TZ: Asia/Shanghai
@@ -26,7 +25,6 @@ services:
   mysql-init:
     image: mysql:8.4
     container_name: caries-mysql-init
-    profiles: ["dev", "competition", "staging-real"]
     depends_on:
       mysql:
         condition: service_healthy
@@ -50,7 +48,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: caries-redis
-    profiles: ["dev", "competition", "staging-real"]
     ports:
       - "${CARIES_REDIS_HOST_PORT:-16379}:6379"
     healthcheck:
@@ -64,7 +61,6 @@ services:
   rabbitmq:
     image: rabbitmq:3.13-management
     container_name: caries-rabbitmq
-    profiles: ["dev", "competition", "staging-real"]
     environment:
       RABBITMQ_DEFAULT_USER: ${CARIES_RABBIT_USERNAME:-guest}
       RABBITMQ_DEFAULT_PASS: ${CARIES_RABBIT_PASSWORD:-guest}
@@ -82,7 +78,6 @@ services:
   minio:
     image: minio/minio:latest
     container_name: caries-minio
-    profiles: ["dev", "competition", "staging-real"]
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${CARIES_MINIO_ACCESS_KEY:-minioadmin}
@@ -98,7 +93,6 @@ services:
   minio-init:
     image: minio/mc:latest
     container_name: caries-minio-init
-    profiles: ["dev", "competition", "staging-real"]
     depends_on:
       minio:
         condition: service_started
@@ -138,7 +132,6 @@ services:
       context: ./backend-java
       dockerfile: Dockerfile
     container_name: caries-backend-java
-    profiles: ["dev", "competition", "staging-real"]
     environment:
       SPRING_PROFILES_ACTIVE: docker
       CARIES_MYSQL_HOST: mysql
@@ -166,7 +159,6 @@ services:
       CARIES_BUCKET_EXPORT: ${CARIES_BUCKET_EXPORT:-caries-export}
       CARIES_ANALYSIS_CALLBACK_SECRET: ${CARIES_ANALYSIS_CALLBACK_SECRET:-docker-change-me-to-a-strong-analysis-callback-secret}
       CARIES_ANALYSIS_MODEL_VERSION: ${CARIES_ANALYSIS_MODEL_VERSION:-caries-v1}
-      CARIES_COMPETITION_MODE_ENABLED: ${CARIES_COMPETITION_MODE_ENABLED:-true}
       TZ: Asia/Shanghai
     ports:
       - "${CARIES_BACKEND_JAVA_HOST_PORT:-8080}:8080"
@@ -194,7 +186,7 @@ services:
       context: ./backend-python
       dockerfile: Dockerfile
     container_name: caries-backend-python
-    profiles: ["dev", "competition", "staging-real"]
+    gpus: all
     environment:
       CG_RABBIT_HOST: rabbitmq
       CG_RABBIT_PORT: 5672
@@ -226,18 +218,22 @@ services:
       CG_QWEN_VISION_MODEL: ${CG_QWEN_VISION_MODEL:-qwen3-vl-plus}
       CG_QWEN_VISION_BASE_URL: ${CG_QWEN_VISION_BASE_URL:-}
       CG_QWEN_VISION_API_KEY: ${CG_QWEN_VISION_API_KEY:-}
-      CG_AI_RUNTIME_MODE: ${CG_AI_RUNTIME_MODE}
-      CG_MODEL_QUALITY_ENABLED: ${CG_MODEL_QUALITY_ENABLED}
-      CG_MODEL_QUALITY_IMPL_TYPE: ${CG_MODEL_QUALITY_IMPL_TYPE:-HEURISTIC}
-      CG_MODEL_TOOTH_DETECT_ENABLED: ${CG_MODEL_TOOTH_DETECT_ENABLED}
-      CG_MODEL_TOOTH_DETECT_IMPL_TYPE: ${CG_MODEL_TOOTH_DETECT_IMPL_TYPE:-HEURISTIC}
-      CG_MODEL_SEGMENTATION_ENABLED: ${CG_MODEL_SEGMENTATION_ENABLED}
-      CG_MODEL_SEGMENTATION_IMPL_TYPE: ${CG_MODEL_SEGMENTATION_IMPL_TYPE:-HEURISTIC}
-      CG_MODEL_GRADING_ENABLED: ${CG_MODEL_GRADING_ENABLED}
-      CG_MODEL_GRADING_IMPL_TYPE: ${CG_MODEL_GRADING_IMPL_TYPE:-HEURISTIC}
-      CG_MODEL_RISK_ENABLED: ${CG_MODEL_RISK_ENABLED}
-      CG_MODEL_RISK_IMPL_TYPE: ${CG_MODEL_RISK_IMPL_TYPE:-HEURISTIC}
-      CG_MODEL_DEVICE: ${CG_MODEL_DEVICE:-cpu}
+      # The project has one runtime path. Rules remain explicit where no validated
+      # checkpoint exists; the trained DC1000 TorchScript model handles segmentation.
+      CG_MODEL_QUALITY_ENABLED: "true"
+      CG_MODEL_QUALITY_IMPL_TYPE: HEURISTIC
+      CG_MODEL_TOOTH_DETECT_ENABLED: "true"
+      CG_MODEL_TOOTH_DETECT_IMPL_TYPE: HEURISTIC
+      CG_MODEL_SEGMENTATION_ENABLED: "true"
+      CG_MODEL_SEGMENTATION_IMPL_TYPE: ML_MODEL
+      CG_MODEL_GRADING_ENABLED: "true"
+      CG_MODEL_GRADING_IMPL_TYPE: HEURISTIC
+      CG_MODEL_RISK_ENABLED: "true"
+      CG_MODEL_RISK_IMPL_TYPE: HEURISTIC
+      CG_MODEL_DEVICE: ${CG_MODEL_DEVICE:-cuda:0}
+      CG_STRICT_MODEL_STARTUP_VALIDATION: "true"
+      CG_LOCAL_SEGMENTATION_API_ENABLED: "true"
+      CG_RAG_RUNTIME_ENABLED: "false"
       CG_MODEL_WEIGHTS_DIR: ${CG_MODEL_WEIGHTS_DIR:-/app/model-weights}
       CG_MODEL_SEGMENTATION_MANIFEST_PATH: ${CG_MODEL_SEGMENTATION_MANIFEST_PATH:-/app/assets/models/manifests/segmentation_v1.yaml}
       CG_MODEL_GRADING_MANIFEST_PATH: ${CG_MODEL_GRADING_MANIFEST_PATH:-/app/assets/models/manifests/grading_v1.yaml}
@@ -266,6 +262,26 @@ services:
         condition: service_completed_successfully
       backend-java:
         condition: service_healthy
+    networks:
+      - caries-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: caries-frontend
+    ports:
+      - "${CARIES_FRONTEND_HOST_PORT:-5173}:80"
+    depends_on:
+      backend-java:
+        condition: service_healthy
+      backend-python:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
     networks:
       - caries-net
 

@@ -13,7 +13,6 @@ log = get_logger("cariesguard-ai.model")
 class ImplType(str, Enum):
     """Implementation type for a model adapter."""
 
-    MOCK = "MOCK"
     HEURISTIC = "HEURISTIC"
     ML_MODEL = "ML_MODEL"
 

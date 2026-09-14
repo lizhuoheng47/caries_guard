@@ -42,7 +42,7 @@ class GovernanceBootstrapService:
                 status_code="APPROVED" if adapter.get("loaded") else "CANDIDATE",
                 active_flag="1" if adapter.get("loaded") else "0",
                 metrics_json={
-                    "runtimeMode": status.get("aiRuntimeMode"),
+                    "runtimePipeline": status.get("runtimePipeline"),
                     "implType": adapter["implType"],
                     "loaded": adapter.get("loaded", False),
                     "source": "runtime-adapter-bootstrap",

@@ -386,7 +386,7 @@ class InferencePipeline:
     ) -> dict[str, Any]:
         return {
             "pipelineVersion": self.pipeline_version,
-            "mode": self.settings.ai_runtime_mode,
+            "mode": "full_chain",
             "qualityMode": self._module_mode(snapshot.get("quality")),
             "qualityImplType": self.quality_pipeline.get_last_impl_type(),
             "toothDetectionMode": self._module_mode(snapshot.get("tooth_detect")),
@@ -425,7 +425,7 @@ class InferencePipeline:
     ) -> dict[str, Any]:
         return {
             "pipelineVersion": self.pipeline_version,
-            "mode": self.settings.ai_runtime_mode,
+            "mode": "full_chain",
             "qualityMode": self._module_mode(snapshot.get("quality")),
             "qualityImplType": self._module_impl(snapshot.get("quality"), self.quality_pipeline.get_last_impl_type()),
             "toothDetectionMode": self._module_mode(snapshot.get("tooth_detect")),

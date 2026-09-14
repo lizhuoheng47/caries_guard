@@ -35,7 +35,7 @@ export const defaultWorkspaceSettings: WorkspaceSettings = {
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 const normalizeLanding = (value: unknown): WorkspaceLanding => {
-  // Migrate the retired static AI demo landing to the real upload workflow.
+  // Migrate the retired static AI landing to the upload workflow.
   if (value === 'ai-diagnosis') return 'cases'
   if (value === 'cases' || value === 'analysis' || value === 'dashboard') return value
   return defaultWorkspaceSettings.defaultLanding

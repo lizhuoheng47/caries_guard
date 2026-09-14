@@ -95,8 +95,6 @@ caries:
         requested-routing-key: ${CARIES_ANALYSIS_REQUESTED_ROUTING_KEY:analysis.requested}
         completed-routing-key: ${CARIES_ANALYSIS_COMPLETED_ROUTING_KEY:analysis.completed}
         failed-routing-key: ${CARIES_ANALYSIS_FAILED_ROUTING_KEY:analysis.failed}
-  competition:
-    enabled: ${CARIES_COMPETITION_MODE_ENABLED:false}
   password-reset:
     enabled: ${CARIES_PASSWORD_RESET_ENABLED:true}
     development-code-enabled: ${CARIES_PASSWORD_RESET_DEV_CODE_ENABLED:true}

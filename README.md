@@ -1,266 +1,109 @@
 # CariesGuard
 
-CariesGuard 是一个面向龋病筛查场景的医疗 AI 辅助决策系统，当前主线为：
+CariesGuard 是面向牙科影像筛查的辅助分析系统。当前仓库只保留一套运行方式：Docker Compose 全链路启动。
 
-`影像上传 -> AI 分析 -> 不确定性评估 -> 医生复核 -> RAG 解释 -> 风险评估 -> 报告 / 随访`
-
-AI 结果用于辅助分析、解释和风险提示，不替代医生最终诊断。
-
-> English version: [README.en.md](README.en.md)
-
-## 当前状态
-
-当前仓库已经包含一条可联调的主流程：
-
-- 新建病例
-- 上传 X 光影像
-- 创建分析任务
-- 查看分析详情
-- 进入复核工作台
-- 提交复核结果
-
-前端当前已接入的主要页面：
-
-- `dashboard/ai`：AI 业务看板
-- `analysis`：分析任务队列
-- `analysis/:taskId`：分析详情页
-- `review/:taskId`：复核工作台
-- `cases`：病例入口与影像上传
-- `rag`：RAG 控制台
-- `knowledge`：知识库页面
-
-补充说明：
-
-- 复核工作台已经支持左侧病例切换、影像联动、当前原始内容与当前修改内容展示。
-- 病例入口已经支持点击选择文件、拖拽上传，以及“创建患者 -> 创建就诊 -> 创建病例 -> 上传影像 -> 发起分析”的完整前端链路。
-- 为避免 Java `Long` 主键在前端丢精度，病例创建相关接口返回的关键 ID 已按字符串透传。
-
-## 架构概览
+## 唯一运行链路
 
 ```text
-Browser / Script
-  -> frontend/ (Vue 3 + Vite)
-  -> backend-java/ (Spring Boot, business workflow)
-      -> caries_biz (MySQL)
-      -> Redis
-      -> RabbitMQ
-      -> MinIO
-      -> backend-python/ (FastAPI, AI / RAG)
-          -> caries_ai (MySQL)
-          -> OpenSearch
-          -> Neo4j
-          -> OpenAI-compatible LLM Provider
+浏览器
+  -> Vue 前端
+  -> Java 业务服务
+  -> MySQL / Redis / MinIO / RabbitMQ
+  -> Python AI 服务
+  -> 质量规则检查
+  -> 牙位候选规则
+  -> DC1000 UNet TorchScript 病灶分割
+  -> 分级与风险规则
+  -> Java 回调、复核与报告
 ```
 
-职责边界：
+项目不再提供比赛模式、演示模式、staging 预设或独立分割服务启动入口。训练和评估脚本仍然保留，但不属于应用启动方式。
 
-- Java 负责业务主链、状态机、权限、报告、复核、随访和对外 API。
-- Python 负责 AI 推理、RAG、知识库、运行日志和模型治理。
-- RabbitMQ 负责分析任务异步投递。
-- MinIO 负责原始影像、可视化产物、报告和导出文件存储。
+> 当前只有病灶分割阶段使用已经训练的真实模型。质量、牙位候选、分级和风险阶段仍为明确标识的规则实现，不应视为临床验证模型。
 
-## 仓库结构
+## 环境要求
 
-- `frontend/`：Vue 3 + Vite + TypeScript 前端
-- `backend-java/`：Java 业务后端，多模块 Maven 工程
-- `backend-python/`：Python AI / RAG 服务，FastAPI + MQ Worker
-- `Documents/`：正式文档与说明
-- `scripts/`：启动、验收、灌数与辅助脚本
-- `infra/`：基础设施初始化资源
-- `env/`：环境预设
+- Docker Desktop
+- Docker Compose
+- Windows 使用 GPU 时，需要开启 WSL2 和 Docker Desktop NVIDIA GPU 支持
+- 推荐显卡：NVIDIA RTX 4060 8GB 或更高
 
-## 依赖与版本
+## 启动
 
-本机已验证可运行的版本：
+首次运行可复制配置模板：
 
-- Node.js `v24.13.0`
-- Python `3.10.11`
-- Java `17.0.12`
-- Maven `3.9.12`
+```powershell
+Copy-Item .env.docker.example .env
+```
 
-建议至少满足：
-
-- Node.js 20+
-- Python 3.10+
-- JDK 17+
-- Maven 3.9+
-- Docker / Docker Compose（可选，但推荐）
-
-## 快速启动
-
-### 方案 A：Docker 启动后端与基础设施，前端本地运行
-
-仓库当前的 `docker-compose.yml` 会启动：
-
-- MySQL
-- Redis
-- RabbitMQ
-- MinIO
-- OpenSearch
-- Neo4j
-- Java 后端
-- Python 后端
-
-它不会启动前端，所以前端仍需单独运行。
-
-1. 启动容器：
+然后只使用这一条启动命令：
 
 ```powershell
 docker compose up -d --build
+```
+
+等待服务健康：
+
+```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\wait-for-health.ps1
+docker compose ps
 ```
 
-2. 检查健康状态：
+访问地址：
+
+- 系统页面：http://127.0.0.1:5173
+- Java 健康检查：http://127.0.0.1:8080/actuator/health
+- Python 健康检查：http://127.0.0.1:8001/ai/v1/health
+- RabbitMQ：http://127.0.0.1:15672
+- MinIO：http://127.0.0.1:9001
+
+停止系统但保留数据库和影像：
 
 ```powershell
-Invoke-RestMethod http://127.0.0.1:8080/actuator/health
-Invoke-RestMethod http://127.0.0.1:8001/ai/v1/health
+docker compose down
 ```
 
-3. 启动前端：
+查看日志：
 
 ```powershell
-cd frontend
-npm install
-npm run dev
+docker compose logs -f backend-java backend-python frontend
 ```
 
-4. 打开页面：
+## 配置
 
-- 前端开发服务器：`http://127.0.0.1:5173`
-- Java 健康检查：`http://127.0.0.1:8080/actuator/health`
-- Python 健康检查：`http://127.0.0.1:8001/ai/v1/health`
-- RabbitMQ 管理台：`http://127.0.0.1:15672`
-- MinIO Console：`http://127.0.0.1:9001`
-- Neo4j Browser：`http://127.0.0.1:7474`
+唯一配置模板是 `.env.docker.example`。复制成 `.env` 后可以修改密码、端口、SMTP 和推理设备。
 
-Docker 默认宿主机端口还包括：
+默认使用 GPU：
 
-- MySQL：`13306`
-- Redis：`16379`
-- OpenSearch：`9200`
-
-比赛演示预设：
-
-```powershell
-docker compose --env-file env/competition.env up -d --build
+```env
+CG_MODEL_DEVICE=cuda:0
 ```
 
-### 方案 B：完全本地启动，不使用 Docker
+如果只是临时排查 GPU 环境，可改成 `cpu`；这不会切换应用模式，只改变模型运行设备。
 
-完整联调需要先准备以下依赖服务：
+## 目录
 
-- MySQL 8.x
-- Redis
-- RabbitMQ
-- MinIO
-- OpenSearch
-- Neo4j
+- `frontend/`：Vue 3 前端
+- `backend-java/`：Spring Boot 业务服务
+- `backend-python/`：FastAPI、消息消费者和模型推理
+- `backend-python/training/`：训练与评估脚本
+- `backend-python/assets/models/`：应用模型清单与发布权重
+- `data/`：原始和处理后的训练数据
+- `artifacts/`：训练结果
+- `infra/`：数据库初始化资源
+- `scripts/`：健康检查、数据准备和测试脚本
 
-默认本地配置见：
-
-- [application-local.yml](backend-java/caries-boot/src/main/resources/application-local.yml)
-- [config.py](backend-python/app/core/config.py)
-- [vite.config.ts](frontend/vite.config.ts)
-
-建议使用以下默认参数：
-
-- MySQL：`127.0.0.1:3306`，库 `caries_biz` / `caries_ai`
-- Redis：`127.0.0.1:16379`（与 `docker-compose.yml` 的宿主机端口一致；原生 Redis 可用 `CARIES_REDIS_PORT=6379` 覆盖）
-- RabbitMQ：`127.0.0.1:5672`
-- MinIO：`http://127.0.0.1:9000`
-- OpenSearch：`http://127.0.0.1:9200`
-- Neo4j：`bolt://127.0.0.1:7687`
-
-Java 后端：
-
-```powershell
-cd backend-java
-$env:SPRING_PROFILES_ACTIVE="local"
-mvn -pl caries-boot -am -DskipTests package
-java -jar caries-boot\target\caries-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local --debug=false
-```
-
-`local` 配置默认不把未启动的 RabbitMQ/Redis 纳入健康检查，适合登录、找回密码和数据库功能开发。需要运行完整 AI 异步分析链路时，先启动 Docker Desktop 和 `rabbitmq`、`redis` 服务，再设置 `CARIES_HEALTH_RABBIT_ENABLED=true` 与 `CARIES_HEALTH_REDIS_ENABLED=true` 后重启 Java 后端。
-
-Python 后端：
-
-```powershell
-cd backend-python
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python -m app.main
-```
-
-前端：
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-## 默认账号
-
-- `admin` / `123456` - 系统管理员，工号 `U100001`
-- `demo_doctor_01` / `123456` - 医生，工号 `DOC-001`，姓名 `Dr. Chen`
-- `demo_doctor_02` / `123456` - 医生，工号 `DOC-002`，姓名 `Dr. Li`
-- `demo_doctor_03` / `123456` - 医生，工号 `DOC-003`，姓名 `Dr. Wang`
-- `demo_doctor_04` / `123456` - 医生，工号 `DOC-004`，姓名 `Dr. Zhao`
-
-## 开发命令
-
-前端构建：
+## 验证
 
 ```powershell
 cd frontend
 npm run build
+
+cd ..\backend-java
+mvn -pl caries-boot -am test
+
+cd ..\backend-python
+.\.venv\Scripts\python.exe -m pytest
 ```
 
-Java 编译：
-
-```powershell
-cd backend-java
-mvn -pl caries-boot -am -DskipTests compile
-```
-
-Python 单测示例：
-
-```powershell
-cd backend-python
-.\.venv\Scripts\python -m pytest tests\unit\test_rag_service.py
-```
-
-## 前端联调说明
-
-- 前端默认读取 [frontend/.env](frontend/.env)，当前配置为：
-  - `VITE_API_BASE_URL=/api/v1`
-  - `VITE_USE_MOCK=false`
-- Vite 会把 `/api` 代理到 `http://localhost:8080`。
-- 因此本地开发时，Java 后端建议直接运行在 `8080` 端口。
-
-如果只想快速看界面，可临时把 `frontend/.env` 改为：
-
-```env
-VITE_API_BASE_URL=/api/v1
-VITE_USE_MOCK=true
-```
-
-但需要注意：
-
-- 当前并不是所有页面都完全 mock 化。
-- `cases`、`analysis`、`review` 等主流程页面更适合连接真实后端联调。
-
-## 当前联调注意事项
-
-- Docker Compose 默认不会启动前端，这是当前最容易被忽略的点。
-- 病例创建链路依赖 MinIO、RabbitMQ、MySQL；任一服务异常都可能导致“创建并分析”失败。
-- 复核工作台前端已经可用，但如果后端没有返回足够的复核队列数据，前端会基于分析任务列表展示复核入口。
-- Python 默认推荐使用 `mock` 运行模式进行开发联调；`real` 只适合在模型、回调链路和知识库依赖都准备好后启用。
-
-## 运行建议
-
-- 开发 / 演示优先使用 Python `mock` 模式。
-- 正式知识治理与 RAG 主路径为 `OpenSearch + Neo4j + OpenAI-compatible provider`。
-- `real` 模式只应在模型权重、索引、图谱、回调和对象存储全部确认后启用。
+AI 结果仅用于辅助研究和提示，不替代牙科医生的诊断。

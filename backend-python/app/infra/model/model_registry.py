@@ -45,7 +45,7 @@ class ModelRegistry:
         return self._risk_model
 
     def get_runtime_mode(self) -> str:
-        return self._settings.ai_runtime_mode
+        return "full_chain"
 
     def is_module_enabled(self, module: str) -> bool:
         flag_map: dict[str, bool] = {
@@ -58,8 +58,6 @@ class ModelRegistry:
         return flag_map.get(module, False)
 
     def is_module_real(self, module: str) -> bool:
-        if self._settings.ai_runtime_mode == "mock":
-            return False
         return self.is_module_enabled(module) and self.is_module_loaded(module)
 
     def is_module_loaded(self, module: str) -> bool:
@@ -70,8 +68,7 @@ class ModelRegistry:
         return self._module_errors.get(module)
 
     def startup(self) -> None:
-        mode = self._settings.ai_runtime_mode
-        log.info("model registry startup ai_runtime_mode=%s", mode)
+        log.info("model registry startup pipeline=full_chain")
 
         for module in ["quality", "tooth_detect", "segmentation", "grading", "risk"]:
             if not self.is_module_enabled(module):
@@ -135,8 +132,7 @@ class ModelRegistry:
                     adapter.impl_type.value,
                     normalized.message,
                 )
-                if mode == "real":
-                    raise normalized
+                raise normalized
 
         loaded = [adapter for adapter in self._all_adapters() if adapter.is_loaded()]
         log.info("model registry ready %d adapter(s) loaded", len(loaded))
@@ -150,7 +146,7 @@ class ModelRegistry:
     def status(self) -> dict:
         adapters = {adapter.model_type_code: adapter.info() for adapter in self._all_adapters()}
         return {
-            "aiRuntimeMode": self._settings.ai_runtime_mode,
+            "runtimePipeline": "full_chain",
             "adapters": adapters,
             "moduleErrors": dict(self._module_errors),
             "assets": {

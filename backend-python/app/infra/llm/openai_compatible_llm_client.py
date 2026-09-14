@@ -72,7 +72,7 @@ class OpenAiCompatibleLlmClient:
 
     def _post_with_retry(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not self.base_url:
-            raise RuntimeError("CG_LLM_BASE_URL is required for non-MOCK LLM provider")
+            raise RuntimeError("CG_LLM_BASE_URL is required for the configured LLM provider")
         url = self.base_url.rstrip("/") + "/chat/completions"
         headers = {"Content-Type": "application/json"}
         if self.api_key:

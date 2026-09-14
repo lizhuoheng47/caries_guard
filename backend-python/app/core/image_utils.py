@@ -88,10 +88,17 @@ def _load_raster(path: Path) -> LoadedImage:
     if pixels is None:
         raise RuntimeError(f"failed to read image: {path}")
     if pixels.ndim == 3:
-        if pixels.shape[2] == 4:
+        channel_count = pixels.shape[2]
+        if channel_count == 1:
+            pixels = pixels[:, :, 0]
+        elif channel_count == 4:
             pixels = cv2.cvtColor(pixels, cv2.COLOR_BGRA2GRAY)
-        else:
+        elif channel_count == 3:
             pixels = cv2.cvtColor(pixels, cv2.COLOR_BGR2GRAY)
+        else:
+            raise RuntimeError(f"unsupported raster channel count {channel_count}: {path}")
+    elif pixels.ndim != 2:
+        raise RuntimeError(f"unsupported raster shape {pixels.shape}: {path}")
     pixels = _to_uint8(pixels)
     height, width = pixels.shape[:2]
     channels = 1 if pixels.ndim == 2 else pixels.shape[2]

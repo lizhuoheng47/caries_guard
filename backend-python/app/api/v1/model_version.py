@@ -43,7 +43,7 @@ def model_version() -> dict:
         }
 
     data = {
-        "aiRuntimeMode": settings.ai_runtime_mode,
+        "runtimePipeline": "full_chain",
         "runtimeStatus": runtime_status,
         "toothDetect": _module_payload("toothDetect"),
         "tpcNet": _module_payload("segmentation", segmentation_assets),

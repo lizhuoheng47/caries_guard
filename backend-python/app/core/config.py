@@ -9,11 +9,10 @@ import yaml
 log = logging.getLogger("cariesguard-ai.config")
 
 
-_VALID_RUNTIME_MODES = {"mock", "hybrid", "real"}
 _VALID_VECTOR_STORE_TYPES = {"LOCAL_JSON", "OPENSEARCH"}
-_VALID_MODEL_IMPL_TYPES = {"MOCK", "HEURISTIC", "ML_MODEL"}
+_VALID_MODEL_IMPL_TYPES = {"HEURISTIC", "ML_MODEL"}
 _VALID_QUALITY_FAIL_STRATEGIES = {"CONTINUE", "FAIL_FAST"}
-_VALID_LLM_PROVIDER_CODES = {"MOCK", "OPENAI", "OPENAI_COMPATIBLE", "DASHSCOPE", "DEEPSEEK", "QWEN"}
+_VALID_LLM_PROVIDER_CODES = {"OPENAI", "OPENAI_COMPATIBLE", "DASHSCOPE", "DEEPSEEK", "QWEN"}
 
 
 def first_non_empty(*values: str | None, default: str = "") -> str:
@@ -60,16 +59,6 @@ def json_env(name: str, default: dict[str, float]) -> dict[str, float]:
         return dict(default)
     loaded = json.loads(value)
     return {str(key): float(item) for key, item in loaded.items()}
-
-
-def _validate_runtime_mode(raw: str) -> str:
-    mode = raw.strip().lower()
-    if mode not in _VALID_RUNTIME_MODES:
-        raise ValueError(
-            f"CG_AI_RUNTIME_MODE={raw!r} is invalid; "
-            f"allowed values: {sorted(_VALID_RUNTIME_MODES)}"
-        )
-    return mode
 
 
 def _validate_vector_store_type(raw: str) -> str:
@@ -190,7 +179,7 @@ def _require_non_blank_if_present(name: str) -> None:
 @dataclass(frozen=True)
 class Settings:
     app_env: str = os.getenv("CG_APP_ENV", "dev")
-    app_mode: str = os.getenv("CG_APP_MODE", "mock")
+    app_mode: str = "full_chain"
     http_enabled: bool = bool_env("CG_HTTP_ENABLED", True)
     http_host: str = os.getenv("CG_HTTP_HOST", "0.0.0.0")
     http_port: int = int_env("CG_HTTP_PORT", 8001)
@@ -362,7 +351,6 @@ class Settings:
     llm_timeout_seconds: int = int_env("CG_LLM_TIMEOUT_SECONDS", 30)
     llm_retry_count: int = int_env("CG_LLM_RETRY_COUNT", 1)
     llm_temperature: float = float_env("CG_LLM_TEMPERATURE", 0.2)
-    llm_enable_fallback_mock: bool = bool_env("CG_LLM_ENABLE_FALLBACK_MOCK", True)
     llm_hedge_enabled: bool = bool_env("CG_LLM_HEDGE_ENABLED", False)
     llm_hedge_delay_ms: int = int_env("CG_LLM_HEDGE_DELAY_MS", 250)
     llm_hedge_provider_code: str = first_non_empty(
@@ -451,18 +439,17 @@ class Settings:
     analysis_kb_enhancement_enabled: bool = bool_env("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED", False)
     analysis_kb_code: str = os.getenv("CG_ANALYSIS_KB_CODE", os.getenv("CG_RAG_DEFAULT_KB_CODE", "caries-default"))
 
-    ai_runtime_mode: str = _validate_runtime_mode(os.getenv("CG_AI_RUNTIME_MODE", "mock"))
-    model_quality_enabled: bool = bool_env("CG_MODEL_QUALITY_ENABLED", False)
+    model_quality_enabled: bool = bool_env("CG_MODEL_QUALITY_ENABLED", True)
     model_quality_impl_type: str = os.getenv("CG_MODEL_QUALITY_IMPL_TYPE", "HEURISTIC").upper()
-    model_tooth_detect_enabled: bool = bool_env("CG_MODEL_TOOTH_DETECT_ENABLED", False)
+    model_tooth_detect_enabled: bool = bool_env("CG_MODEL_TOOTH_DETECT_ENABLED", True)
     model_tooth_detect_impl_type: str = os.getenv("CG_MODEL_TOOTH_DETECT_IMPL_TYPE", "HEURISTIC").upper()
     model_tooth_detect_checkpoint_path: str = os.getenv("CG_MODEL_TOOTH_DETECT_CHECKPOINT_PATH", "").strip()
     model_tooth_detect_config_path: str = os.getenv("CG_MODEL_TOOTH_DETECT_CONFIG_PATH", "").strip()
-    model_segmentation_enabled: bool = bool_env("CG_MODEL_SEGMENTATION_ENABLED", False)
-    model_segmentation_impl_type: str = os.getenv("CG_MODEL_SEGMENTATION_IMPL_TYPE", "HEURISTIC").upper()
-    model_grading_enabled: bool = bool_env("CG_MODEL_GRADING_ENABLED", False)
+    model_segmentation_enabled: bool = bool_env("CG_MODEL_SEGMENTATION_ENABLED", True)
+    model_segmentation_impl_type: str = os.getenv("CG_MODEL_SEGMENTATION_IMPL_TYPE", "ML_MODEL").upper()
+    model_grading_enabled: bool = bool_env("CG_MODEL_GRADING_ENABLED", True)
     model_grading_impl_type: str = os.getenv("CG_MODEL_GRADING_IMPL_TYPE", "HEURISTIC").upper()
-    model_risk_enabled: bool = bool_env("CG_MODEL_RISK_ENABLED", False)
+    model_risk_enabled: bool = bool_env("CG_MODEL_RISK_ENABLED", True)
     model_risk_impl_type: str = os.getenv("CG_MODEL_RISK_IMPL_TYPE", "HEURISTIC").upper()
     model_device: str = os.getenv("CG_MODEL_DEVICE", "cpu")
     model_weights_dir: str = os.getenv("CG_MODEL_WEIGHTS_DIR", "/app/model-weights")
@@ -484,8 +471,6 @@ class Settings:
     strict_model_startup_validation: bool = bool_env("CG_STRICT_MODEL_STARTUP_VALIDATION", False)
 
     def __post_init__(self) -> None:
-        mode = _validate_runtime_mode(self.ai_runtime_mode)
-        object.__setattr__(self, "ai_runtime_mode", mode)
         object.__setattr__(self, "rag_vector_store_type", _validate_vector_store_type(self.rag_vector_store_type))
         object.__setattr__(self, "model_quality_impl_type", _validate_model_impl_type("CG_MODEL_QUALITY_IMPL_TYPE", self.model_quality_impl_type))
         object.__setattr__(self, "model_tooth_detect_impl_type", _validate_model_impl_type("CG_MODEL_TOOTH_DETECT_IMPL_TYPE", self.model_tooth_detect_impl_type))
@@ -517,7 +502,7 @@ class Settings:
         object.__setattr__(self, "llm_hedge_api_key", (self.llm_hedge_api_key or "").strip())
         object.__setattr__(self, "llm_hedge_delay_ms", max(0, int(self.llm_hedge_delay_ms)))
 
-        rag_dependencies_required = self.analysis_kb_enhancement_enabled or (mode == "real" and self.rag_runtime_enabled)
+        rag_dependencies_required = self.analysis_kb_enhancement_enabled or self.rag_runtime_enabled
         if self.analysis_kb_enhancement_enabled and not self.rag_runtime_enabled:
             raise ValueError("CG_ANALYSIS_KB_ENHANCEMENT_ENABLED=true requires CG_RAG_RUNTIME_ENABLED=true")
 
@@ -544,7 +529,7 @@ class Settings:
             for name in scene_env_names:
                 _require_non_blank_if_present(name)
 
-        if self.rag_runtime_enabled and self.llm_provider_code != "MOCK":
+        if self.rag_runtime_enabled:
             _require_non_empty("CG_LLM_MODEL_NAME", self.llm_model_name)
             _require_non_empty("CG_LLM_BASE_URL", self.llm_base_url)
             _require_non_empty("CG_LLM_API_KEY", self.llm_api_key)
@@ -577,33 +562,14 @@ class Settings:
                 api_key=self.llm_hedge_api_key,
             )
 
-        if mode == "real":
-            if self.rag_runtime_enabled and self.llm_enable_fallback_mock:
-                raise ValueError(
-                    "CG_LLM_ENABLE_FALLBACK_MOCK=true is forbidden when "
-                    "CG_AI_RUNTIME_MODE='real' and CG_RAG_RUNTIME_ENABLED=true"
-                )
-            if self.qwen_vision_enabled:
-                _require_non_empty("CG_QWEN_VISION_BASE_URL", self.qwen_vision_base_url)
-                _require_non_empty("CG_QWEN_VISION_API_KEY", self.qwen_vision_api_key)
-                _require_non_empty("CG_QWEN_VISION_MODEL", self.qwen_vision_model)
-            if self.rag_runtime_enabled and self.llm_provider_code == "MOCK":
-                raise ValueError(
-                    "CG_AI_RUNTIME_MODE='real' with RAG enabled forbids CG_LLM_PROVIDER_CODE='MOCK'"
-                )
-            if self.rag_runtime_enabled and self.rag_embedding_provider == "HASHING":
-                raise ValueError(
-                    "CG_AI_RUNTIME_MODE='real' with RAG enabled forbids CG_RAG_EMBEDDING_PROVIDER='HASHING'"
-                )
-            if self.llm_scene_routing_enabled and self.rag_runtime_enabled:
-                if self.llm_doctor_provider_code == "MOCK":
-                    raise ValueError("CG_LLM_DOCTOR_PROVIDER_CODE='MOCK' is forbidden in real mode with RAG enabled")
-                if self.llm_patient_provider_code == "MOCK":
-                    raise ValueError("CG_LLM_PATIENT_PROVIDER_CODE='MOCK' is forbidden in real mode with RAG enabled")
-            if self.llm_hedge_enabled and self.rag_runtime_enabled and self.llm_hedge_provider_code == "MOCK":
-                raise ValueError("CG_LLM_HEDGE_PROVIDER_CODE='MOCK' is forbidden in real mode with RAG enabled")
+        if self.qwen_vision_enabled:
+            _require_non_empty("CG_QWEN_VISION_BASE_URL", self.qwen_vision_base_url)
+            _require_non_empty("CG_QWEN_VISION_API_KEY", self.qwen_vision_api_key)
+            _require_non_empty("CG_QWEN_VISION_MODEL", self.qwen_vision_model)
+        if self.rag_runtime_enabled and self.rag_embedding_provider == "HASHING":
+            raise ValueError("The full-chain runtime forbids HASHING embeddings when RAG is enabled")
 
-        if rag_dependencies_required and self.llm_provider_code != "MOCK":
+        if rag_dependencies_required:
             _require_non_empty("CG_LLM_BASE_URL", self.llm_base_url)
             _require_non_empty("CG_LLM_API_KEY", self.llm_api_key)
 
@@ -623,11 +589,6 @@ class Settings:
             ("risk", self.model_risk_enabled, self.model_risk_impl_type, "CG_MODEL_RISK_IMPL_TYPE"),
         ]
         for module_name, enabled, impl_type, env_name in modules:
-            if mode == "real" and impl_type == "MOCK":
-                raise ValueError(f"{env_name}='MOCK' is forbidden when CG_AI_RUNTIME_MODE='real'")
-            if mode == "hybrid" and impl_type == "MOCK":
-                raise ValueError(f"{env_name}='MOCK' is forbidden when CG_AI_RUNTIME_MODE='hybrid'")
-
             validate_manifest_assets = module_name in {"segmentation", "grading"} and self.strict_model_startup_validation
             if validate_manifest_assets:
                 _require_manifest_backed_model_assets(
@@ -646,7 +607,7 @@ class Settings:
                     impl_type,
                 )
 
-        log.info("CariesGuard runtime mode=%s", mode.upper())
+        log.info("CariesGuard runtime pipeline=FULL_CHAIN")
         log.info("LLM provider=%s model=%s", self.llm_provider_code, self.llm_model_name)
         if self.llm_scene_routing_enabled:
             log.info(
@@ -695,8 +656,6 @@ class Settings:
     ) -> None:
         _require_non_empty(f"{profile_prefix}_PROVIDER_CODE", provider_code)
         _require_non_empty(f"{profile_prefix}_MODEL_NAME", model_name)
-        if provider_code == "MOCK":
-            return
         _require_non_empty(f"{profile_prefix}_BASE_URL", base_url)
         _require_non_empty(f"{profile_prefix}_API_KEY", api_key)
 

@@ -16,7 +16,7 @@ def health_check() -> dict:
         "mode": container.settings.app_mode,
         "modelRegistry": {
             "modelVersion": container.settings.model_version,
-            "status": runtime_status.get("aiRuntimeMode"),
+            "status": runtime_status.get("runtimePipeline"),
             "runtimeStatus": runtime_status,
         },
         "dependencies": {

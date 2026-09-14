@@ -97,7 +97,6 @@ def main() -> int:
     if args.real_segmentation:
         settings = replace(
             settings,
-            ai_runtime_mode="hybrid",
             mq_worker_enabled=False,
             model_quality_enabled=True,
             model_quality_impl_type="HEURISTIC",

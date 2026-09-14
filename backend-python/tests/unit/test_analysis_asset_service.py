@@ -16,7 +16,6 @@ class LoadedRegistry:
 def test_heuristic_modules_do_not_require_ml_checkpoints() -> None:
     settings = replace(
         Settings(),
-        ai_runtime_mode="hybrid",
         model_tooth_detect_enabled=True,
         model_tooth_detect_impl_type="HEURISTIC",
         model_grading_enabled=True,
@@ -35,7 +34,6 @@ def test_heuristic_modules_do_not_require_ml_checkpoints() -> None:
 def test_ml_grading_still_requires_runnable_manifest_and_checkpoint() -> None:
     settings = replace(
         Settings(),
-        ai_runtime_mode="hybrid",
         model_grading_enabled=True,
         model_grading_impl_type="ML_MODEL",
     )

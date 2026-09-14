@@ -1522,7 +1522,7 @@ WHERE username = 'admin'
   AND deleted_flag = 0;
 
 -- These fields are extracted from raw_result_json during AI callback write-back
--- to support list views, reports, dashboard, and competition defense without JSON parsing.
+-- to support list views, reports, and dashboard queries without JSON parsing.
 
 ALTER TABLE ana_result_summary
   ADD COLUMN overall_highest_severity VARCHAR(32) DEFAULT NULL COMMENT '最高严重程度 (e.g. C1, C2, C3)',
