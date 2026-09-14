@@ -1,8 +1,9 @@
 ﻿spring:
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/caries_biz?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
-    username: root
-    password: 1234
+    # Defaults match the host ports exposed by the root Docker Compose file.
+    url: jdbc:mysql://${CARIES_MYSQL_HOST:127.0.0.1}:${CARIES_MYSQL_PORT:13306}/${CARIES_MYSQL_DATABASE:caries_biz}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    username: ${CARIES_MYSQL_USERNAME:root}
+    password: ${CARIES_MYSQL_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
@@ -44,9 +45,8 @@ logging:
   pattern:
     level: "%5p [%X{traceId}]"
   level:
-    # MySQL 9.7 is newer than the versions verified by the Flyway release
-    # managed by Spring Boot 3.2. Keep the local warning configurable while
-    # retaining strict Flyway validation and migration behavior.
+    # Keep Flyway database capability messages configurable while retaining
+    # strict migration validation and failure behavior.
     org.flywaydb.core.internal.database.base.Database: ${CARIES_FLYWAY_DATABASE_LOG_LEVEL:ERROR}
 
 management:

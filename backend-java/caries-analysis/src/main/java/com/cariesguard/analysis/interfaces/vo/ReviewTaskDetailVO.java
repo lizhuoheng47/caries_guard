@@ -48,7 +48,6 @@ public class ReviewTaskDetailVO {
     }
 
     @Data
-    @Data
     public static class ReviewOptionsVO {
         private List<String> gradeOptions;
         private List<String> reasonTags;

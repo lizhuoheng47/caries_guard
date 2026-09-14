@@ -49,9 +49,9 @@ class ReportDomainServiceTests {
                 "1",
                 List.of(),
                 null,
-                "RAG patient explanation",
+                "Patient-facing explanation",
                 LocalDateTime.now());
 
-        assertThat(service.buildSummaryText(renderData)).contains("patientExplanation=RAG patient explanation");
+        assertThat(service.buildSummaryText(renderData)).contains("patientExplanation=Patient-facing explanation");
     }
 }
