@@ -55,7 +55,8 @@ $env:SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE="true"
 ```powershell
 cd D:\caries_guard\backend-java
 $env:SPRING_PROFILES_ACTIVE="local"
-mvn -pl caries-boot -am spring-boot:run
+mvn -pl caries-boot -am -DskipTests package
+java -jar caries-boot\target\caries-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local --debug=false
 ```
 
 不要把授权码提交到 Git，也不要写入 `application-local.yml`。

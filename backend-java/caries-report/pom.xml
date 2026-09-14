@@ -46,6 +46,14 @@
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
+            <exclusions>
+                <!-- Spring Boot uses spring-jcl; keeping the legacy bridge on the
+                     runtime classpath produces duplicate logging discovery. -->
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

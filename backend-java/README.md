@@ -69,7 +69,8 @@ mvn -pl caries-boot -am -DskipTests compile
 启动：
 
 ```powershell
-mvn -pl caries-boot -am spring-boot:run
+mvn -pl caries-boot -am -DskipTests package
+java -jar caries-boot\target\caries-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local --debug=false
 ```
 
 健康检查：

@@ -7,7 +7,8 @@
   data:
     redis:
       host: ${CARIES_REDIS_HOST:127.0.0.1}
-      port: ${CARIES_REDIS_PORT:6379}
+      # docker-compose exposes the Redis container on host port 16379.
+      port: ${CARIES_REDIS_PORT:16379}
   rabbitmq:
     host: ${CARIES_RABBIT_HOST:127.0.0.1}
     port: ${CARIES_RABBIT_PORT:5672}
@@ -22,6 +23,12 @@
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # The existing local development database was initialized from V001-V004
+    # before Flyway history tracking was enabled. New empty schemas still run
+    # every migration; non-empty legacy schemas are registered at V004 once.
+    baseline-on-migrate: ${CARIES_FLYWAY_BASELINE_ON_MIGRATE:true}
+    baseline-version: ${CARIES_FLYWAY_BASELINE_VERSION:4}
+    baseline-description: ${CARIES_FLYWAY_BASELINE_DESCRIPTION:Legacy schema through V004}
     clean-disabled: ${CARIES_FLYWAY_CLEAN_DISABLED:true}
     clean-on-validation-error: ${CARIES_FLYWAY_CLEAN_ON_VALIDATION_ERROR:false}
   mvc:
@@ -36,11 +43,21 @@ mybatis-plus:
 logging:
   pattern:
     level: "%5p [%X{traceId}]"
+  level:
+    # MySQL 9.7 is newer than the versions verified by the Flyway release
+    # managed by Spring Boot 3.2. Keep the local warning configurable while
+    # retaining strict Flyway validation and migration behavior.
+    org.flywaydb.core.internal.database.base.Database: ${CARIES_FLYWAY_DATABASE_LOG_LEVEL:ERROR}
 
 management:
   health:
+    # Local development can run account and database workflows without the
+    # optional infrastructure containers. Docker deployments keep their own
+    # strict health checks in application-docker.yml.
     rabbit:
-      enabled: true
+      enabled: ${CARIES_HEALTH_RABBIT_ENABLED:false}
+    redis:
+      enabled: ${CARIES_HEALTH_REDIS_ENABLED:false}
 
 caries:
   security:

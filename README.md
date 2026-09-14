@@ -166,7 +166,7 @@ docker compose --env-file env/competition.env up -d --build
 建议使用以下默认参数：
 
 - MySQL：`127.0.0.1:3306`，库 `caries_biz` / `caries_ai`
-- Redis：`127.0.0.1:6379`
+- Redis：`127.0.0.1:16379`（与 `docker-compose.yml` 的宿主机端口一致；原生 Redis 可用 `CARIES_REDIS_PORT=6379` 覆盖）
 - RabbitMQ：`127.0.0.1:5672`
 - MinIO：`http://127.0.0.1:9000`
 - OpenSearch：`http://127.0.0.1:9200`
@@ -177,8 +177,11 @@ Java 后端：
 ```powershell
 cd backend-java
 $env:SPRING_PROFILES_ACTIVE="local"
-mvn -pl caries-boot -am spring-boot:run
+mvn -pl caries-boot -am -DskipTests package
+java -jar caries-boot\target\caries-boot-0.1.0-SNAPSHOT.jar --spring.profiles.active=local --debug=false
 ```
+
+`local` 配置默认不把未启动的 RabbitMQ/Redis 纳入健康检查，适合登录、找回密码和数据库功能开发。需要运行完整 AI 异步分析链路时，先启动 Docker Desktop 和 `rabbitmq`、`redis` 服务，再设置 `CARIES_HEALTH_RABBIT_ENABLED=true` 与 `CARIES_HEALTH_REDIS_ENABLED=true` 后重启 Java 后端。
 
 Python 后端：
 
