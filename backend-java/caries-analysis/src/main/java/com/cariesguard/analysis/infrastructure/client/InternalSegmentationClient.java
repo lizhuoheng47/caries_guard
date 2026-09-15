@@ -5,23 +5,22 @@ import com.cariesguard.common.exception.BusinessException;
 import com.cariesguard.common.exception.CommonErrorCode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Set;
-import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 @Component
 public class InternalSegmentationClient {
-    private static final Pattern REQUEST_ID = Pattern.compile("[a-f0-9]{32}");
-    private static final Set<String> ASSET_PREFIXES = Set.of("mask_", "overlay_", "heatmap_");
     private final AnalysisProperties properties;
     private final ObjectMapper objectMapper;
-    private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    // Uvicorn 仅处理 HTTP/1.1；禁止 JDK HttpClient 对带请求体的推理调用尝试 h2c 升级。
+    private final HttpClient client = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
 
     public InternalSegmentationClient(AnalysisProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
@@ -36,34 +35,7 @@ public class InternalSegmentationClient {
                 .timeout(Duration.ofMinutes(3))
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body))
                 .build();
-        JsonNode response = send(request);
-        JsonNode data = response.path("data");
-        String requestId = data.path("requestId").asText();
-        JsonNode assets = data.path("assets");
-        if (REQUEST_ID.matcher(requestId).matches() && assets instanceof ObjectNode assetObject) {
-            // 浏览器只访问 Java 代理地址，不直接暴露 Python 临时资源端点和内部密钥。
-            rewriteAsset(assetObject, "maskUrl", requestId);
-            rewriteAsset(assetObject, "overlayUrl", requestId);
-            rewriteAsset(assetObject, "heatmapUrl", requestId);
-        }
-        return response;
-    }
-
-    public AssetBody getAsset(String requestId, String fileName) {
-        validateAssetPath(requestId, fileName);
-        try {
-            HttpResponse<byte[]> response = client.send(
-                    baseRequest("/ai/v1/segment-assets/" + requestId + "/" + fileName)
-                            .timeout(Duration.ofSeconds(30)).GET().build(),
-                    HttpResponse.BodyHandlers.ofByteArray());
-            if (response.statusCode() != 200) throw downstream("Segmentation asset is unavailable");
-            return new AssetBody(response.body(), response.headers().firstValue("Content-Type").orElse("image/png"));
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw downstream("Segmentation asset request was interrupted");
-        } catch (Exception exception) {
-            throw downstream("Segmentation asset request failed");
-        }
+        return send(request);
     }
 
     private JsonNode send(HttpRequest request) {
@@ -87,24 +59,7 @@ public class InternalSegmentationClient {
 
     private URI uri(String path) { return URI.create(properties.getInferenceBaseUrl().replaceAll("/+$", "") + path); }
 
-    private void rewriteAsset(ObjectNode assets, String field, String requestId) {
-        String source = assets.path(field).asText();
-        String fileName = source.substring(source.lastIndexOf('/') + 1);
-        validateAssetPath(requestId, fileName);
-        assets.put(field, "/api/v1/segmentation/assets/" + requestId + "/" + fileName);
-    }
-
-    private void validateAssetPath(String requestId, String fileName) {
-        // 仅允许服务生成的 PNG 文件名，阻断路径穿越和任意内部文件读取。
-        boolean validName = fileName != null && fileName.endsWith(".png") && ASSET_PREFIXES.stream().anyMatch(fileName::startsWith);
-        if (!REQUEST_ID.matcher(requestId == null ? "" : requestId).matches() || !validName || fileName.contains("..")) {
-            throw new BusinessException(CommonErrorCode.VALIDATION_FAILED.code(), "Invalid segmentation asset path");
-        }
-    }
-
     private BusinessException downstream(String message) {
         return new BusinessException(CommonErrorCode.EXTERNAL_SERVICE_ERROR.code(), message);
     }
-
-    public record AssetBody(byte[] bytes, String contentType) {}
 }

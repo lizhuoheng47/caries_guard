@@ -45,7 +45,7 @@ An end-to-end research system for patient intake, image analysis, clinician revi
 
 CariesGuard uses a layered architecture consisting of a Vue clinical workspace, a Java business service, and a Python inference service. Java owns trusted business state such as identities, permissions, patients, cases, task status, reviews, reports, and follow-up records. Python loads inference assets, processes dental images, and records AI runtime metadata. RabbitMQ connects the asynchronous analysis workflow, while MinIO stores source images, generated visualizations, and PDF reports.
 
-The repository has one primary full-stack runtime: the root `docker-compose.yml`. Legacy demo modes, mock inference, standalone segmentation launch paths, and the retired RAG runtime have been removed.
+The repository has one primary full-stack runtime: the root `docker-compose.yml`. Legacy demo modes, mock inference, and standalone segmentation launch paths have been removed. A small, replaceable RAG runtime is included in the Python service.
 
 ### Current implementation status
 
@@ -63,6 +63,7 @@ The repository has one primary full-stack runtime: the root `docker-compose.yml`
 | Follow-up plans, tasks, and records | ✅ | Persisted Java business workflow |
 | Operational dashboard | ✅ | Aggregated from business tables, without fabricated UI data |
 | Model provenance in the UI | ✅ | Distinguishes trained models, rules, and derived uncertainty |
+| Knowledge-grounded explanation and care suggestions | ✅ MVP | Versioned local retrieval, optional Qwen generation, citations in analysis results |
 | Quality, tooth candidates, grading, and risk | ⚠️ | Explicit heuristic stages, not represented as trained models |
 | Qwen Vision enrichment | Optional | Disabled by default; requires a compatible endpoint and key |
 

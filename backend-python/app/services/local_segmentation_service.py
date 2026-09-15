@@ -6,6 +6,7 @@ from functools import lru_cache
 from app.core.config import Settings
 from app.infra.model.model_assets import ModelAssets
 from app.infra.model.model_registry import ModelRegistry
+from app.infra.storage.minio_client import MinioStorageClient
 from app.pipelines.segmentation_pipeline import SegmentationPipeline
 
 
@@ -14,6 +15,7 @@ class LocalSegmentationRuntime:
     settings: Settings
     model_registry: ModelRegistry
     segmentation_pipeline: SegmentationPipeline
+    storage: MinioStorageClient
 
 
 @lru_cache(maxsize=1)
@@ -27,4 +29,5 @@ def get_local_segmentation_runtime() -> LocalSegmentationRuntime:
         settings=settings,
         model_registry=registry,
         segmentation_pipeline=SegmentationPipeline(registry, settings, model_assets),
+        storage=MinioStorageClient(settings),
     )

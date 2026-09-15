@@ -45,6 +45,8 @@ export interface AnalysisCitationDTO {
   chunkText?: string;
   score?: number;
   sourceUri?: string;
+  sourceFile?: string;
+  sourcePages?: string;
 }
 
 export interface AnalysisSummaryDTO {

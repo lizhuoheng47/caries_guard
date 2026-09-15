@@ -19,8 +19,10 @@ from app.services.analysis_asset_service import AnalysisAssetService
 from app.services.callback_service import CallbackService
 from app.services.governance_bootstrap_service import GovernanceBootstrapService
 from app.services.image_fetch_service import ImageFetchService
+from app.services.knowledge_base_service import KnowledgeBaseService
 from app.services.model_switch_service import ModelSwitchService
 from app.services.qwen_vision_service import QwenVisionService
+from app.services.rag_service import RagService
 from app.services.risk_service import RiskService
 from app.services.visual_asset_service import VisualAssetService
 
@@ -38,6 +40,8 @@ class AppContainer:
         self.governance_repository = GovernanceRepository()
         self.callback_service = CallbackService(settings, self.ai_runtime_repository)
         self.qwen_vision_service = QwenVisionService(settings)
+        self.knowledge_base_service = KnowledgeBaseService(settings)
+        self.rag_service = RagService(settings, self.knowledge_base_service)
         self.analysis_asset_service = AnalysisAssetService(settings, self.model_assets)
 
         self.model_registry = ModelRegistry(settings, self.model_assets)
@@ -76,6 +80,7 @@ class AppContainer:
             risk_service=self.risk_service,
             ai_runtime_repository=self.ai_runtime_repository,
             analysis_asset_service=self.analysis_asset_service,
+            rag_service=self.rag_service,
         )
         self.analysis_service = AnalysisService(self.pipeline, self.callback_service)
 

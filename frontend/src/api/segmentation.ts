@@ -22,6 +22,7 @@ export interface SegmentationResult {
     overlayUrl: string
     heatmapUrl: string
   }
+  assetUrlExpiresInSeconds: number
   needsReview: boolean
   limitations: string[]
 }

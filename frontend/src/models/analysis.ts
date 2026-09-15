@@ -34,6 +34,8 @@ export interface AnalysisCitation {
   excerpt?: string;
   score?: number;
   sourceUri?: string;
+  sourceFile?: string;
+  sourcePages?: string;
 }
 
 export interface AnalysisTreatmentItem {

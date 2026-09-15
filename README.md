@@ -45,7 +45,7 @@
 
 CariesGuard 采用“前端工作台 + Java 业务中台 + Python 推理服务”的分层架构。Java 服务负责用户、患者、病例、权限、任务状态、报告和随访等可信业务数据；Python 服务负责模型加载、影像推理和推理过程元数据；RabbitMQ 串联异步分析流程，MinIO 保存原始影像、可视化结果与 PDF 报告。
 
-项目当前保留一条明确的正式运行路径：根目录 `docker-compose.yml`。旧的演示模式、Mock 推理、独立分割启动脚本和已废弃的 RAG 运行时均已移除。
+项目当前保留一条明确的正式运行路径：根目录 `docker-compose.yml`。旧的演示模式、Mock 推理和独立分割启动脚本均已移除；当前内置一个可替换存储实现的最小 RAG 运行时。
 
 ### 当前实现状态
 
@@ -63,6 +63,7 @@ CariesGuard 采用“前端工作台 + Java 业务中台 + Python 推理服务�
 | 随访计划、任务与记录 | ✅ | Java 业务接口持久化 |
 | 运营仪表盘 | ✅ | 从真实业务表聚合，不使用前端假数据 |
 | 模型来源展示 | ✅ | 页面区分真实模型、规则和不确定性来源 |
+| 知识增强解释与诊疗建议 | ✅ MVP | 本地版本化知识库检索；可选 Qwen 生成；结果包含引用与知识版本 |
 | 影像质量、牙位候选、分级、风险 | ⚠️ | 当前为启发式规则，不宣称为训练模型 |
 | Qwen Vision 补充分析 | 可选 | 默认关闭，需要单独配置兼容服务和密钥 |
 
@@ -467,6 +468,26 @@ Java OpenAPI 文档：<http://127.0.0.1:8080/swagger-ui.html>
 | `POST /ai/v1/quality-check` | 影像质量检查 |
 | `POST /ai/v1/assess-risk` | 风险规则评估 |
 | `GET /ai/v1/model-version` | 模型与实现来源信息 |
+| `GET /ai/v1/knowledge/status` | 知识库版本、文档数及运行状态 |
+| `POST /ai/v1/knowledge/search` | 调试知识检索结果 |
+| `POST /ai/v1/knowledge/reload` | 修改知识文件后热加载 |
+
+### 最小 RAG 配置
+
+默认知识文件为 `backend-python/knowledge-base/caries_guidance_v1.json`，当前知识版本为 `caries-guidance-2026.09.15-v2-pdf`。知识条目取自仓库根目录的 ICDAS、ICCMS 和国家卫生健康委 PDF，仅选取分级、活动性、风险、管理和修复原则相关页段；每条 citation 会返回 `sourceFile` 和 `sourcePages`。C0-C3 是本项目根据 ICCMS 影像深度建立的辅助风险分层，不是 ICDAS/ICCMS 官方编码。
+
+本地检索和结构化模板生成默认启用，不依赖外部大模型；分析结果会写入 `knowledgeVersion`、`citations`、`evidenceRefs`、`clinicalSummary` 和 `treatmentPlan`。修改知识文件后可重建 Python 镜像，或调用知识库重载接口。
+
+若要使用 Qwen 对检索证据进行受约束生成，在 `.env` 中配置：
+
+```dotenv
+CG_RAG_LLM_ENABLED=true
+CG_RAG_LLM_MODEL=qwen3-vl-plus
+CG_RAG_LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+CG_RAG_LLM_API_KEY=替换为真实密钥
+```
+
+外部生成失败时会自动降级到检索模板，不影响影像分析主任务。知识内容属于辅助决策资料，正式使用前应由口腔专业人员审核来源、适用人群、版本和建议文本。
 
 浏览器不直接调用 Python 服务。前端统一访问 Java，由 Java 完成权限校验并携带 `CG_INTERNAL_API_KEY` 代理需要的请求。
 

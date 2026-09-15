@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import analyze, assess_risk, health, model_version, quality_check, segment
+from app.api.v1 import analyze, assess_risk, health, knowledge, model_version, quality_check, segment
 
 router = APIRouter()
 router.include_router(health.router)
@@ -9,3 +9,4 @@ router.include_router(analyze.router)
 router.include_router(assess_risk.router)
 router.include_router(model_version.router)
 router.include_router(segment.router)
+router.include_router(knowledge.router)

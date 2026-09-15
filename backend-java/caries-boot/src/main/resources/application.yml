@@ -5,6 +5,11 @@ spring:
     active: local
   jackson:
     time-zone: UTC
+  servlet:
+    multipart:
+      # 单个影像最大 50 MB，请求总量额外预留 multipart 元数据空间。
+      max-file-size: 50MB
+      max-request-size: 55MB
 banner:
     location: classpath:banner.txt
     charset: UTF-8

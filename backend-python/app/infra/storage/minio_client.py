@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -43,6 +44,18 @@ class MinioStorageClient:
             secret_key=settings.minio_secret_key,
             secure=secure,
             region=settings.minio_region or None,
+        )
+        public_endpoint, public_secure = normalize_endpoint(settings.minio_public_endpoint, settings.minio_secure)
+        # This client only signs browser-facing URLs.  Supplying the region is
+        # important: otherwise the MinIO SDK tries to discover it by connecting
+        # to the public endpoint, which is commonly 127.0.0.1 and therefore
+        # unreachable from inside the application container.
+        self.public_client = Minio(
+            public_endpoint,
+            access_key=settings.minio_access_key,
+            secret_key=settings.minio_secret_key,
+            secure=public_secure,
+            region=settings.minio_region or "us-east-1",
         )
 
     def ensure_bucket(self, bucket_name: str) -> None:
@@ -111,4 +124,8 @@ class MinioStorageClient:
             content_type=content_type,
             file_name=file_name,
         )
+
+    def presigned_get_url(self, bucket_name: str, object_key: str, expires_seconds: int) -> str:
+        expires = timedelta(seconds=min(max(expires_seconds, 60), 7 * 24 * 60 * 60))
+        return self.public_client.presigned_get_object(bucket_name, object_key, expires=expires)
 

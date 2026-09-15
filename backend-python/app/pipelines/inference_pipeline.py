@@ -30,6 +30,8 @@ from app.schemas.callback import (
 from app.schemas.request import AnalyzeRequest, ImageInput
 from app.services.analysis_asset_service import AnalysisAssetService
 from app.services.image_fetch_service import FetchedImage, ImageFetchService, TaskWorkspace
+from app.services.knowledge_base_service import KnowledgeBaseService
+from app.services.rag_service import RagService
 from app.services.risk_service import RiskService
 from app.services.visual_asset_service import VisualAssetService
 
@@ -59,6 +61,7 @@ class InferencePipeline:
         risk_service: RiskService,
         ai_runtime_repository: AiRuntimeRepository | None = None,
         analysis_asset_service: AnalysisAssetService | None = None,
+        rag_service: RagService | None = None,
     ) -> None:
         self.settings = settings
         self.image_fetch_service = image_fetch_service
@@ -73,6 +76,7 @@ class InferencePipeline:
         self.risk_service = risk_service
         self.ai_runtime_repository = ai_runtime_repository
         self.analysis_asset_service = analysis_asset_service or AnalysisAssetService(settings, model_assets)
+        self.rag_service = rag_service or RagService(settings, KnowledgeBaseService(settings))
         self.pipeline_version = "analysis-v2"
 
     def run(self, raw_task: dict[str, Any]) -> dict[str, Any]:
@@ -115,6 +119,27 @@ class InferencePipeline:
                 runtime_job=runtime_job,
                 aggregate=aggregate,
             )
+            risk_level = risk_assessment.risk_level_code or risk_assessment.overall_risk_level_code
+            rag_result = self.rag_service.enrich(
+                task,
+                raw_result_json,
+                severity_code=aggregate["gradingLabel"],
+                risk_level=risk_level,
+            )
+            raw_result_json.update(
+                {
+                    "knowledgeVersion": rag_result.knowledge_version,
+                    "citations": rag_result.citations,
+                    "evidenceRefs": rag_result.evidence_refs,
+                    "treatmentPlan": rag_result.treatment_plan,
+                    "clinicalSummary": rag_result.clinical_summary,
+                    "rag": {
+                        "status": rag_result.status,
+                        "generator": rag_result.generator,
+                        "error": rag_result.error,
+                    },
+                }
+            )
 
         completed_at = local_naive_iso_now()
         inference_millis = int((time.perf_counter() - started) * 1000)
@@ -141,11 +166,11 @@ class InferencePipeline:
             confidence_score=aggregate["confidenceScore"],
             needs_review=aggregate["needsReview"],
             uncertainty_score=aggregate["uncertaintyScore"],
-            risk_level=risk_assessment.risk_level_code or risk_assessment.overall_risk_level_code,
+            risk_level=risk_level,
             risk_factors=risk_assessment.risk_factors or [],
             review_reason=aggregate["reviewReason"],
-            knowledge_version=None,
-            evidence_refs=[],
+            knowledge_version=rag_result.knowledge_version,
+            evidence_refs=rag_result.evidence_refs,
             doctor_review_required_reason=aggregate["reviewReason"] if aggregate["needsReview"] else None,
         )
         log.info("analysis pipeline completed taskNo=%s traceId=%s millis=%s", task.task_no, trace_id, inference_millis)

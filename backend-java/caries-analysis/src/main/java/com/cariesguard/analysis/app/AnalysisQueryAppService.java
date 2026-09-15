@@ -289,7 +289,9 @@ public class AnalysisQueryAppService {
                     textValue(c, "docTitle", "doc_title"),
                     textValue(c, "chunkText", "chunk_text"),
                     doubleValue(c, "score"),
-                    textValue(c, "sourceUri", "source_uri")));
+                    textValue(c, "sourceUri", "source_uri"),
+                    textValue(c, "sourceFile", "source_file"),
+                    textValue(c, "sourcePages", "source_pages")));
             rank++;
         }
         return result;

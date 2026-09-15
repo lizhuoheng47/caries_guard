@@ -4,6 +4,7 @@ import threading
 import uuid
 import shutil
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Request
@@ -52,6 +53,29 @@ def _cleanup_expired_assets(root: Path, ttl_seconds: int) -> None:
         _last_cleanup_at = now
 
 
+def _publish_assets(runtime: object, request_id: str, result: object) -> dict[str, str]:
+    """Persist generated images and expose only time-limited, read-only URLs."""
+    bucket = runtime.settings.bucket_visual
+    date_prefix = datetime.now(timezone.utc).strftime("%Y/%m/%d")
+    object_prefix = f"segmentation/{date_prefix}/{request_id}"
+    runtime.storage.ensure_bucket(bucket)
+
+    urls: dict[str, str] = {}
+    for response_key, path in (
+        ("maskUrl", result.mask_path),
+        ("overlayUrl", result.overlay_path),
+        ("heatmapUrl", result.heatmap_path),
+    ):
+        object_key = f"{object_prefix}/{path.name}"
+        runtime.storage.upload_file(bucket, object_key, path, "image/png")
+        urls[response_key] = runtime.storage.presigned_get_url(
+            bucket,
+            object_key,
+            runtime.settings.segmentation_asset_url_expiry_seconds,
+        )
+    return urls
+
+
 @router.post("/segment")
 async def segment_image(request: Request) -> dict:
     """Run the real lesion segmenter against raw PNG/JPEG/DICOM request bytes."""
@@ -94,8 +118,10 @@ async def segment_image(request: Request) -> dict:
     image = ImageInput(image_id=None, image_type_code="DENTAL_XRAY")
     try:
         result = await run_in_threadpool(_run_segmentation, runtime, image, input_path, output_dir)
+        assets = await run_in_threadpool(_publish_assets, runtime, request_id, result)
     finally:
-        input_path.unlink(missing_ok=True)
+        # MinIO is the durable source; local files are only inference scratch space.
+        shutil.rmtree(output_dir, ignore_errors=True)
 
     regions = []
     for item in result.regions:
@@ -104,8 +130,6 @@ async def segment_image(request: Request) -> dict:
             region.pop("toothCode", None)
         regions.append(region)
 
-    base_url = str(request.base_url).rstrip("/")
-    asset_base = f"{base_url}/ai/v1/segment-assets/{request_id}"
     raw = result.raw_result if isinstance(result.raw_result, dict) else {}
     data = {
         "requestId": request_id,
@@ -117,11 +141,8 @@ async def segment_image(request: Request) -> dict:
         "segmentationScore": raw.get("segmentationScore"),
         "regionCount": len(regions),
         "regions": regions,
-        "assets": {
-            "maskUrl": f"{asset_base}/{result.mask_path.name}",
-            "overlayUrl": f"{asset_base}/{result.overlay_path.name}",
-            "heatmapUrl": f"{asset_base}/{result.heatmap_path.name}",
-        },
+        "assets": assets,
+        "assetUrlExpiresInSeconds": settings.segmentation_asset_url_expiry_seconds,
         "needsReview": True,
         "limitations": [
             "Research-use binary caries segmentation; not a clinical diagnosis.",

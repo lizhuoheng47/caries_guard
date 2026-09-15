@@ -228,6 +228,9 @@
                 <span class="med-chip" v-if="citation.score != null">{{ formatPercent(citation.score) }}</span>
               </div>
               <p>{{ citation.excerpt || '暂无引用摘要。' }}</p>
+              <div v-if="citation.sourceFile || citation.sourcePages" class="med-meta">
+                {{ citation.sourceFile || '来源页' }}<span v-if="citation.sourcePages"> · 第 {{ citation.sourcePages }} 页</span>
+              </div>
               <div class="med-meta med-mono">{{ citation.sourceUri || '暂无来源' }}</div>
             </article>
           </div>

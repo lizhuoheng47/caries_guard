@@ -13,5 +13,9 @@ public record AnalysisCitationVO(
         /** 相关度分数 */
         Double score,
         /** 来源 URI */
-        String sourceUri) {
+        String sourceUri,
+        /** 来源文件 */
+        String sourceFile,
+        /** 来源页码或页码范围 */
+        String sourcePages) {
 }

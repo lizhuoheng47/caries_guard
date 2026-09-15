@@ -133,6 +133,11 @@ class Settings:
 
     model_version: str = os.getenv("CG_MODEL_VERSION", "caries-v1")
     minio_endpoint: str = os.getenv("CG_MINIO_ENDPOINT", "http://minio:9000")
+    # Signed links must use an address that the user's browser can reach.
+    minio_public_endpoint: str = os.getenv(
+        "CG_MINIO_PUBLIC_ENDPOINT",
+        os.getenv("CG_MINIO_ENDPOINT", "http://127.0.0.1:9000"),
+    )
     minio_access_key: str = os.getenv("CG_MINIO_ACCESS_KEY", "minioadmin")
     minio_secret_key: str = os.getenv("CG_MINIO_SECRET_KEY", "minioadmin")
     minio_secure: bool = bool_env("CG_MINIO_SECURE", False)
@@ -146,6 +151,7 @@ class Settings:
     )
     local_segmentation_api_max_bytes: int = int_env("CG_LOCAL_SEGMENTATION_API_MAX_BYTES", 25 * 1024 * 1024)
     local_segmentation_asset_ttl_seconds: int = int_env("CG_LOCAL_SEGMENTATION_ASSET_TTL_SECONDS", 3600)
+    segmentation_asset_url_expiry_seconds: int = int_env("CG_SEGMENTATION_ASSET_URL_EXPIRY_SECONDS", 900)
 
     mysql_host: str = os.getenv("CG_MYSQL_HOST", os.getenv("CARIES_MYSQL_HOST", "mysql"))
     mysql_port: int = int_env("CG_MYSQL_PORT", int_env("CARIES_MYSQL_PORT", 3306))
@@ -169,6 +175,31 @@ class Settings:
     )
     qwen_vision_timeout_seconds: int = int_env("CG_QWEN_VISION_TIMEOUT_SECONDS", 60)
     qwen_vision_temperature: float = float_env("CG_QWEN_VISION_TEMPERATURE", 0.1)
+
+    # Minimal knowledge-grounded diagnostic support. The local retriever is usable
+    # without an external LLM; enabling the LLM upgrades template generation to
+    # grounded Qwen generation while retaining the same result contract.
+    rag_enabled: bool = bool_env("CG_RAG_ENABLED", True)
+    rag_knowledge_path: str = os.getenv(
+        "CG_RAG_KNOWLEDGE_PATH", "knowledge-base/caries_guidance_v1.json"
+    ).strip()
+    rag_top_k: int = int_env("CG_RAG_TOP_K", 3)
+    rag_llm_enabled: bool = bool_env("CG_RAG_LLM_ENABLED", False)
+    rag_llm_model: str = os.getenv("CG_RAG_LLM_MODEL", os.getenv("CG_QWEN_VISION_MODEL", "qwen3-vl-plus"))
+    rag_llm_base_url: str = first_non_empty(
+        os.getenv("CG_RAG_LLM_BASE_URL"),
+        os.getenv("CG_QWEN_VISION_BASE_URL"),
+        os.getenv("DASHSCOPE_BASE_URL"),
+        default="",
+    )
+    rag_llm_api_key: str = first_non_empty(
+        os.getenv("CG_RAG_LLM_API_KEY"),
+        os.getenv("CG_QWEN_VISION_API_KEY"),
+        os.getenv("DASHSCOPE_API_KEY"),
+        default="",
+    )
+    rag_llm_timeout_seconds: int = int_env("CG_RAG_LLM_TIMEOUT_SECONDS", 45)
+    rag_llm_temperature: float = float_env("CG_RAG_LLM_TEMPERATURE", 0.1)
 
     model_quality_enabled: bool = bool_env("CG_MODEL_QUALITY_ENABLED", True)
     model_quality_impl_type: str = os.getenv("CG_MODEL_QUALITY_IMPL_TYPE", "HEURISTIC").upper()
@@ -217,6 +248,13 @@ class Settings:
         if self.qwen_vision_enabled:
             _require_non_empty("CG_QWEN_VISION_BASE_URL", self.qwen_vision_base_url)
             _require_non_empty("CG_QWEN_VISION_API_KEY", self.qwen_vision_api_key)
+        if self.rag_enabled:
+            _require_non_empty("CG_RAG_KNOWLEDGE_PATH", self.rag_knowledge_path)
+            if self.rag_top_k < 1 or self.rag_top_k > 10:
+                raise ValueError("CG_RAG_TOP_K must be between 1 and 10")
+        if self.rag_llm_enabled:
+            _require_non_empty("CG_RAG_LLM_BASE_URL", self.rag_llm_base_url)
+            _require_non_empty("CG_RAG_LLM_API_KEY", self.rag_llm_api_key)
         if self.model_disease_detect_enabled:
             for name, value in (
                 ("CG_MODEL_DISEASE_DETECT_CHECKPOINT_PATH", self.model_disease_detect_checkpoint_path),

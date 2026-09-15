@@ -57,6 +57,8 @@ const normalizeCitations = (citations: any): AnalysisCitation[] => {
     excerpt: citation.chunkText || citation.content,
     score: typeof citation.score === 'number' ? citation.score : undefined,
     sourceUri: citation.sourceUri,
+    sourceFile: citation.sourceFile,
+    sourcePages: citation.sourcePages,
   }));
 };
 

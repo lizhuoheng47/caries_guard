@@ -40,16 +40,31 @@ class FakePipeline:
         )
 
 
+class FakeStorage:
+    def ensure_bucket(self, _bucket_name: str) -> None:
+        return None
+
+    def upload_file(self, _bucket_name: str, _object_key: str, path: Path, _content_type: str) -> None:
+        assert path.is_file()
+
+    def presigned_get_url(self, bucket_name: str, object_key: str, _expires_seconds: int) -> str:
+        return f"http://127.0.0.1:9000/{bucket_name}/{object_key}?signed=test"
+
+
 def test_raw_image_endpoint_returns_segmentation_only(monkeypatch, tmp_path: Path) -> None:
     settings = SimpleNamespace(
         local_segmentation_api_enabled=True,
         local_segmentation_api_max_bytes=1024,
         local_segmentation_api_output_dir=str(tmp_path),
+        local_segmentation_asset_ttl_seconds=3600,
+        bucket_visual="caries-visual",
+        segmentation_asset_url_expiry_seconds=900,
     )
     runtime = SimpleNamespace(
         settings=settings,
         model_registry=FakeRegistry(),
         segmentation_pipeline=FakePipeline(),
+        storage=FakeStorage(),
     )
     monkeypatch.setattr(segment_api, "get_local_segmentation_runtime", lambda: runtime)
     app = FastAPI()
@@ -68,5 +83,6 @@ def test_raw_image_endpoint_returns_segmentation_only(monkeypatch, tmp_path: Pat
     assert "gradingLabel" not in data
     assert "riskLevel" not in data
     request_dir = tmp_path / data["requestId"]
-    assert not (request_dir / "input.png").exists()
-    assert (request_dir / "overlay_unknown.png").is_file()
+    assert not request_dir.exists()
+    assert data["assetUrlExpiresInSeconds"] == 900
+    assert data["assets"]["overlayUrl"].startswith("http://127.0.0.1:9000/caries-visual/")
