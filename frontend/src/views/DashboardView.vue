@@ -192,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { dashboardApi, type DashboardOverview, type DashboardTrendPoint, type RiskDistribution } from '@/api/dashboard'
 import { analysisApi } from '@/api/analysis'
@@ -340,6 +340,10 @@ const loadDashboard = async () => {
   }
 }
 
+const refreshDashboard = () => {
+  if (!loading.value) void loadDashboard()
+}
+
 const exportDashboard = () => {
   const rows = [['任务号', '患者', '病例号', '分级', '复核状态', '创建时间'], ...cases.value.map((item) => [String(item.taskId), item.patient, item.type, item.result, item.risk, item.time])]
   const csv = '\ufeff' + rows.map((row) => row.map((cell) => `"${String(cell).split('"').join('""')}"`).join(',')).join('\n')
@@ -351,7 +355,15 @@ const exportDashboard = () => {
   URL.revokeObjectURL(url)
 }
 
-onMounted(loadDashboard)
+onMounted(() => {
+  void loadDashboard()
+  window.addEventListener('caries-business-data-changed', refreshDashboard)
+  window.addEventListener('focus', refreshDashboard)
+})
+onUnmounted(() => {
+  window.removeEventListener('caries-business-data-changed', refreshDashboard)
+  window.removeEventListener('focus', refreshDashboard)
+})
 watch(range, loadDashboard)
 </script>
 

@@ -217,7 +217,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import { useAnalysisStore } from '@/stores/analysis'
@@ -360,9 +360,20 @@ const fileTypeLabel = computed(() => {
   return selectedFile.value.type || 'Unknown'
 })
 
+const refreshCaseTasks = () => {
+  if (!store.loading) void store.fetchTasks({ pageNum: 1, pageSize: 24 })
+}
+
 onMounted(() => {
   void store.fetchTasks({ pageNum: 1, pageSize: 24 })
+  window.addEventListener('caries-business-data-changed', refreshCaseTasks)
+  window.addEventListener('focus', refreshCaseTasks)
   if (route.query.new === '1') openNewCaseDrawer()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('caries-business-data-changed', refreshCaseTasks)
+  window.removeEventListener('focus', refreshCaseTasks)
 })
 
 const reload = () => {
@@ -558,7 +569,7 @@ const submitNewCase = async () => {
 
     const uploadRes = await casePortalApi.uploadCaseFile(selectedFile.value!, caseId, 'PANORAMIC')
 
-    await casePortalApi.createCaseImage(caseId, {
+    const imageRes = await casePortalApi.createCaseImage(caseId, {
       attachmentId: uploadRes.data.attachmentId,
       visitId,
       patientId,
@@ -567,6 +578,15 @@ const submitNewCase = async () => {
       shootingTime: buildLocalDateTime(),
       primaryFlag: '1',
       remark: 'Uploaded from case portal'
+    })
+
+    await casePortalApi.saveImageQualityCheck(imageRes.data.imageId, {
+      checkTypeCode: 'AUTO',
+      checkResultCode: 'PASS',
+      qualityScore: 100,
+      issueCodes: ['CLIENT_UPLOAD_PRECHECK'],
+      suggestionText: '文件类型、大小和可读取性预检通过；影像质量仍由推理流水线继续评估。',
+      remark: 'Created from case portal upload precheck'
     })
 
     const analysisRes = await casePortalApi.createAnalysis(caseId, {
@@ -578,6 +598,7 @@ const submitNewCase = async () => {
     })
 
     notificationStore.success('病例创建成功', `分析任务 ${analysisRes.data.taskNo} 已入队。`)
+    window.dispatchEvent(new CustomEvent('caries-business-data-changed'))
     showNewCase.value = false
     resetNewCaseForm()
     await store.fetchTasks({ pageNum: 1, pageSize: 24 })

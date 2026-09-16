@@ -4,7 +4,7 @@
       <div>
         <p class="seg-eyebrow">REAL MODEL · BINARY SEGMENTATION</p>
         <h1>龋病影像智能分割</h1>
-        <p class="seg-lead">上传全景牙片，由本地 U-Net 自动定位疑似龋病区域。页面不生成预置结论。</p>
+        <p class="seg-lead">快速分割用于即时预览；选择“发起完整诊断”后才会创建病例、保存分析并更新工作台。</p>
       </div>
       <div class="server-chip" :class="healthClass">
         <span class="server-dot"></span>
@@ -86,9 +86,14 @@
               <strong>{{ fileSizeLabel }}</strong>
               <span>{{ selectedFile.type || 'application/dicom' }}</span>
             </div>
-            <button class="run-button" type="button" :disabled="analyzing || !modelReady" @click="analyze">
-              {{ analyzing ? '正在分析…' : result ? '重新分析' : '开始真实模型分析' }}
-            </button>
+            <div class="run-actions">
+              <button class="ghost-button" type="button" :disabled="analyzing || savingCase || !modelReady" @click="analyze">
+                {{ analyzing ? '分割中…' : result ? '重新预览分割' : '快速分割预览' }}
+              </button>
+              <button class="run-button" type="button" :disabled="analyzing || savingCase" @click="openCaseDialog">
+                {{ savingCase ? '正在创建…' : '发起完整诊断' }}
+              </button>
+            </div>
           </div>
         </template>
 
@@ -126,21 +131,93 @@
         </div>
 
         <div class="safety-note">
-          <strong>研究用途提醒</strong>
-          <p>当前模型只做二值区域分割，不推断牙位、病灶深度、严重程度或治疗方案，所有结果均需人工复核。</p>
+          <strong>{{ result ? '分割预览尚未入库' : '研究用途提醒' }}</strong>
+          <p>{{ result ? '如需同步工作台、病例中心、数据报表与 RAG 诊疗建议，请点击左侧“发起完整诊断”。' : '快速预览只做二值区域分割；完整诊断结果仍需医生复核。' }}</p>
         </div>
       </aside>
     </main>
+
+    <Teleport to="body">
+      <div v-if="showCaseDialog" class="case-dialog-backdrop" @click.self="closeCaseDialog">
+        <section class="case-dialog" role="dialog" aria-modal="true" aria-labelledby="case-dialog-title">
+          <header class="case-dialog-head">
+            <div>
+              <span class="panel-kicker">PERSISTED FULL ANALYSIS</span>
+              <h2 id="case-dialog-title">保存病例并发起完整诊断</h2>
+            </div>
+            <button class="ghost-button" type="button" :disabled="savingCase" @click="closeCaseDialog">关闭</button>
+          </header>
+
+          <div class="case-dialog-file">
+            <strong>{{ selectedFile?.name }}</strong>
+            <span>{{ fileSizeLabel }} · 将上传至病例影像库</span>
+          </div>
+
+          <div class="case-form-grid">
+            <label class="case-field case-span-2">
+              <span>患者姓名 / 患者号</span>
+              <div class="case-search-row">
+                <input v-model.trim="caseForm.patientCode" type="text" placeholder="输入姓名或编号" @input="clearPatientSelection" />
+                <button class="ghost-button" type="button" :disabled="patientSearching || !caseForm.patientCode" @click="searchPatients">
+                  {{ patientSearching ? '查询中…' : '查询患者库' }}
+                </button>
+              </div>
+            </label>
+
+            <div v-if="patientMatches.length" class="case-patient-results case-span-2">
+              <button v-for="patient in patientMatches" :key="patient.patientId" type="button" :class="{ active: selectedPatientId === patient.patientId }" @click="selectPatient(patient)">
+                <strong>{{ patient.patientNameMasked || '脱敏患者' }}</strong>
+                <span>{{ patient.patientNo }} · {{ patient.genderCode || '--' }} · {{ patient.age ?? '--' }} 岁</span>
+              </button>
+            </div>
+
+            <label class="case-field">
+              <span>年龄</span>
+              <input v-model.trim="caseForm.age" type="number" min="0" max="120" placeholder="45" />
+            </label>
+            <div class="case-field">
+              <span>性别</span>
+              <div class="gender-buttons">
+                <button type="button" :class="{ active: caseForm.genderCode === 'MALE' }" @click="caseForm.genderCode = 'MALE'">男</button>
+                <button type="button" :class="{ active: caseForm.genderCode === 'FEMALE' }" @click="caseForm.genderCode = 'FEMALE'">女</button>
+              </div>
+            </div>
+            <label class="case-field case-span-2">
+              <span>主诉与分析背景</span>
+              <textarea v-model.trim="caseForm.chiefComplaint" rows="3" placeholder="填写本次检查原因、症状或筛查背景"></textarea>
+            </label>
+          </div>
+
+          <p v-if="caseError" class="case-error">{{ caseError }}</p>
+
+          <footer class="case-dialog-actions">
+            <button class="ghost-button" type="button" :disabled="savingCase" @click="closeCaseDialog">取消</button>
+            <button class="run-button" type="button" :disabled="savingCase" @click="submitFullAnalysis">
+              {{ savingCase ? '正在创建病例并提交…' : '确认并发起完整诊断' }}
+            </button>
+          </footer>
+        </section>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ApiClientError } from '@/api/request'
+import { casePortalApi, type PatientListItem } from '@/api/casePortal'
 import { segmentationApi, type SegmentationResult } from '@/api/segmentation'
+import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notification'
 
 type ViewKey = 'original' | 'overlay' | 'heatmap' | 'mask'
+type GenderCode = 'MALE' | 'FEMALE' | ''
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024
+const router = useRouter()
+const authStore = useAuthStore()
+const notifications = useNotificationStore()
 const fileInput = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
 const previewUrl = ref('')
@@ -150,6 +227,18 @@ const analyzing = ref(false)
 const dragging = ref(false)
 const errorMessage = ref('')
 const health = ref<Awaited<ReturnType<typeof segmentationApi.health>> | null>(null)
+const showCaseDialog = ref(false)
+const savingCase = ref(false)
+const caseError = ref('')
+const patientSearching = ref(false)
+const patientMatches = ref<PatientListItem[]>([])
+const selectedPatientId = ref<string | null>(null)
+const caseForm = reactive({
+  patientCode: '',
+  age: '',
+  genderCode: '' as GenderCode,
+  chiefComplaint: '',
+})
 
 const modelReady = computed(() => Boolean(health.value?.ready && health.value.implementationType === 'ML_MODEL'))
 const healthClass = computed(() => (modelReady.value ? 'online' : health.value ? 'offline' : 'checking'))
@@ -227,6 +316,172 @@ const analyze = async () => {
   }
 }
 
+const resetCaseForm = () => {
+  caseForm.patientCode = ''
+  caseForm.age = ''
+  caseForm.genderCode = ''
+  caseForm.chiefComplaint = ''
+  caseError.value = ''
+  patientMatches.value = []
+  selectedPatientId.value = null
+}
+
+const openCaseDialog = () => {
+  if (!selectedFile.value) {
+    errorMessage.value = '请先选择一张影像文件。'
+    return
+  }
+  resetCaseForm()
+  showCaseDialog.value = true
+}
+
+const closeCaseDialog = () => {
+  if (savingCase.value) return
+  showCaseDialog.value = false
+  caseError.value = ''
+}
+
+const clearPatientSelection = () => {
+  selectedPatientId.value = null
+  patientMatches.value = []
+}
+
+const searchPatients = async () => {
+  const keyword = caseForm.patientCode.trim()
+  if (!keyword) return
+  patientSearching.value = true
+  caseError.value = ''
+  try {
+    const response = await casePortalApi.pagePatients({ pageNo: 1, pageSize: 10, keyword })
+    patientMatches.value = response.data.records || []
+    if (!patientMatches.value.length) notifications.info('未找到患者', '提交时将创建新的患者档案。')
+  } catch (error) {
+    caseError.value = normalizeError(error)
+  } finally {
+    patientSearching.value = false
+  }
+}
+
+const selectPatient = (patient: PatientListItem) => {
+  selectedPatientId.value = patient.patientId
+  caseForm.patientCode = patient.patientNo
+  caseForm.age = patient.age == null ? '' : String(patient.age)
+  caseForm.genderCode = patient.genderCode === 'MALE' || patient.genderCode === 'FEMALE' ? patient.genderCode : ''
+}
+
+const buildLocalDate = (age: string) => {
+  const numericAge = Number.parseInt(age, 10)
+  if (Number.isNaN(numericAge) || numericAge < 0) return undefined
+  const date = new Date()
+  date.setFullYear(date.getFullYear() - numericAge)
+  return date.toISOString().slice(0, 10)
+}
+
+const buildLocalDateTime = () => {
+  const now = new Date()
+  const pad = (value: number) => value.toString().padStart(2, '0')
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+}
+
+const normalizeError = (error: unknown) => {
+  if (error instanceof ApiClientError) return error.message
+  if (error instanceof Error) return error.message
+  return '创建病例并发起分析失败'
+}
+
+const validateCaseForm = () => {
+  if (!selectedFile.value) return '请先选择一张影像文件。'
+  if (!caseForm.patientCode) return '患者姓名或患者号不能为空。'
+  if (!selectedPatientId.value && !caseForm.age) return '新患者年龄不能为空。'
+  if (!selectedPatientId.value && !caseForm.genderCode) return '新患者请选择性别。'
+  if (!caseForm.chiefComplaint) return '请填写主诉与分析背景。'
+  if (!authStore.user?.id) return '当前登录信息不完整，请重新登录。'
+  return ''
+}
+
+const submitFullAnalysis = async () => {
+  const validationError = validateCaseForm()
+  if (validationError) {
+    caseError.value = validationError
+    return
+  }
+  const file = selectedFile.value!
+  const currentUserId = authStore.user!.id
+  savingCase.value = true
+  caseError.value = ''
+  try {
+    let patientId = selectedPatientId.value
+    if (!patientId) {
+      const patientResponse = await casePortalApi.createPatient({
+        patientName: caseForm.patientCode,
+        genderCode: caseForm.genderCode || undefined,
+        birthDate: buildLocalDate(caseForm.age),
+        sourceCode: 'OUTPATIENT',
+        privacyLevelCode: 'L4',
+        remark: 'Created from AI diagnosis workbench',
+      })
+      patientId = patientResponse.data.patientId
+    }
+
+    const visitResponse = await casePortalApi.createVisit({
+      patientId,
+      doctorUserId: currentUserId,
+      visitTypeCode: 'OUTPATIENT',
+      visitDate: buildLocalDateTime(),
+      complaint: caseForm.chiefComplaint,
+      triageLevelCode: 'NORMAL',
+      sourceChannelCode: 'MANUAL',
+      remark: 'Created from AI diagnosis workbench',
+    })
+    const caseResponse = await casePortalApi.createCase({
+      visitId: visitResponse.data.visitId,
+      patientId,
+      caseTypeCode: 'CARIES_SCREENING',
+      caseTitle: `Case ${caseForm.patientCode}`,
+      chiefComplaint: caseForm.chiefComplaint,
+      priorityCode: 'NORMAL',
+      clinicalNotes: caseForm.chiefComplaint,
+      remark: 'Created from AI diagnosis workbench',
+    })
+    const uploadResponse = await casePortalApi.uploadCaseFile(file, caseResponse.data.caseId, 'PANORAMIC')
+    const imageResponse = await casePortalApi.createCaseImage(caseResponse.data.caseId, {
+      attachmentId: uploadResponse.data.attachmentId,
+      visitId: visitResponse.data.visitId,
+      patientId,
+      imageTypeCode: 'PANORAMIC',
+      imageSourceCode: 'UPLOAD',
+      shootingTime: buildLocalDateTime(),
+      primaryFlag: '1',
+      remark: 'Uploaded from AI diagnosis workbench',
+    })
+    await casePortalApi.saveImageQualityCheck(imageResponse.data.imageId, {
+      checkTypeCode: 'AUTO',
+      checkResultCode: 'PASS',
+      qualityScore: 100,
+      issueCodes: ['CLIENT_UPLOAD_PRECHECK'],
+      suggestionText: '文件类型、大小和可读取性预检通过；影像质量仍由推理流水线继续评估。',
+      remark: 'Created from AI diagnosis workbench upload precheck',
+    })
+    const analysisResponse = await casePortalApi.createAnalysis(caseResponse.data.caseId, {
+      caseId: caseResponse.data.caseId,
+      patientId,
+      forceRetryFlag: false,
+      taskTypeCode: 'INFERENCE',
+      remark: 'Created from AI diagnosis workbench; full persisted inference',
+    })
+
+    window.dispatchEvent(new CustomEvent('caries-business-data-changed'))
+    notifications.success('完整诊断已提交', `病例 ${caseResponse.data.caseNo}、任务 ${analysisResponse.data.taskNo} 已写入业务库。`)
+    showCaseDialog.value = false
+    await router.push(`/analysis/${analysisResponse.data.taskId}`)
+  } catch (error) {
+    caseError.value = normalizeError(error)
+    notifications.error('创建并分析失败', caseError.value)
+  } finally {
+    savingCase.value = false
+  }
+}
+
 const reset = () => {
   releasePreview()
   selectedFile.value = null
@@ -294,6 +549,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .scan-line { position: absolute; left: 8%; right: 8%; top: 18%; height: 2px; background: #35f8ff; box-shadow: 0 0 22px #35f8ff; animation: scanning 2s ease-in-out infinite alternate; }
 @keyframes scanning { to { top: 82%; } }
 .run-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; border-top: 1px solid rgba(112,224,255,.08); }
+.run-actions { display: flex; gap: 8px; }
 .run-bar strong, .run-bar span { display: block; }
 .run-bar strong { font-size: 13px; }.run-bar span { margin-top: 3px; color: #7189b6; font-size: 10px; }
 .error-banner { margin: 0; padding: 12px 18px; color: #ffd5da; background: rgba(255,72,91,.1); border-top: 1px solid rgba(255,72,91,.2); font-size: 13px; }
@@ -310,6 +566,15 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .region-body { min-width: 0; flex: 1; }.region-body > div { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; }.region-body span { color: #37e6a2; font-family: ui-monospace, monospace; }.region-body code { display: block; margin-top: 7px; color: #6f86b6; font-size: 10px; white-space: normal; }
 .empty-result { min-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #8299be; }.empty-result strong { color: #dbe9fb; }.empty-result p { max-width: 250px; margin: 8px 0 0; font-size: 12px; line-height: 1.6; }
 .safety-note { margin-top: 16px; padding: 13px; border: 1px solid rgba(255,188,82,.18); border-radius: 10px; background: rgba(255,177,51,.055); }.safety-note strong { color: #ffd18a; font-size: 12px; }.safety-note p { margin: 6px 0 0; color: #9ba8bc; font-size: 11px; line-height: 1.6; }
+.case-dialog-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 24px; background: rgba(0,8,24,.78); backdrop-filter: blur(7px); }
+.case-dialog { width: min(680px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; padding: 22px; border: 1px solid rgba(53,248,255,.2); border-radius: 18px; color: #edf7ff; background: linear-gradient(150deg, #0d2042, #050f22); box-shadow: 0 28px 90px rgba(0,0,0,.5); }
+.case-dialog-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }.case-dialog-head h2 { margin: 0; font-size: 22px; }
+.case-dialog-file { display: flex; justify-content: space-between; gap: 15px; margin: 18px 0; padding: 12px 14px; border: 1px solid rgba(53,248,255,.12); border-radius: 10px; background: rgba(53,248,255,.05); }.case-dialog-file strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.case-dialog-file span { flex: none; color: #8ca4ca; font-size: 12px; }
+.case-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }.case-span-2 { grid-column: 1 / -1; }
+.case-field { display: flex; flex-direction: column; gap: 7px; }.case-field > span { color: #9bb1d2; font-size: 12px; }.case-field input, .case-field textarea { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid rgba(112,224,255,.16); border-radius: 9px; outline: none; color: #eefbff; background: rgba(0,8,24,.55); }.case-field input:focus, .case-field textarea:focus { border-color: #35f8ff; }
+.case-search-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }.gender-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }.gender-buttons button, .case-patient-results button { padding: 10px; border: 1px solid rgba(112,224,255,.15); border-radius: 9px; color: #b9cbe6; background: rgba(255,255,255,.035); }.gender-buttons button.active, .case-patient-results button.active { border-color: #35f8ff; color: #35f8ff; background: rgba(53,248,255,.09); }
+.case-patient-results { display: grid; gap: 7px; }.case-patient-results button { display: flex; justify-content: space-between; text-align: left; }.case-patient-results span { color: #8299be; font-size: 11px; }
+.case-error { margin: 14px 0 0; padding: 10px 12px; border-radius: 8px; color: #ffd5da; background: rgba(255,72,91,.1); font-size: 12px; }.case-dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
 @media (max-width: 1050px) { .seg-grid { grid-template-columns: 1fr; }.result-panel { min-height: 300px; } }
-@media (max-width: 700px) { .seg-header { flex-direction: column; }.server-chip { width: 100%; }.panel-bar, .run-bar { align-items: stretch; flex-direction: column; }.panel-actions { width: 100%; }.panel-actions button, .run-button { flex: 1; }.drop-zone { min-height: 380px; }.image-stage { min-height: 320px; } }
+@media (max-width: 700px) { .seg-header { flex-direction: column; }.server-chip { width: 100%; }.panel-bar, .run-bar { align-items: stretch; flex-direction: column; }.panel-actions, .run-actions { width: 100%; }.panel-actions button, .run-actions button { flex: 1; }.drop-zone { min-height: 380px; }.image-stage { min-height: 320px; }.case-form-grid { grid-template-columns: 1fr; }.case-span-2 { grid-column: auto; }.case-search-row { grid-template-columns: 1fr; }.case-dialog-file { flex-direction: column; } }
 </style>

@@ -512,6 +512,13 @@ watch(
   { immediate: true }
 )
 
+watch(normalizedTaskStatus, (status, previousStatus) => {
+  const terminal = ['SUCCESS', 'DONE', 'REVIEW', 'FAILED']
+  if (previousStatus && status !== previousStatus && terminal.includes(status)) {
+    window.dispatchEvent(new CustomEvent('caries-business-data-changed'))
+  }
+})
+
 onMounted(() => {
   isMounted = true
   void loadDetail()

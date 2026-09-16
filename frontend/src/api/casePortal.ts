@@ -73,6 +73,15 @@ export interface CreateCaseImageResponse {
   qualityStatusCode: string
 }
 
+export interface SaveImageQualityCheckPayload {
+  checkTypeCode?: string
+  checkResultCode: 'PASS' | 'REVIEW' | 'REJECT'
+  qualityScore?: number
+  issueCodes?: string[]
+  suggestionText?: string
+  remark?: string
+}
+
 export interface CreateAnalysisPayload {
   caseId: string
   patientId: string
@@ -132,6 +141,10 @@ export const casePortalApi = {
 
   createCaseImage(caseId: string, payload: CreateCaseImagePayload): Promise<ApiResponse<CreateCaseImageResponse>> {
     return request.post(`/cases/${caseId}/images`, payload)
+  },
+
+  saveImageQualityCheck(imageId: string, payload: SaveImageQualityCheckPayload): Promise<ApiResponse<unknown>> {
+    return request.post(`/images/${imageId}/quality-checks`, payload)
   },
 
   createAnalysis(caseId: string, payload: CreateAnalysisPayload): Promise<ApiResponse<CreateAnalysisResponse>> {

@@ -426,6 +426,10 @@ const reload = () => {
   void fetchTasks()
 }
 
+const refreshFromBusinessEvent = () => {
+  if (!loading.value) void fetchTasks()
+}
+
 const nextPage = () => {
   if (pageNo.value >= totalPages.value) return
   pageNo.value += 1
@@ -449,6 +453,8 @@ const quickOpen = (task: RawTask) => {
 onMounted(() => {
   void fetchTasks()
   setupAutoRefresh()
+  window.addEventListener('caries-business-data-changed', refreshFromBusinessEvent)
+  window.addEventListener('focus', refreshFromBusinessEvent)
   cleanupSettingsListener = onWorkspaceSettingsChange((nextSettings) => {
     settings.value = nextSettings
     setupAutoRefresh()
@@ -458,6 +464,8 @@ onMounted(() => {
 onUnmounted(() => {
   clearTimer()
   cleanupSettingsListener()
+  window.removeEventListener('caries-business-data-changed', refreshFromBusinessEvent)
+  window.removeEventListener('focus', refreshFromBusinessEvent)
 })
 </script>
 

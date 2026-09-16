@@ -482,6 +482,7 @@ const generateReport = async () => {
     const reportsResponse = await reportApi.listCaseReports(caseId)
     reportHistory.value = reportsResponse.data
     activeReport.value = reportsResponse.data[0] || null
+    window.dispatchEvent(new CustomEvent('caries-business-data-changed'))
     notificationStore.success('报告已生成', activeReport.value ? `${activeReport.value.reportNo} 已归档。` : '报告已归档。')
   } catch (error) {
     notificationStore.error('报告生成失败', error instanceof Error ? error.message : '报告服务调用失败')
