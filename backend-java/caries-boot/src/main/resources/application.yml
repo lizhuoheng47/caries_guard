@@ -3,6 +3,8 @@ spring:
     name: caries-guard-backend
   profiles:
     active: local
+  lifecycle:
+    timeout-per-shutdown-phase: ${CARIES_SHUTDOWN_TIMEOUT:30s}
   jackson:
     time-zone: UTC
   servlet:
@@ -16,12 +18,27 @@ banner:
 
 server:
   port: 8080
+  shutdown: graceful
+  tomcat:
+    threads:
+      max: ${CARIES_HTTP_MAX_THREADS:200}
+      min-spare: ${CARIES_HTTP_MIN_SPARE_THREADS:20}
+    max-connections: ${CARIES_HTTP_MAX_CONNECTIONS:8192}
+    accept-count: ${CARIES_HTTP_ACCEPT_COUNT:200}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 springdoc:
   api-docs:

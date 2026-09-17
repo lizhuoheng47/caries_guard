@@ -541,6 +541,7 @@ Set-Location backend-python
 
 ```powershell
 Set-Location frontend
+npm test
 npm run typecheck
 npm run build
 ```
@@ -551,7 +552,23 @@ npm run build
 docker compose config --quiet
 ```
 
-建议提交前依次执行上述检查。模型文件较大，普通单元测试不会重新训练模型；模型可加载性由清单、校验和、启动校验和专用冒烟脚本共同保证。
+也可以从仓库根目录执行统一质量门禁：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-engineering-gates.ps1
+```
+
+`.github/workflows/ci.yml` 会在 push 和 pull request 上执行同类检查。模型文件较大，普通单元测试不会重新训练模型；模型可加载性由清单、校验和、启动校验和专用冒烟脚本共同保证。
+
+### 性能与可靠性验证
+
+- `scripts/load-test.py`：输出吞吐量、错误率及 p50/p95/p99，并按阈值返回退出码。
+- `scripts/fault-drill.ps1`：暂停 AI 工作进程，验证 Java 隔离性，然后恢复并验证健康状态。
+- `deploy/k8s/`：提供应用层多副本、滚动更新、探针、PDB 和 HPA 模板；有状态中间件使用外部集群服务。
+- Java Actuator 暴露受保护的 Prometheus 指标；前端 Nginx 对 API 设置单 IP 请求与连接限制。
+- RabbitMQ 队列类型可通过 `CARIES_ANALYSIS_QUEUE_TYPE=quorum` 同步切换 Java 与 Python 为 quorum queue；现有本地 classic queue 保持兼容。切换已有队列前必须先制定迁移方案，RabbitMQ 不允许原地改变队列类型。
+
+验收指标、运行方式和不能越界的高可用声明见 [`docs/engineering-readiness.md`](./docs/engineering-readiness.md)。
 
 ## 🧪 模型训练与评估
 
@@ -620,6 +637,8 @@ Compose 暴露的默认端口是 `13306`。本地配置已默认使用该端口�
 - 质量检查、牙位候选、病变分级和风险评估仍为规则实现，需要新的标注数据和独立验证后才能替换为模型。
 - Qwen Vision 是默认关闭的可选补充能力，不参与系统可用性的基本保证。
 - 完整 Docker Compose 当前以 NVIDIA GPU 环境为目标；CPU 调试需采用本地开发方式。
+- `deploy/k8s` 仅实现无状态应用层的扩缩容模板；数据库、消息队列、对象存储的集群、备份恢复和监控仍须由目标运行平台提供并完成演练。
+- 仓库提供压测与故障演练工具，但未随代码宣称某个环境已经达到固定吞吐量或月度可用性；这些结论必须以目标环境的留档结果为准。
 - 仓库目前未声明统一的开源许可证；在分发代码、模型或数据前，请先确认各数据集和第三方组件的授权条款。
 
 ---

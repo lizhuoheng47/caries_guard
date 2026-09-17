@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
@@ -24,17 +25,17 @@ public class AnalysisRabbitConfiguration {
 
     @Bean
     public Queue analysisRequestedQueue(AnalysisMessagingProperties properties) {
-        return new Queue(properties.getRabbit().getRequestedQueue(), true);
+        return durableQueue(properties.getRabbit().getRequestedQueue(), properties);
     }
 
     @Bean
     public Queue analysisCompletedQueue(AnalysisMessagingProperties properties) {
-        return new Queue(properties.getRabbit().getCompletedQueue(), true);
+        return durableQueue(properties.getRabbit().getCompletedQueue(), properties);
     }
 
     @Bean
     public Queue analysisFailedQueue(AnalysisMessagingProperties properties) {
-        return new Queue(properties.getRabbit().getFailedQueue(), true);
+        return durableQueue(properties.getRabbit().getFailedQueue(), properties);
     }
 
     @Bean
@@ -68,5 +69,13 @@ public class AnalysisRabbitConfiguration {
     @ConditionalOnMissingBean(MessageConverter.class)
     public MessageConverter analysisRabbitMessageConverter(ObjectMapper objectMapper) {
         return new Jackson2JsonMessageConverter(objectMapper);
+    }
+
+    private Queue durableQueue(String name, AnalysisMessagingProperties properties) {
+        QueueBuilder builder = QueueBuilder.durable(name);
+        if ("quorum".equalsIgnoreCase(properties.getRabbit().getQueueType())) {
+            builder.quorum();
+        }
+        return builder.build();
     }
 }

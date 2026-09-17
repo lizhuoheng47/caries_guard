@@ -43,6 +43,7 @@ public class SecurityConfig {
                                 "/api/v1/files/*/content",
                                 "/api/v1/internal/ai/callbacks/**",
                                 "/actuator/health",
+                                "/actuator/health/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html")

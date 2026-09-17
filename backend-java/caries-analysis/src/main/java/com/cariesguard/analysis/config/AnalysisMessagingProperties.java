@@ -1,5 +1,6 @@
 package com.cariesguard.analysis.config;
 
+import java.util.Locale;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "caries.analysis.messaging")
@@ -29,6 +30,7 @@ public class AnalysisMessagingProperties {
         private String requestedRoutingKey = "analysis.requested";
         private String completedRoutingKey = "analysis.completed";
         private String failedRoutingKey = "analysis.failed";
+        private String queueType = "classic";
 
         public String getExchange() {
             return exchange;
@@ -84,6 +86,21 @@ public class AnalysisMessagingProperties {
 
         public void setFailedRoutingKey(String failedRoutingKey) {
             this.failedRoutingKey = failedRoutingKey;
+        }
+
+        public String getQueueType() {
+            return queueType;
+        }
+
+        public void setQueueType(String queueType) {
+            if (queueType == null) {
+                throw new IllegalArgumentException("RabbitMQ queue type must be classic or quorum");
+            }
+            String normalized = queueType.strip().toLowerCase(Locale.ROOT);
+            if (!"classic".equals(normalized) && !"quorum".equals(normalized)) {
+                throw new IllegalArgumentException("RabbitMQ queue type must be classic or quorum");
+            }
+            this.queueType = normalized;
         }
     }
 }

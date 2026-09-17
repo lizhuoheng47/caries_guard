@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "vitest run",
     "typecheck": "vue-tsc -b --pretty false",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "axios": "^1.15.0",
-    "echarts": "^6.0.0",
+    "axios": "^1.18.0",
+    "echarts": "^6.1.0",
     "lucide-vue-next": "^1.0.0",
     "naive-ui": "^2.44.1",
     "pinia": "^3.0.4",
@@ -26,10 +27,16 @@
     "@vitejs/plugin-vue": "^6.0.5",
     "@vue/tsconfig": "^0.9.1",
     "autoprefixer": "^10.5.0",
-    "postcss": "^8.5.10",
+    "postcss": "^8.5.23",
     "tailwindcss": "^4.2.2",
     "typescript": "~6.0.2",
-    "vite": "^8.0.4",
+    "vite": "^8.0.16",
+    "vitest": "^4.0.0",
     "vue-tsc": "^3.2.6"
+  },
+  "overrides": {
+    "baseline-browser-mapping": "^2.11.0",
+    "browserslist": "^4.28.7",
+    "form-data": "^4.0.6"
   }
 }

@@ -4,6 +4,11 @@
     username: ${CARIES_MYSQL_USERNAME:root}
     password: ${CARIES_MYSQL_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${CARIES_DB_POOL_MAX_SIZE:20}
+      minimum-idle: ${CARIES_DB_POOL_MIN_IDLE:5}
+      connection-timeout: ${CARIES_DB_CONNECTION_TIMEOUT_MS:30000}
+      validation-timeout: ${CARIES_DB_VALIDATION_TIMEOUT_MS:5000}
   data:
     redis:
       host: ${CARIES_REDIS_HOST:redis}
@@ -13,6 +18,11 @@
     port: ${CARIES_RABBIT_PORT:5672}
     username: ${CARIES_RABBIT_USERNAME:guest}
     password: ${CARIES_RABBIT_PASSWORD:guest}
+    listener:
+      simple:
+        concurrency: ${CARIES_RABBIT_CONSUMER_CONCURRENCY:2}
+        max-concurrency: ${CARIES_RABBIT_CONSUMER_MAX_CONCURRENCY:8}
+        prefetch: ${CARIES_RABBIT_PREFETCH:4}
   mail:
     default-encoding: UTF-8
     properties:
@@ -80,6 +90,7 @@ caries:
         requested-routing-key: ${CARIES_ANALYSIS_REQUESTED_ROUTING_KEY:analysis.requested}
         completed-routing-key: ${CARIES_ANALYSIS_COMPLETED_ROUTING_KEY:analysis.completed}
         failed-routing-key: ${CARIES_ANALYSIS_FAILED_ROUTING_KEY:analysis.failed}
+        queue-type: ${CARIES_ANALYSIS_QUEUE_TYPE:classic}
   password-reset:
     enabled: ${CARIES_PASSWORD_RESET_ENABLED:false}
     development-code-enabled: false

@@ -50,7 +50,8 @@ class AnalysisRequestConsumer:
 
     def _declare_topology(self, channel: pika.adapters.blocking_connection.BlockingChannel) -> None:
         channel.exchange_declare(exchange=self.settings.analysis_exchange, exchange_type="topic", durable=True)
-        channel.queue_declare(queue=self.settings.requested_queue, durable=True)
+        arguments = {"x-queue-type": "quorum"} if self.settings.rabbit_queue_type == "quorum" else None
+        channel.queue_declare(queue=self.settings.requested_queue, durable=True, arguments=arguments)
         channel.queue_bind(
             queue=self.settings.requested_queue,
             exchange=self.settings.analysis_exchange,

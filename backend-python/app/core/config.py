@@ -118,6 +118,7 @@ class Settings:
     requested_queue: str = os.getenv("CG_ANALYSIS_REQUESTED_QUEUE", "caries.analysis.requested.queue")
     requested_routing_key: str = os.getenv("CG_ANALYSIS_REQUESTED_ROUTING_KEY", "analysis.requested")
     failed_routing_key: str = os.getenv("CG_ANALYSIS_FAILED_ROUTING_KEY", "analysis.failed")
+    rabbit_queue_type: str = os.getenv("CG_RABBIT_QUEUE_TYPE", "classic").strip().lower()
     rabbit_retry_seconds: int = int_env("CG_RABBIT_RETRY_SECONDS", 5)
 
     callback_url: str = os.getenv(
@@ -245,6 +246,8 @@ class Settings:
         ):
             object.__setattr__(self, attribute, _validate_model_impl_type(env_name, getattr(self, attribute)))
         object.__setattr__(self, "quality_fail_strategy", _validate_quality_fail_strategy(self.quality_fail_strategy))
+        if self.rabbit_queue_type not in {"classic", "quorum"}:
+            raise ValueError("CG_RABBIT_QUEUE_TYPE must be classic or quorum")
         if self.qwen_vision_enabled:
             _require_non_empty("CG_QWEN_VISION_BASE_URL", self.qwen_vision_base_url)
             _require_non_empty("CG_QWEN_VISION_API_KEY", self.qwen_vision_api_key)
