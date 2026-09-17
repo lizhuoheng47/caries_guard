@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cariesguard.local/contracts/http/analysis-result-callback.v1.schema.json",
+  "title": "Analysis result callback body v1",
+  "type": "object",
+  "required": ["taskNo", "taskStatusCode"],
+  "properties": {
+    "taskNo": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "taskStatusCode": { "enum": ["PROCESSING", "SUCCESS", "FAILED"] },
+    "startedAt": { "type": ["string", "null"], "format": "date-time" },
+    "completedAt": { "type": ["string", "null"], "format": "date-time" },
+    "modelVersion": { "type": ["string", "null"] },
+    "summary": { "type": ["object", "null"], "additionalProperties": true },
+    "rawResultJson": { "type": ["object", "null"] },
+    "visualAssets": { "type": ["array", "null"], "items": { "type": "object" } },
+    "riskAssessment": { "type": ["object", "null"], "additionalProperties": true },
+    "riskLevel": { "type": ["string", "null"] },
+    "riskFactors": { "type": ["array", "object", "null"] },
+    "reviewReason": { "type": ["string", "null"] },
+    "knowledgeVersion": { "type": ["string", "null"] },
+    "evidenceRefs": { "type": ["array", "object", "null"] },
+    "errorCode": { "type": ["string", "null"] },
+    "errorMessage": { "type": ["string", "null"] },
+    "traceId": { "type": ["string", "null"], "maxLength": 128 },
+    "inferenceMillis": { "type": ["integer", "null"], "minimum": 0 },
+    "gradingLabel": { "type": ["string", "null"] },
+    "confidenceScore": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "needsReview": { "type": ["boolean", "null"] },
+    "uncertaintyScore": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+  },
+  "additionalProperties": true
+}

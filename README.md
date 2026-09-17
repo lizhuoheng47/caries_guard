@@ -17,6 +17,9 @@
 
 </div>
 
+> [!NOTE]
+> The current runtime is a modular Java monolith plus an independently deployable Python AI service. The incremental microservice migration, service ownership catalog, first versioned contracts, and architecture decisions are maintained under [`microservices/`](./microservices/README.md).
+
 > [!IMPORTANT]
 > CariesGuard 是研究与教学用途的影像辅助分析系统，不是医疗器械。模型输出、风险提示和自动分级均不能替代口腔医生的检查、诊断与治疗决策。
 

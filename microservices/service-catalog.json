@@ -1,0 +1,55 @@
+{
+  "catalogVersion": "1.0.0",
+  "architectureStage": "strangler-bootstrap",
+  "services": [
+    {
+      "name": "clinical-core",
+      "domain": "patient-case-visit",
+      "state": "TRANSITIONAL_MONOLITH",
+      "sourcePaths": ["backend-java/caries-patient", "backend-java/caries-system", "backend-java/caries-boot"],
+      "dataOwner": "caries_biz clinical and identity tables"
+    },
+    {
+      "name": "analysis-orchestrator",
+      "domain": "analysis-task-lifecycle",
+      "state": "EXTRACTION_CANDIDATE",
+      "sourcePaths": ["backend-java/caries-analysis"],
+      "dataOwner": "ana_* tables"
+    },
+    {
+      "name": "ai-inference",
+      "domain": "model-inference-and-rag",
+      "state": "DEPLOYABLE",
+      "sourcePaths": ["backend-python"],
+      "dataOwner": "caries_ai runtime tables and model assets"
+    },
+    {
+      "name": "image-service",
+      "domain": "image-metadata-and-object-access",
+      "state": "PLANNED",
+      "sourcePaths": ["backend-java/caries-image"],
+      "dataOwner": "med_image_* and attachment metadata"
+    },
+    {
+      "name": "report-service",
+      "domain": "clinical-report-generation",
+      "state": "PLANNED",
+      "sourcePaths": ["backend-java/caries-report"],
+      "dataOwner": "rpt_* tables"
+    },
+    {
+      "name": "followup-service",
+      "domain": "followup-and-notifications",
+      "state": "PLANNED",
+      "sourcePaths": ["backend-java/caries-followup"],
+      "dataOwner": "fup_* and follow-up notification records"
+    },
+    {
+      "name": "query-dashboard",
+      "domain": "cross-domain-read-models",
+      "state": "PLANNED_LAST",
+      "sourcePaths": ["backend-java/caries-dashboard"],
+      "dataOwner": "event-built read models only"
+    }
+  ]
+}

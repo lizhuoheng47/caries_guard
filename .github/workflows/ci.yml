@@ -2,7 +2,7 @@ name: Engineering gates
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, 'architecture/**']
   pull_request:
 
 concurrency:
@@ -13,6 +13,16 @@ permissions:
   contents: read
 
 jobs:
+  microservice-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python scripts/validate-service-contracts.py
+      - run: python scripts/check-service-boundaries.py
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

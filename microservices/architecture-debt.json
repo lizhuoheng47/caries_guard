@@ -1,0 +1,38 @@
+{
+  "boundary": "analysis-orchestrator",
+  "sourceRoot": "backend-java/caries-analysis/src/main/java",
+  "description": "Exact temporary cross-domain imports allowed while analysis orchestration is extracted. Any addition fails CI; removals must update this ledger in the same change.",
+  "allowedArtifactDependencies": [
+    "caries-common",
+    "caries-framework",
+    "caries-patient",
+    "caries-image"
+  ],
+  "allowedCrossDomainImports": {
+    "com/cariesguard/analysis/app/AnalysisCallbackAppService.java": [
+      "com.cariesguard.image.app.AttachmentAppService",
+      "com.cariesguard.image.domain.model.AttachmentObjectRegistrationModel",
+      "com.cariesguard.image.interfaces.vo.AttachmentUploadVO",
+      "com.cariesguard.patient.app.CaseCommandAppService",
+      "com.cariesguard.patient.interfaces.command.CaseStatusTransitionCommand"
+    ],
+    "com/cariesguard/analysis/app/AnalysisQueryAppService.java": [
+      "com.cariesguard.image.app.AttachmentAppService",
+      "com.cariesguard.image.interfaces.vo.AttachmentAccessVO"
+    ],
+    "com/cariesguard/analysis/app/AnalysisTaskAppService.java": [
+      "com.cariesguard.image.app.AttachmentAppService",
+      "com.cariesguard.image.interfaces.vo.AttachmentAccessVO",
+      "com.cariesguard.patient.app.CaseCommandAppService",
+      "com.cariesguard.patient.interfaces.command.CaseStatusTransitionCommand"
+    ],
+    "com/cariesguard/analysis/assembler/AnalysisTaskViewAssembler.java": [
+      "com.cariesguard.image.app.AttachmentAppService",
+      "com.cariesguard.image.interfaces.vo.AttachmentAccessVO"
+    ],
+    "com/cariesguard/analysis/assembler/ReviewTaskAssembler.java": [
+      "com.cariesguard.image.app.AttachmentAppService",
+      "com.cariesguard.image.interfaces.vo.AttachmentAccessVO"
+    ]
+  }
+}
