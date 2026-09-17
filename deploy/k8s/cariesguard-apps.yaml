@@ -1,0 +1,223 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cariesguard-config
+data:
+  CARIES_MYSQL_HOST: mysql.database.svc.cluster.local
+  CARIES_MYSQL_PORT: "3306"
+  CARIES_REDIS_HOST: redis.cache.svc.cluster.local
+  CARIES_REDIS_PORT: "6379"
+  CARIES_RABBIT_HOST: rabbitmq.messaging.svc.cluster.local
+  CARIES_RABBIT_PORT: "5672"
+  CARIES_ANALYSIS_QUEUE_TYPE: quorum
+  CARIES_MINIO_ENDPOINT: http://minio.storage.svc.cluster.local:9000
+  CARIES_STORAGE_PROVIDER: MINIO
+  CARIES_FLYWAY_CLEAN_DISABLED: "true"
+  CG_MYSQL_HOST: mysql.database.svc.cluster.local
+  CG_MYSQL_PORT: "3306"
+  CG_RABBIT_HOST: rabbitmq.messaging.svc.cluster.local
+  CG_RABBIT_PORT: "5672"
+  CG_RABBIT_QUEUE_TYPE: quorum
+  CG_MINIO_ENDPOINT: http://minio.storage.svc.cluster.local:9000
+  CG_JAVA_CALLBACK_URL: http://backend-java:8080/api/v1/internal/ai/callbacks/analysis-result
+  CG_MODEL_DEVICE: cpu
+  CG_RAG_KNOWLEDGE_PATH: /app/knowledge-base/caries_guidance_v1.json
+  CG_STRICT_MODEL_STARTUP_VALIDATION: "true"
+  CG_MODEL_QUALITY_ENABLED: "true"
+  CG_MODEL_QUALITY_IMPL_TYPE: HEURISTIC
+  CG_MODEL_TOOTH_DETECT_ENABLED: "true"
+  CG_MODEL_TOOTH_DETECT_IMPL_TYPE: HEURISTIC
+  CG_MODEL_DISEASE_DETECT_ENABLED: "true"
+  CG_MODEL_DISEASE_DETECT_CHECKPOINT_PATH: /app/disease-model/weights/best.pt
+  CG_MODEL_DISEASE_DETECT_METADATA_PATH: /app/disease-model/cariesguard_model_metadata.json
+  CG_MODEL_SEGMENTATION_ENABLED: "true"
+  CG_MODEL_SEGMENTATION_IMPL_TYPE: ML_MODEL
+  CG_MODEL_GRADING_ENABLED: "true"
+  CG_MODEL_GRADING_IMPL_TYPE: HEURISTIC
+  CG_MODEL_RISK_ENABLED: "true"
+  CG_MODEL_RISK_IMPL_TYPE: HEURISTIC
+  CG_MODEL_WEIGHTS_DIR: /app/model-weights
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-java
+spec:
+  replicas: 2
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels: { app: backend-java }
+  template:
+    metadata:
+      labels: { app: backend-java }
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: backend-java
+          image: ghcr.io/your-org/cariesguard-backend-java:latest
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: SPRING_PROFILES_ACTIVE, value: docker }
+          envFrom:
+            - configMapRef: { name: cariesguard-config }
+            - secretRef: { name: cariesguard-secrets }
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: http }
+            initialDelaySeconds: 45
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 500m, memory: 768Mi }
+            limits: { cpu: "2", memory: 2Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-java
+spec:
+  selector: { app: backend-java }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-python
+spec:
+  replicas: 2
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels: { app: backend-python }
+  template:
+    metadata:
+      labels: { app: backend-python }
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: backend-python
+          image: ghcr.io/your-org/cariesguard-backend-python:latest
+          ports:
+            - { name: http, containerPort: 8001 }
+          envFrom:
+            - configMapRef: { name: cariesguard-config }
+            - secretRef: { name: cariesguard-secrets }
+          readinessProbe:
+            httpGet: { path: /ai/v1/health, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet: { path: /ai/v1/health, port: http }
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          volumeMounts:
+            - { name: model-weights, mountPath: /app/model-weights, readOnly: true }
+            - { name: disease-model, mountPath: /app/disease-model, readOnly: true }
+          resources:
+            requests: { cpu: "1", memory: 2Gi }
+            limits: { cpu: "4", memory: 8Gi }
+      volumes:
+        - name: model-weights
+          persistentVolumeClaim: { claimName: cariesguard-model-weights }
+        - name: disease-model
+          persistentVolumeClaim: { claimName: cariesguard-disease-model }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-python
+spec:
+  selector: { app: backend-python }
+  ports:
+    - { name: http, port: 8001, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 2
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels: { app: frontend }
+  template:
+    metadata:
+      labels: { app: frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/your-org/cariesguard-frontend:latest
+          ports:
+            - { name: http, containerPort: 80 }
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  selector: { app: frontend }
+  ports:
+    - { name: http, port: 80, targetPort: http }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: backend-java }
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app: backend-java } }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: backend-python }
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app: backend-python } }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: backend-java }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: backend-java }
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: backend-python }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: backend-python }
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 75 }

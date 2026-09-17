@@ -1,0 +1,41 @@
+{
+  "recordedAt": "2026-09-17T10:42:09+08:00",
+  "scope": "local Java actuator health endpoint",
+  "environment": {
+    "profile": "local",
+    "database": "local MySQL caries_biz_e2e",
+    "messagingMode": "logging",
+    "redisHealthCheck": false,
+    "rabbitHealthCheck": false,
+    "minioBucketCreation": false
+  },
+  "result": {
+    "url": "http://127.0.0.1:8080/actuator/health",
+    "requests": 300,
+    "concurrency": 30,
+    "elapsedSeconds": 0.518,
+    "requestsPerSecond": 579.493,
+    "successCount": 300,
+    "errorCount": 0,
+    "errorRate": 0.0,
+    "latencyMs": {
+      "min": 19.488,
+      "mean": 47.533,
+      "p50": 44.789,
+      "p95": 76.612,
+      "p99": 90.074,
+      "max": 149.654
+    },
+    "statusCounts": {
+      "200": 300
+    },
+    "thresholds": {
+      "maxErrorRate": 0.0,
+      "maxP95Ms": 500.0,
+      "minRequestsPerSecond": 1.0
+    },
+    "passed": true,
+    "violations": []
+  },
+  "limitations": "This is a developer-machine health-endpoint baseline, not business-endpoint or production-capacity evidence."
+}

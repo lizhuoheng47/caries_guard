@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - cariesguard-apps.yaml
+images:
+  - name: ghcr.io/your-org/cariesguard-frontend
+    newTag: latest
+  - name: ghcr.io/your-org/cariesguard-backend-java
+    newTag: latest
+  - name: ghcr.io/your-org/cariesguard-backend-python
+    newTag: latest
